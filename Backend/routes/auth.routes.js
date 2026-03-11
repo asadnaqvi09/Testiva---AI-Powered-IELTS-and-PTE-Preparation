@@ -7,4 +7,5 @@ Router.post('/register', rateLimiter.authLimiter ,authController.registerUser);
 Router.post('/login', rateLimiter.authLimiter ,authController.loginUser);
 Router.post('/guest', rateLimiter.authLimiter ,authController.guestAccess);
 Router.post('/logout', rateLimiter.authLimiter, authController.logoutUser);
+Router.post('/google', rateLimiter.authLimiter, authController.googleAuth);
 export default Router;

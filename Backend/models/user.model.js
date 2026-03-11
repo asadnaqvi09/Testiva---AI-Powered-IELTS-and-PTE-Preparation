@@ -63,3 +63,25 @@ export const updateUserProfile = async (id, data) => {
   );
   return result.rows[0];
 };
+
+export const uploadUserAvatar = async (userID,avatarUrl) => {
+  const result = await pool.query(
+    `UPDATE users
+     SET avatar_url=$1,
+         updated_at=NOW()
+     WHERE id=$2
+     RETURNING id, full_name, email, avatar_url`,
+    [avatarUrl, userID]
+  );
+  await result.rows[0];
+};
+
+export const createGoogleUser = async (data) => {
+  const {email,full_name,avatar_url} = data;
+  const result = await pool.query(
+    `INSERT INTO users (email, full_name, avatar_url, auth_provider, is_email_verified)
+     VALUES ($1,$2,$3,'google',true)
+     RETURNING id, full_name, email, role, subscription, avatar_url`,
+    [email, full_name, avatar_url]
+  )
+};

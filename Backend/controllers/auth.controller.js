@@ -1,8 +1,9 @@
 import pool from "../config/db.js";
-import { createUser, findUserByEmail } from "../models/user.model.js";
+import { createGoogleUser, createUser, findUserByEmail } from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import * as authValidator from "../validators/auth.validator.js";
 import { generateGuestToken, generateToken } from "../utils/jwt.js";
+import { verifyGoogleToken } from '../services/auth.service.js';
 
 export const registerUser = async (req, res) => {
   try {
@@ -118,7 +119,6 @@ export const guestAccess = async (req, res) => {
   }
 };
 
-
 export const logoutUser = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -134,3 +134,41 @@ export const logoutUser = async (req, res) => {
     });
   }
 };
+
+export const googleAuth = async (req,res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Google Token Required"
+      })
+    };
+    const googleUser = await verifyGoogleToken(idToken);
+    const user = await findUserByEmail(googleUser.email);
+    if (!user) {
+      user = await createGoogleUser({
+        email: googleUser.email,
+        full_name: googleUser.full_name,
+        avatar_url: googleUser.avatar_url
+      });
+    };
+    const token = generateToken({
+      id: user.id,
+      role: user.role,
+      subscription: user.subscription
+    });
+    res.status(200).json({
+      success: true,
+      message: "Google Login Successful",
+      token,
+      user
+    });
+  } catch (error) {
+    console.error("Google Auth Error: " , error);
+    res.status(500).json({
+      success: false,
+      message: "Google Authentication Failed"
+    });
+  }
+}
