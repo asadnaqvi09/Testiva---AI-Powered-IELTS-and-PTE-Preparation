@@ -145,7 +145,7 @@ export const googleAuth = async (req,res) => {
       })
     };
     const googleUser = await verifyGoogleToken(idToken);
-    const user = await findUserByEmail(googleUser.email);
+    let user = await findUserByEmail(googleUser.email);
     if (!user) {
       user = await createGoogleUser({
         email: googleUser.email,
