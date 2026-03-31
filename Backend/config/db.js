@@ -26,5 +26,4 @@ const testDBConnection = async () => {
 };
 
 testDBConnection();
-
 export default pool;
