@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testiva Admin — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"><link href="styles/index.css" rel="stylesheet">
+</head>
+<body>
+ 
+    <div class="shell">
+     
+      <!-- MAIN -->
+      <div class="main">
+     
+        <!-- CONTENT -->
+        <div class="content">
+
+     
+          <!-- LOGIN CARD -->
+          <div class="card">
+     
+            <!-- Card header -->
+            <div class="card-header">
+              <div class="card-logo">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <div class="card-brand">
+                <div class="card-brand-name">Testiva</div>
+                <div class="card-brand-sub">Your IELTS &amp; PTE Partner</div>
+              </div>
+              <div class="admin-badge">Admin</div>
+            </div>
+     
+            <div class="card-title">Welcome back</div>
+            <div class="card-desc">Sign in to your admin account to manage the platform.</div>
+     
+            <!-- Error -->
+            <div class="error-msg" id="errMsg">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              Invalid email or password. Please try again.
+            </div>
+     
+            <div class="fields">
+     
+              <!-- Email -->
+              <div class="fld">
+                <div class="fld-label"><span>Email Address</span></div>
+                <div class="fld-wrap">
+                  <svg class="fld-icon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+                  <input type="email" id="emailInput" placeholder="admin@testiva.com" autocomplete="email">
+                </div>
+              </div>
+     
+              <!-- Password -->
+              <div class="fld">
+                <div class="fld-label">
+                  <span>Password</span>
+                </div>
+                <div class="fld-wrap">
+                  <svg class="fld-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  <input type="password" id="pwdInput" placeholder="Enter your password" autocomplete="current-password">
+                  <button class="fld-eye" onclick="toggleEye()" type="button" id="eyeBtn">
+                    <svg id="eyeShow" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eyeHide" viewBox="0 0 24 24" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+     
+            <!-- Submit -->
+            <button class="btn-submit" id="submitBtn" onclick="handleLogin()">
+              <span class="btn-text">Sign In to Dashboard</span>
+              <div class="btn-spinner"></div>
+            </button>
+     
+            <!-- Footer -->
+            <div class="card-footer">
+              <div class="footer-version ">ACELT Admin v1.0 ·  Multi-Test Prep Hub · FYP 2026</div>
+            </div>
+     
+          </div>
+        </div>
+
+      </div>
+    </div>
+<script src="javascript/index.js"></script>
+</body>
+</html>
