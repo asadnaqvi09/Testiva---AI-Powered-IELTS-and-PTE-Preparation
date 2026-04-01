@@ -4,8 +4,8 @@ import helmet from "helmet";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import path from "path";
-import authRoutes from './routes/auth.routes.js';
-import userRoutes from './routes/user.routes.js';
+import authRoutes from './src/modules/auth/auth.routes.js';
+import userRoutes from './src/modules/user/user.routes.js';
 dotenv.config();
 
 const app = express();

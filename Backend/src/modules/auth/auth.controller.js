@@ -1,9 +1,9 @@
-import pool from "../config/db.js";
-import { createGoogleUser, createUser, findUserByEmail } from "../models/user.model.js";
+import pool from "../../config/db.js";
+import { createGoogleUser, createUser, findUserByEmail } from "../../models/user.model.js";
 import bcrypt from "bcrypt";
-import * as authValidator from "../validators/auth.validator.js";
-import { generateGuestToken, generateToken } from "../utils/jwt.js";
-import { verifyGoogleToken } from '../services/auth.service.js';
+import * as authValidator from "../../validators/auth.validator.js";
+import { generateGuestToken, generateToken } from "../../utils/jwt.js";
+import { verifyGoogleToken } from './auth.service.js';
 
 export const registerUser = async (req, res) => {
   try {

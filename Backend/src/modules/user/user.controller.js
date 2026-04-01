@@ -1,4 +1,4 @@
-import { findUserById,updateUserProfile, uploadUserAvatar } from '../models/user.model.js';
+import { findUserById,updateUserProfile, uploadUserAvatar } from '../../models/user.model.js';
 import { processAndUploadAvatar } from "../services/image.service.js";
 
 export const getProfileController = async (req, res) => {
