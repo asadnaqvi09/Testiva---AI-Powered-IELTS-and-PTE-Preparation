@@ -1,12 +1,14 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TYPE user_role_enum AS ENUM (
+    'guest',
     'user',
     'admin'
 );
 
 CREATE TYPE subscription_status_enum AS ENUM (
     'free',
+    'basic',
     'premium'
 );
 
