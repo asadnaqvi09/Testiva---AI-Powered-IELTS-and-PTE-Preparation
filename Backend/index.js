@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import authRoutes from './src/modules/auth/auth.routes.js';
 import userRoutes from './src/modules/user/user.routes.js';
+import adminRoutes from './src/modules/admin/admin.routes.js';
 dotenv.config();
 
 const app = express();
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/user', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Start server
 app.listen(PORT, () => {

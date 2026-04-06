@@ -56,3 +56,35 @@ export const createGoogleUser = async (data) => {
   );
   return result.rows[0]; // Fixed: now returns result
 };
+
+export const getAdminStats = async () => {
+  const result = await pool.query(
+    `SELECT 
+      COUNT(*) AS total_users,
+      COUNT(*) FILTER (WHERE subscription = 'premium') AS premium_users,
+      COUNT(*) FILTER (WHERE subscription = 'premium') AS basic_users,
+    FROM users`,
+  )
+  return result.rows[0]
+};
+
+export const fetchAllUsers = async (limit, offset) => {
+  const result = await pool.query(
+    `SELECT id,full_name,email,role,subscription,created_at
+    FROM users
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+    `, [limit,offset]
+  )
+  return result.rows[0]
+}
+
+export const updateUserSubscriptionStatus = async (id,subscription) => {
+  const result = await pool.query(`
+    UPDATE users 
+    SET subscription = $1, updated_at = NOW()
+    WHERE id = $2
+    RETURNING id,email,full_name,subscription  
+  `,[id,subscription])
+  return result.rows[0]
+}
