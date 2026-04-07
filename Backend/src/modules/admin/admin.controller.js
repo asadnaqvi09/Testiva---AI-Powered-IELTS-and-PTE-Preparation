@@ -1,4 +1,4 @@
-import { fetchAllUsers, getAdminStats } from '../../models/user.model.js'
+import { fetchAllUsers, getAdminStats, updateUserSubscriptionStatus } from '../../models/user.model.js'
 
 export const getDashboardStats = async (req,res) => {
     try {
@@ -39,7 +39,42 @@ export const getAllUsers = async (req,res) => {
     }
 };
 
-export const updateUserSubscription = async (req,res) => {};
+export const updateUserSubscription = async (req,res) => {
+    try {
+        const { targetID , newSubscription , role } = req.body
+        if (!targetID || !newSubscription ) {
+            return res.status(400).json({
+                success : false,
+                message : "Please Provide targetID and new Subscription"
+            })
+        }
+        const allowedRoles = ['free','basic','premium']
+        if (!allowedRoles.includes(newSubscription)) {
+            return res.status(400).json({
+                success : false,
+                message : "Please Provide Valid Role.Select one of these free,basic,premium"
+            })
+        }
+        const updatedUserRole = await updateUserSubscriptionStatus(targetID , newSubscription);
+        if (!updatedUserRole) {
+            return res.status(404).json({
+                success : false,
+                message : "User not found"
+            })
+        }
+        return res.status(200).json({
+            success : true,
+            message : `User Subscription Changed SuccessFully to ${newSubscription}`,
+            data : updatedUserRole
+        })
+    } catch (error) {
+        console.error("Error in updateUserSubscription Controller", error)
+        return res.status(500).json({
+            success : false,
+            message : "Internal Server Error"
+        })    
+    }
+};
 
 export const readingController = (req,res) => {};
 

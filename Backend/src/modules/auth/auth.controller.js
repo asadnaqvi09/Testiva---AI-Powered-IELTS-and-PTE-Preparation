@@ -22,7 +22,7 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: "Fields required" });
     const user = await findUserByEmail(email);
     if (!user || !user.password_hash) return res.status(400).json({ success: false, message: "Invalid Credentials" });

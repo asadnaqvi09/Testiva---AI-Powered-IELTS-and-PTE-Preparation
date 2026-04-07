@@ -61,8 +61,9 @@ export const getAdminStats = async () => {
   const result = await pool.query(
     `SELECT 
       COUNT(*) AS total_users,
+      COUNT(*) FILTER (WHERE subscription = 'free') AS free_users,
       COUNT(*) FILTER (WHERE subscription = 'premium') AS premium_users,
-      COUNT(*) FILTER (WHERE subscription = 'premium') AS basic_users,
+      COUNT(*) FILTER (WHERE subscription = 'basic') AS basic_users
     FROM users`,
   )
   return result.rows[0]
@@ -76,14 +77,14 @@ export const fetchAllUsers = async (limit, offset) => {
     LIMIT $1 OFFSET $2
     `, [limit,offset]
   )
-  return result.rows[0]
+  return result.rows
 }
 
 export const updateUserSubscriptionStatus = async (id,subscription) => {
   const result = await pool.query(`
     UPDATE users 
-    SET subscription = $1, updated_at = NOW()
-    WHERE id = $2
+    SET subscription = $2, updated_at = NOW()
+    WHERE id = $1
     RETURNING id,email,full_name,subscription  
   `,[id,subscription])
   return result.rows[0]
