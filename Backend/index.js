@@ -7,6 +7,7 @@ import authRoutes from './src/modules/auth/auth.routes.js';
 import userRoutes from './src/modules/user/user.routes.js';
 import adminRoutes from './src/modules/admin/admin.routes.js';
 import testRoutes from './src/modules/test/test.routes.js';
+import progressRoutes from './src/modules/progress/progress.routes.js';
 dotenv.config();
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/content/test', testRoutes);
+app.use('/api/v1/progress', progressRoutes);
 
 // Start server
 app.listen(PORT, () => {
