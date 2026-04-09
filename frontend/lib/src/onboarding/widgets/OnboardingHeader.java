@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 class OnboardingHeader extends StatelessWidget {
   const OnboardingHeader({super.key});
 
