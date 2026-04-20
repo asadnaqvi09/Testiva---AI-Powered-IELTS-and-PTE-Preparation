@@ -9,6 +9,7 @@ import adminRoutes from './src/modules/admin/admin.routes.js';
 import testRoutes from './src/modules/test/test.routes.js';
 import prepRoutes from './src/modules/preparation/preparation.routes.js';
 import progressRoutes from './src/modules/progress/progress.routes.js';
+import './src/modules/offline/sync.worker.js';
 dotenv.config();
 
 const app = express();
