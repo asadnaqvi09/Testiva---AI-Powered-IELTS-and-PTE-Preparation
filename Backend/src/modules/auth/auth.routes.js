@@ -13,4 +13,7 @@ Router.post('/verifyOTP', rateLimiter.authLimiter, authController.verifyOTP);
 Router.post('/resendOTP', rateLimiter.otpLimiter, authController.resendOTP);
 Router.post('/forgot-password', rateLimiter.authLimiter, authController.forgotPassword);
 Router.post('/reset-password', rateLimiter.authLimiter, authController.resetPassword);
+Router.post("/refresh-token", authController.refreshToken);
+Router.post("/logout", authenticate, authController.logoutUser);
+Router.post("/logout-all", authenticate, authController.logoutAllUserDevices);
 export default Router;
