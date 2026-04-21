@@ -4,138 +4,85 @@ import 'social_login_btns.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
-
   @override
   State<LoginForm> createState() => _LoginFormState();
 }
 
 class _LoginFormState extends State<LoginForm> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _email = TextEditingController(), _pass = TextEditingController();
+  bool _showDemo = false;
 
-  void _fillCredentials(String email, String password) {
-    setState(() {
-      _emailController.text = email;
-      _passwordController.text = password;
-    });
+  void _fill(String e, String p) => setState(() { _email.text = e; _pass.text = p; });
+
+  void _showResetSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 30),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text("Reset Password", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text("Enter your email to receive a reset link", style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 20),
+          _buildField("Your email address", Icons.email_outlined, controller: TextEditingController()),
+          const SizedBox(height: 25),
+          Row(children: [
+            Expanded(child: _sheetBtn("Cancel", () => Navigator.pop(ctx), isGrey: true)),
+            const SizedBox(width: 15),
+            Expanded(child: _sheetBtn("Send Reset Link", () => Navigator.pop(ctx))),
+          ]),
+          const SizedBox(height: 30),
+        ]),
+      ),
+    );
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  Widget _sheetBtn(String txt, VoidCallback tap, {bool isGrey = false}) => TextButton(
+    onPressed: tap,
+    style: TextButton.styleFrom(
+      backgroundColor: isGrey ? const Color(0xFFF8F9FA) : const Color(0xFF007BFF),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    child: Text(txt, style: TextStyle(color: isGrey ? Colors.black87 : Colors.white)),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Email Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 8),
-        _buildTextField("Enter your email", Icons.email_outlined, controller: _emailController),
-
-        const SizedBox(height: 20),
-        const Text("Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 8),
-        _buildTextField("Enter your password", Icons.lock_outline, isPassword: true, controller: _passwordController),
-
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () {},
-            child: const Text("Forgot Password?", style: TextStyle(color: Color(0xFF007BFF))),
-          ),
-        ),
-
-        const SizedBox(height: 10),
-        AppButton(text: "Login", onPressed: () {}),
-
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 25),
-          child: Row(
-            children: [
-              Expanded(child: Divider()),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Text("or continue with", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ),
-              Expanded(child: Divider()),
-            ],
-          ),
-        ),
-
-        const SocialLoginBtns(),
-
-        const SizedBox(height: 30),
-        _buildDemoBox(),
-      ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _label("Email Address"),
+      _buildField('Enter your email', Icons.email_outlined, controller: _email),
+      const SizedBox(height: 20),
+      _label("Password"),
+      _buildField('Enter your password', Icons.lock_outline, isPass: true, controller: _pass),
+      Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _showResetSheet, child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF007BFF))))),
+      SizedBox(width: double.infinity, child: AppButton(text: 'Login', onPressed: () {})),
+      const SizedBox(height: 20),
+      const SocialLoginBtns(),
+      Center(child: TextButton.icon(onPressed: () => setState(() => _showDemo = !_showDemo), icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility, size: 18, color: Colors.grey), label: Text("${_showDemo ? 'Hide' : 'Show'} Demo Credentials", style: const TextStyle(color: Colors.grey)))),
+      if (_showDemo) _demoBox(),
+    ]);
   }
 
-  Widget _buildDemoBox() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE3F2FD),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.info_outline, size: 18, color: Colors.blue),
-              SizedBox(width: 8),
-              Text("Demo Credentials (tap to fill)", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () => _fillCredentials("freeuser@example.com", "password123"),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_outline, size: 16, color: Colors.black54),
-                  const SizedBox(width: 8),
-                  Text("Free User: freeuser@example.com", style: TextStyle(fontSize: 12, color: Colors.blue[900])),
-                ],
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => _fillCredentials("premiumuser@example.com", "premium123"),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.star_outline, size: 16, color: Colors.orange),
-                  const SizedBox(width: 8),
-                  Text("Premium: premiumuser@example.com", style: TextStyle(fontSize: 12, color: Colors.blue[900])),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _label(String t) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)));
 
-  Widget _buildTextField(String hint, IconData icon, {bool isPassword = false, required TextEditingController controller}) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.grey),
-        suffixIcon: isPassword ? const Icon(Icons.visibility_outlined, color: Colors.grey, size: 20) : null,
-        filled: true,
-        fillColor: const Color(0xFFF8F9FA),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      ),
-    );
-  }
+  Widget _demoBox() => Container(
+    margin: const EdgeInsets.only(top: 10), padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.blue.shade100)),
+    child: Column(children: [
+      _demoTile("Free User", "freeuser@example.com", Icons.person_outline, Colors.blue),
+      _demoTile("Premium", "premiumuser@example.com", Icons.star_outline, Colors.orange),
+    ]),
+  );
+
+  Widget _demoTile(String l, String e, IconData i, Color c) => GestureDetector(
+    onTap: () => _fill(e, "password123"),
+    child: Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [Icon(i, size: 16, color: c), const SizedBox(width: 8), Text("$l: $e", style: TextStyle(fontSize: 12, color: Colors.blue[900]))])),
+  );
+
+  Widget _buildField(String h, IconData i, {bool isPass = false, required TextEditingController controller}) => TextField(
+    controller: controller, obscureText: isPass,
+    decoration: InputDecoration(hintText: h, prefixIcon: Icon(i, color: Colors.grey), filled: true, fillColor: const Color(0xFFF8F9FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+  );
 }
