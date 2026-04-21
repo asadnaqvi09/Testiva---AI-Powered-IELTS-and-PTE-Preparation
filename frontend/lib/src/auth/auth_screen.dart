@@ -25,7 +25,7 @@ class _AuthScreenState extends State<AuthScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("Testiva", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('Testiva', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -34,8 +34,6 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               const LoginHeader(),
               const SizedBox(height: 20),
-
-              // Custom Toggle (Iska code nichay hai)
               AuthToggle(
                 isLogin: isLogin,
                 onChanged: (value) {
@@ -44,10 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   });
                 },
               ),
-
               const SizedBox(height: 25),
-
-              // Content Swap logic
               isLogin ? const LoginForm() : const SignupForm(),
             ],
           ),

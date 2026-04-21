@@ -1,16 +1,22 @@
-# frontend
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+lib/src/auth/
+├── auth_screen.dart             (Main Parent Screen jo Login/Signup ko hold karti hai)
+├── login/                       (Login Feature)
+│   ├── login_page.dart          (Login ki main UI file)
+│   └── widgets/
+│       ├── auth_toggle.dart     (Login/Signup switcher)
+│       ├── google_button.dart
+│       ├── login_form.dart      (TextFields + Forgot Password Sheet)
+│       ├── login_header.dart
+│       └── social_login_btns.dart
+├── signup/                      (Signup Feature)
+│   ├── signup_page.dart
+│   └── widgets/
+│       └── signup_form.dart     (Register button -> OTP Trigger)
+├── forgot_password/             (Naya Folder for Recovery)
+│   ├── otp_screen.dart          (Verification + Timer + Resend)
+│   └── reset_password_screen.dart (New Password entry)
+└── onboarding/                  (Welcome Screens)
+├── onboarding_screen.dart
+└── widgets/
+├── onboarding_header.dart
+└── onboarding_stats.dart
