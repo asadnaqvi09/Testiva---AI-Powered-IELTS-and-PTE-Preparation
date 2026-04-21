@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/app_button.dart';
+import '../../auth/forgot_password/otp_screen.dart';
+import '../../dashboard/dashboard_screen.dart';
 import 'social_login_btns.dart';
 
 class LoginForm extends StatefulWidget {
@@ -9,7 +11,7 @@ class LoginForm extends StatefulWidget {
 }
 
 class _LoginFormState extends State<LoginForm> {
-  final _email = TextEditingController(), _pass = TextEditingController();
+  final _email = TextEditingController(), _pass = TextEditingController(), _resetEmail = TextEditingController();
   bool _showDemo = false;
 
   void _fill(String e, String p) => setState(() { _email.text = e; _pass.text = p; });
@@ -25,12 +27,16 @@ class _LoginFormState extends State<LoginForm> {
           const Text("Reset Password", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const Text("Enter your email to receive a reset link", style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 20),
-          _buildField("Your email address", Icons.email_outlined, controller: TextEditingController()),
+          _buildField("Your email address", Icons.email_outlined, controller: _resetEmail),
           const SizedBox(height: 25),
           Row(children: [
             Expanded(child: _sheetBtn("Cancel", () => Navigator.pop(ctx), isGrey: true)),
             const SizedBox(width: 15),
-            Expanded(child: _sheetBtn("Send Reset Link", () => Navigator.pop(ctx))),
+            Expanded(child: _sheetBtn("Send Reset Link", () {
+              String email = _resetEmail.text.trim();
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (c) => OTPScreen(email: email.isEmpty ? "user@example.com" : email)));
+            })),
           ]),
           const SizedBox(height: 30),
         ]),
@@ -57,7 +63,16 @@ class _LoginFormState extends State<LoginForm> {
       _label("Password"),
       _buildField('Enter your password', Icons.lock_outline, isPass: true, controller: _pass),
       Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _showResetSheet, child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF007BFF))))),
-      SizedBox(width: double.infinity, child: AppButton(text: 'Login', onPressed: () {})),
+      SizedBox(
+        width: double.infinity,
+        child: AppButton(
+          text: 'Login',
+          onPressed: () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (c) => DashboardScreen()),
+          ),
+        ),
+      ),
       const SizedBox(height: 20),
       const SocialLoginBtns(),
       Center(child: TextButton.icon(onPressed: () => setState(() => _showDemo = !_showDemo), icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility, size: 18, color: Colors.grey), label: Text("${_showDemo ? 'Hide' : 'Show'} Demo Credentials", style: const TextStyle(color: Colors.grey)))),
