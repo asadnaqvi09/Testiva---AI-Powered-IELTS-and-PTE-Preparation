@@ -9,13 +9,14 @@ class GoogleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        height: 56,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.02),
@@ -24,25 +25,18 @@ class GoogleButton extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/icons/google_logo_vibrant.png',
-              height: 22,
-              errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.g_mobiledata, color: Colors.blue),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              "Google",
-              style: TextStyle(
-                color: Color(0xFF1E293B),
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ],
+        child: Image.asset(
+          'assets/icons/continue_with_google.png',
+          height: 24,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.g_mobiledata, color: Colors.blue, size: 30),
+              SizedBox(width: 8),
+              Text("Continue with Google", style: TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
         ),
       ),
     );

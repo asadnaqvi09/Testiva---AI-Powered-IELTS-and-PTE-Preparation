@@ -7,12 +7,13 @@ class SocialLoginBtns extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        GoogleButton(
-          onTap: () {
-            print("Google Login Tapped!");
-          },
+        Expanded(
+          child: GoogleButton(
+            onTap: () {
+              print("Google Login Tapped!");
+            },
+          ),
         ),
       ],
     );
