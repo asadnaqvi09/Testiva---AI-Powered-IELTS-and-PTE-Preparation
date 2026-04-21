@@ -3,19 +3,19 @@ import bcrypt from 'bcrypt';
 
 export const findUserByEmail = async (email) => {
   const result = await pool.query(
-    "SELECT id, full_name, email, role, subscription, auth_provider FROM users WHERE email=$1",
+    "SELECT id, full_name, email, role, subscription, password_hash ,auth_provider,is_email_verified FROM users WHERE email=$1",
     [email]
   );
   return result.rows[0];
 };
 
 export const createUser = async (userData) => {
-  const { full_name, email, password_hash } = userData;
+  const { full_name, email, password_hash,auth_provider = 'email',is_email_verified = true } = userData;
   const result = await pool.query(
-    `INSERT INTO users (full_name, email, password_hash)
-     VALUES ($1, $2, $3)
+    `INSERT INTO users (full_name, email, password_hash,auth_provider,is_email_verified)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING id, full_name, email, role, subscription, auth_provider ,created_at`,
-    [full_name, email, password_hash]
+    [full_name, email, password_hash, auth_provider, is_email_verified]
   );
   return result.rows[0];
 };

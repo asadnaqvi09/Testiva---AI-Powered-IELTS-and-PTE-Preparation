@@ -10,5 +10,7 @@ Router.post('/guest', rateLimiter.authLimiter ,authController.guestAccess);
 Router.post('/logout', authenticate ,rateLimiter.authLimiter, authController.logoutUser);
 Router.post('/google', rateLimiter.authLimiter, authController.googleAuth);
 Router.post('/verifyOTP', rateLimiter.authLimiter, authController.verifyOTP);
-Router.post('/resendOTP', rateLimiter.otpLimiter, authController.verifyOTP);
+Router.post('/resendOTP', rateLimiter.otpLimiter, authController.resendOTP);
+Router.post('/forgot-password', rateLimiter.authLimiter, authController.forgotPassword);
+Router.post('/reset-password', rateLimiter.authLimiter, authController.resetPassword);
 export default Router;

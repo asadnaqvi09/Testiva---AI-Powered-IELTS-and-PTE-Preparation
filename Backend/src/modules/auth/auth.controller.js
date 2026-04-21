@@ -1,69 +1,104 @@
 import pool from "../../config/db.js";
-import { createGoogleUser, createUser, findUserByEmail } from "../../models/user.model.js";
-import bcrypt from "bcrypt";
+import {
+  createGoogleUser,
+  createUser,
+  findUserByEmail
+} from "../../models/user.model.js";
+
 import * as authValidator from "../../validators/auth.validator.js";
 import { generateGuestToken, generateToken } from "../../utils/jwt.js";
 import { verifyGoogleToken } from "./google.service.js";
-import { sendOtpEmail } from "../../utils/email.service.js";
+import { sendOtpEmail } from "../../config/nodemailer.js";
+import { hashPassword, generateOTP, resolveSubscription, hashOTP } from "../../utils/helpers.js";
+import bcrypt from "bcrypt";
 
-export const resolveSubscription = (user) => {
-  return user.role === "admin" ? "premium" : user.subscription;
+const buildOtpHash = async (otp) => {
+  return await hashOTP(String(otp));
 };
 
 export const registerUser = async (req, res) => {
   try {
     const { value, error } = authValidator.registerSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ success: false, message: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+
+    const { full_name, email, password, confirm_password } = value;
+
+    if (password !== confirm_password) {
+      return res.status(400).json({ success: false, message: "Passwords do not match" });
     }
-    const { full_name, email, password } = value;
+
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res.status(409).json({ success: false, message: "Email already registered" });
     }
-    const otp = Math.floor(1000 + Math.random() * 9000);
+
+    const otp = generateOTP();
+    const otp_hash = await buildOtpHash(otp);
+    const password_hash = await hashPassword(password);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-    const password_hash = await bcrypt.hash(password, 10);
+
     await pool.query(
-      `INSERT INTO temp_users (email, full_name, password_hash, otp_code, expires_at)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [email, full_name, password_hash, otp, expiresAt]
+      `INSERT INTO temp_users (email, full_name, password_hash, otp_code, expires_at, type, attempts, is_verified)
+       VALUES ($1,$2,$3,$4,$5,'register',0,false)
+       ON CONFLICT (email, type)
+       DO UPDATE SET
+         full_name = EXCLUDED.full_name,
+         password_hash = EXCLUDED.password_hash,
+         otp_code = EXCLUDED.otp_code,
+         expires_at = EXCLUDED.expires_at,
+         attempts = 0,
+         is_verified = false`,
+      [email, full_name, password_hash, otp_hash, expiresAt]
     );
+
     await sendOtpEmail(email, otp);
+
     return res.status(200).json({
       success: true,
-      message: "OTP sent to email",
+      message: "OTP sent",
       email
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "User registration failed"
-    });
+    console.error("Registration error:", error);
+    console.log("Registration Error : ", error);
+    return res.status(500).json({ success: false, message: "Registration failed" });
   }
 };
 
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Fields required" });
     }
+
     const user = await findUserByEmail(email);
+
     if (!user || !user.password_hash) {
-      return res.status(400).json({ success: false, message: "Invalid Credentials" });
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid Credentials" });
+
+    if (!user.is_email_verified) {
+      return res.status(403).json({ success: false, message: "Verify email first" });
     }
+
+    const match = await bcrypt.compare(password, user.password_hash);
+
+    if (!match) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
+    }
+
     const subscription = resolveSubscription(user);
+
     const token = generateToken({
       id: user.id,
       role: user.role,
       subscription
     });
-    await pool.query("UPDATE users SET last_login_at=NOW() WHERE id=$1", [user.id]);
+
+    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]);
+
     return res.status(200).json({
       success: true,
       token,
@@ -75,93 +110,222 @@ export const loginUser = async (req, res) => {
         subscription
       }
     });
-  } catch (error) {
+  } catch {
     return res.status(500).json({ success: false, message: "Login failed" });
   }
 };
 
-export const verifyOTP = async (req,res) => {
+export const forgotPassword = async (req, res) => {
   try {
-    const {email,otp} = req.body;
-    if (!otp) return res.status(400).json({ success: false, message: "OTP Required"});
-    const result = await pool.query(
-      'SELECT * FROM temp_users WHERE email = $1 AND otp_code = $2',
-      [email,otp]
-    );
-    const tempUser = result.rows[0];
-    if(!tempUser) return res.status(400).json({success: false, message: "Invalid OTP"});
-    if (new Date(tempUser.expires_at) < new Date()) {
-      await pool.query(`DELETE FROM temp_users WHERE email=$1`, [email]);
-      return res.status(400).json({ success: false, message: "OTP expired" });
-    }
-    const user = await createUser({
-      full_name: tempUser.full_name,
-      email: tempUser.email,
-      password_hash: tempUser.password_hash,
-      auth_provider
-    });
-    await pool.query(`DELETE FROM temp_users WHERE email=$1`, [email]);
-    const subscription = resolveSubscription(user);
-    const token = generateToken({
-      id: user.id,
-      role: user.role,
-      subscription
-    });
-    return res.status(201).json({
-      success: true,
-      message: "Account verified successfully",
-      token,
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        subscription
-      }
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "OTP verification failed"
-    });
-  }
-}
+    const { email } = req.body;
 
-export const resendOTP = async (req,res) => {
-  try {
-    const {email} = req.body;
-    if(!email) return res.status(400).json({ success : false , message: "Email Required"});
-    const existing = await pool.query(`SELECT * FROM temp_users WHERE email=$1`, [email]);
-    if(!existing.rows[0]) return res.status(400).json({ success : false, message: "No OTP avaiable for this email"});
-    const otp = Math.floor(1000 + Math.random() * 9000);
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email required" });
+    }
+
+    const user = await findUserByEmail(email);
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+
+    const otp = generateOTP();
+    const otp_hash = await buildOtpHash(otp);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
     await pool.query(
-      `UPDATE temp_users 
-       SET otp_code=$1, expires_at=$2 
-       WHERE email=$3`,
-      [otp, expiresAt, email]
+      `INSERT INTO temp_users (email, otp_code, expires_at, type, attempts, is_verified)
+       VALUES ($1,$2,$3,'reset',0,false)
+       ON CONFLICT (email, type)
+       DO UPDATE SET
+         otp_code = EXCLUDED.otp_code,
+         expires_at = EXCLUDED.expires_at,
+         attempts = 0,
+         is_verified = false`,
+      [email, otp_hash, expiresAt]
     );
+
     await sendOtpEmail(email, otp);
+
     return res.status(200).json({
       success: true,
-      message: "OTP resent successfully"
+      message: "OTP sent"
     });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to resend OTP"
-    });
+  } catch {
+    return res.status(500).json({ success: false, message: "Request failed" });
   }
-}
+};
+
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp, type } = req.body;
+
+    if (!email || !otp || !type) {
+      return res.status(400).json({ success: false, message: "All fields required" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT * FROM temp_users WHERE email=$1 AND type=$2`,
+      [email, type]
+    );
+
+    const tempUser = rows[0];
+
+    if (!tempUser) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    if (tempUser.attempts >= 5) {
+      await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      return res.status(400).json({ success: false, message: "Too many attempts" });
+    }
+
+    const match = await bcrypt.compare(String(otp), tempUser.otp_code);
+
+    if (!match) {
+      await pool.query(
+        `UPDATE temp_users SET attempts = attempts + 1 WHERE email=$1 AND type=$2`,
+        [email, type]
+      );
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    if (new Date(tempUser.expires_at) < new Date()) {
+      await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      return res.status(400).json({ success: false, message: "OTP expired" });
+    }
+
+    if (type === "register") {
+      const user = await createUser({
+        full_name: tempUser.full_name,
+        email: tempUser.email,
+        password_hash: tempUser.password_hash,
+        auth_provider: "email",
+        is_email_verified: true
+      });
+
+      await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type='register'`, [email]);
+
+      const token = generateToken({
+        id: user.id,
+        role: user.role,
+        subscription: resolveSubscription(user)
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Account verified",
+        token,
+        user
+      });
+    }
+
+    if (type === "reset") {
+      await pool.query(
+        `UPDATE temp_users SET is_verified=true WHERE email=$1 AND type='reset'`,
+        [email]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "OTP verified"
+      });
+    }
+
+    return res.status(400).json({ success: false, message: "Invalid type" });
+  } catch {
+    return res.status(500).json({ success: false, message: "Verification failed" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, new_password, confirm_password } = req.body;
+
+    if (!email || !new_password || !confirm_password) {
+      return res.status(400).json({ success: false, message: "All fields required" });
+    }
+
+    if (new_password !== confirm_password) {
+      return res.status(400).json({ success: false, message: "Passwords do not match" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT * FROM temp_users WHERE email=$1 AND type='reset' AND is_verified=true`,
+      [email]
+    );
+
+    if (!rows[0]) {
+      return res.status(400).json({ success: false, message: "OTP not verified" });
+    }
+
+    const password_hash = await hashPassword(new_password);
+
+    await pool.query(
+      `UPDATE users SET password_hash=$1, updated_at=NOW() WHERE email=$2`,
+      [password_hash, email]
+    );
+
+    await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type='reset'`, [email]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful"
+    });
+  } catch {
+    return res.status(500).json({ success: false, message: "Reset failed" });
+  }
+};
+
+export const resendOTP = async (req, res) => {
+  try {
+    const { email, type } = req.body;
+
+    if (!email || !type) {
+      return res.status(400).json({ success: false, message: "Email and type required" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT * FROM temp_users WHERE email=$1 AND type=$2`,
+      [email, type]
+    );
+
+    if (!rows[0]) {
+      return res.status(400).json({ success: false, message: "No OTP found" });
+    }
+
+    const otp = generateOTP();
+    const otp_hash = await buildOtpHash(otp);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await pool.query(
+      `UPDATE temp_users SET otp_code=$1, expires_at=$2, attempts=0 WHERE email=$3 AND type=$4`,
+      [otp_hash, expiresAt, email, type]
+    );
+
+    await sendOtpEmail(email, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP resent"
+    });
+  } catch {
+    return res.status(500).json({ success: false, message: "Resend failed" });
+  }
+};
 
 export const googleAuth = async (req, res) => {
   try {
     const { idToken } = req.body;
+
     if (!idToken) {
-      return res.status(400).json({ success: false, message: "Token Required" });
+      return res.status(400).json({ success: false, message: "Token required" });
     }
+
     const googleUser = await verifyGoogleToken(idToken);
+
     let user = await findUserByEmail(googleUser.email);
+
     if (!user) {
       user = await createGoogleUser({
         email: googleUser.email,
@@ -169,65 +333,37 @@ export const googleAuth = async (req, res) => {
         avatar_url: googleUser.avatar_url,
         subscription: "free"
       });
-    } else if (user.auth_provider !== "google") {
-      return res.status(409).json({
-        success: false,
-        message: "Account exists with password. Please login with password."
-      });
     }
-    const subscription = resolveSubscription(user);
+
     const token = generateToken({
       id: user.id,
       role: user.role,
-      subscription
+      subscription: resolveSubscription(user)
     });
+
     return res.status(200).json({
       success: true,
       token,
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        subscription
-      }
+      user
     });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Google Authentication Failed"
-    });
+  } catch {
+    return res.status(500).json({ success: false, message: "Google auth failed" });
   }
 };
 
 export const guestAccess = async (req, res) => {
   try {
     const token = generateGuestToken();
-    return res.status(200).json({
-      success: true,
-      token,
-      role: "guest"
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Guest Access Failed"
-    });
+    return res.status(200).json({ success: true, token, role: "guest" });
+  } catch {
+    return res.status(500).json({ success: false, message: "Guest failed" });
   }
 };
 
 export const logoutUser = async (req, res) => {
   try {
-    const userId = req.user?.id || "Unknown";
-    console.log(`User ${userId} logged out`);
-    return res.status(200).json({
-      success: true,
-      message: "User logged out successfully"
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Logout failed"
-    });
+    return res.status(200).json({ success: true, message: "Logged out" });
+  } catch {
+    return res.status(500).json({ success: false, message: "Logout failed" });
   }
 };

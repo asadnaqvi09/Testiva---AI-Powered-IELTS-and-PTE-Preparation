@@ -30,6 +30,12 @@ export const registerSchema = Joi.object({
       "string.pattern.base":
         "Password must contain uppercase, lowercase and number",
     }),
+  confirm_password: Joi.string()
+  .valid(Joi.ref('password'))
+  .required()
+  .messages({
+    "any.only": "Passwords do not match"
+  })
 });
 
 export const loginSchema = Joi.object({
