@@ -57,20 +57,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 25),
           child: Column(
             children: [
-              OnboardingHeader(),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 800),
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                  child: _buildPageContent(_currentPage),
-                ),
+              const OnboardingHeader(),
+              const SizedBox(height: 20),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 800),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: _buildPageContent(_currentPage),
               ),
+              const SizedBox(height: 40),
               _buildBottomSection(),
             ],
           ),
@@ -80,41 +80,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildPageContent(int index) {
-    return Padding(
+    return Column(
       key: ValueKey<int>(index),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            height: 180,
-            width: 180,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Center(
-              child: Icon(
-                index == 0 ? Icons.psychology : index == 1 ? Icons.bolt_rounded : Icons.shield_outlined,
-                size: 80,
-                color: const Color(0xFF007BFF),
-              ),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 180,
+          width: 180,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Center(
+            child: Icon(
+              index == 0 ? Icons.psychology : index == 1 ? Icons.bolt_rounded : Icons.shield_outlined,
+              size: 80,
+              color: const Color(0xFF007BFF),
             ),
           ),
-          const SizedBox(height: 40),
-          Text(
-            onboardingData[index]["title"]!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            onboardingData[index]["subtitle"]!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, color: Color(0xFF64748B), height: 1.5),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 40),
+        Text(
+          onboardingData[index]["title"]!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          onboardingData[index]["subtitle"]!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16, color: Color(0xFF64748B), height: 1.5),
+        ),
+      ],
     );
   }
 
@@ -127,7 +124,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         const SizedBox(height: 30),
         const OnboardingStats(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 30),
         SizedBox(
           width: double.infinity,
           height: 56,
@@ -151,6 +148,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           onPressed: () {},
           child: const Text("Continue as Guest", style: TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.w600)),
         ),
+        const SizedBox(height: 20),
       ],
     );
   }

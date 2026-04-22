@@ -14,6 +14,7 @@ class _OTPScreenState extends State<OTPScreen> {
   int _sec = 60;
   Timer? _t;
   final _ctrls = List.generate(4, (_) => TextEditingController());
+  bool _isComplete = false;
 
   @override
   void initState() {
@@ -25,6 +26,12 @@ class _OTPScreenState extends State<OTPScreen> {
     _t = Timer.periodic(const Duration(seconds: 1), (t) {
       if (_sec > 0) setState(() => _sec--);
       else _t?.cancel();
+    });
+  }
+
+  void _checkComplete() {
+    setState(() {
+      _isComplete = _ctrls.every((c) => c.text.isNotEmpty);
     });
   }
 
@@ -52,9 +59,15 @@ class _OTPScreenState extends State<OTPScreen> {
           Center(child: Text("00:${_sec.toString().padLeft(2, '0')}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF007BFF)))),
           Center(child: TextButton(onPressed: _sec == 0 ? () { setState(() => _sec = 60); _startT(); } : null, child: Text("Resend Code", style: TextStyle(color: _sec == 0 ? const Color(0xFF007BFF) : Colors.grey)))),
           const Spacer(),
-          SizedBox(width: double.infinity, child: AppButton(text: "Verify", onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const ResetPasswordScreen()));
-          })),
+          SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                text: "Verify",
+                onPressed: _isComplete ? () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ResetPasswordScreen()));
+                } : null,
+              )
+          ),
           const SizedBox(height: 40),
         ]),
       ),
@@ -64,12 +77,17 @@ class _OTPScreenState extends State<OTPScreen> {
   Widget _box(int i) => SizedBox(
     width: 65, height: 65,
     child: TextField(
-      controller: _ctrls[i], textAlign: TextAlign.center, keyboardType: TextInputType.number, maxLength: 1,
+      controller: _ctrls[i],
+      textAlign: TextAlign.center,
+      keyboardType: TextInputType.number,
+      maxLength: 1,
+      autofocus: i == 0,
       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       decoration: InputDecoration(counterText: "", filled: true, fillColor: const Color(0xFFF8F9FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF007BFF), width: 2))),
       onChanged: (v) {
         if (v.isNotEmpty && i < 3) FocusScope.of(context).nextFocus();
         if (v.isEmpty && i > 0) FocusScope.of(context).previousFocus();
+        _checkComplete();
       },
     ),
   );
