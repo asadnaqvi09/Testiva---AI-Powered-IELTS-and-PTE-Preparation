@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 class AppButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed; // Maine yahan '?' add kiya hai
   final bool isOutline;
 
   const AppButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed, // 'required' hata diya taake null aa sake
     this.isOutline = false,
   });
 
@@ -21,19 +21,32 @@ class AppButton extends StatelessWidget {
           ? OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF007BFF), width: 1.5),
+          side: BorderSide(
+              color: onPressed == null ? Colors.grey.shade300 : const Color(0xFF007BFF),
+              width: 1.5
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(text, style: const TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.w600)),
+        child: Text(
+            text,
+            style: TextStyle(
+                color: onPressed == null ? Colors.grey : const Color(0xFF007BFF),
+                fontWeight: FontWeight.w600
+            )
+        ),
       )
           : ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF007BFF),
+          disabledBackgroundColor: const Color(0xFFB0D4FF), // Disable hone par light blue color
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        child: Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)
+        ),
       ),
     );
   }
