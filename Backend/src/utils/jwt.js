@@ -18,18 +18,3 @@ export const generateRefreshToken = (userId) => {
 export const verifyRefreshToken = (token) => {
   return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 };
-
-export const generateGuestToken = () => {
-  return jwt.sign(
-    {
-      id: randomUUID(),
-      role: "guest",
-      subscription: "free",
-      isGuest: true
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: process.env.JWT_GUEST_EXPIRES_IN
-    }
-  );
-};

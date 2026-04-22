@@ -5,12 +5,12 @@ import {
   findUserByEmail,
   findRefreshToken,
   deleteRefreshToken,
-  deleteAllUserTokens
+  deleteAllUserTokens,
+  incrementTokenVersion
 } from "../../models/user.model.js";
 import * as authValidator from "../../validators/auth.validator.js";
 import {
   generateAccessToken,
-  generateGuestToken,
   generateRefreshToken,
   verifyRefreshToken
 } from "../../utils/jwt.js";
@@ -30,10 +30,7 @@ export const registerUser = async (req, res) => {
     if (error) {
       return res.status(400).json({ success: false, message: error.details[0].message });
     }
-    const { full_name, email, password, confirm_password } = value;
-    if (password !== confirm_password) {
-      return res.status(400).json({ success: false, message: "Passwords do not match" });
-    }
+    const { full_name, email, password } = value;
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res.status(409).json({ success: false, message: "Email already registered" });
@@ -56,11 +53,7 @@ export const registerUser = async (req, res) => {
       [email, full_name, password_hash, otp_hash, expiresAt]
     );
     await sendOtpEmail(email, otp);
-    return res.status(200).json({
-      success: true,
-      message: "OTP sent",
-      email
-    });
+    return res.status(200).json({ success: true, message: "OTP sent", email });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Registration failed" });
   }
@@ -68,10 +61,11 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email and password required" });
+    const { value, error } = authValidator.loginSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
     }
+    const { email, password } = value;
     const user = await findUserByEmail(email);
     if (!user || !user.password_hash) {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
@@ -86,20 +80,17 @@ export const loginUser = async (req, res) => {
     const payload = {
       id: user.id,
       role: user.role,
-      subscription: user.subscription
+      subscription: resolveSubscription(user),
+      tokenVersion: user.token_version
     };
     const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    const refreshToken = generateRefreshToken(user.id);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await pool.query(
-      `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1,$2,$3)`,
+      `INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1,$2,$3)`,
       [user.id, refreshToken, expiresAt]
     );
-    await pool.query(
-      `UPDATE users SET last_login_at = NOW() WHERE id = $1`,
-      [user.id]
-    );
+    await pool.query(`UPDATE users SET last_login_at = NOW() WHERE id = $1`, [user.id]);
     return res.status(200).json({
       success: true,
       accessToken,
@@ -114,7 +105,6 @@ export const loginUser = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Login Error : ", error);
     return res.status(500).json({ success: false, message: "Login failed" });
   }
 };
@@ -130,6 +120,7 @@ export const refreshToken = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid refresh token" });
     }
     if (new Date(stored.expires_at) < new Date()) {
+      await deleteRefreshToken(refreshToken);
       return res.status(401).json({ success: false, message: "Refresh token expired" });
     }
     let decoded;
@@ -138,14 +129,26 @@ export const refreshToken = async (req, res) => {
     } catch {
       return res.status(401).json({ success: false, message: "Invalid token" });
     }
+    const user = await findUserById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
     const newAccessToken = generateAccessToken({
-      id: decoded.id,
-      role: decoded.role,
-      subscription: decoded.subscription
+      id: user.id,
+      role: user.role,
+      subscription: resolveSubscription(user),
+      tokenVersion: user.token_version
     });
+    const newRefreshToken = generateRefreshToken(user.id);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await pool.query(
+      `UPDATE refresh_tokens SET token=$1, expires_at=$2 WHERE token=$3`,
+      [newRefreshToken, expiresAt, refreshToken]
+    );
     return res.status(200).json({
       success: true,
       accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
       expiresIn: "15m"
     });
   } catch {
@@ -185,70 +188,78 @@ export const forgotPassword = async (req, res) => {
 };
 
 export const verifyOTP = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { email, otp, type } = req.body;
     if (!email || !otp || !type) {
       return res.status(400).json({ success: false, message: "All fields required" });
     }
-    const { rows } = await pool.query(
-      `SELECT * FROM temp_users WHERE email=$1 AND type=$2`,
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT * FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
       [email, type]
     );
     const tempUser = rows[0];
     if (!tempUser) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
     if (tempUser.attempts >= 5) {
-      await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      await client.query('COMMIT');
       return res.status(400).json({ success: false, message: "Too many attempts" });
     }
     const match = await bcrypt.compare(String(otp), tempUser.otp_code);
     if (!match) {
-      await pool.query(
+      await client.query(
         `UPDATE temp_users SET attempts = attempts + 1 WHERE email=$1 AND type=$2`,
         [email, type]
       );
+      await client.query('COMMIT');
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
     if (new Date(tempUser.expires_at) < new Date()) {
-      await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      await client.query('COMMIT');
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
     if (type === "register") {
-      const user = await createUser({
-        full_name: tempUser.full_name,
-        email: tempUser.email,
-        password_hash: tempUser.password_hash,
-        auth_provider: "email",
-        is_email_verified: true
-      });
-      await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type='register'`, [email]);
+      const { rows: userRows } = await client.query(
+        `INSERT INTO users (full_name, email, password_hash, auth_provider, is_email_verified)
+         VALUES ($1,$2,$3,'email',true)
+         RETURNING id, full_name, email, role, subscription, auth_provider, created_at`,
+        [tempUser.full_name, tempUser.email, tempUser.password_hash]
+      );
+      const user = userRows[0];
+      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type='register'`, [email]);
+      await client.query('COMMIT');
       const token = generateAccessToken({
         id: user.id,
         role: user.role,
         subscription: resolveSubscription(user)
       });
-      return res.status(201).json({
-        success: true,
-        message: "Account verified",
-        token,
-        user
-      });
+      return res.status(201).json({ success: true, message: "Account verified", token, user });
     }
     if (type === "reset") {
-      await pool.query(
+      await client.query(
         `UPDATE temp_users SET is_verified=true WHERE email=$1 AND type='reset'`,
         [email]
       );
+      await client.query('COMMIT');
       return res.status(200).json({ success: true, message: "OTP verified" });
     }
+    await client.query('ROLLBACK');
     return res.status(400).json({ success: false, message: "Invalid type" });
-  } catch {
+  } catch (error) {
+    await client.query('ROLLBACK');
     return res.status(500).json({ success: false, message: "Verification failed" });
+  } finally {
+    client.release();
   }
 };
 
 export const resetPassword = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { email, new_password, confirm_password } = req.body;
     if (!email || !new_password || !confirm_password) {
@@ -257,22 +268,29 @@ export const resetPassword = async (req, res) => {
     if (new_password !== confirm_password) {
       return res.status(400).json({ success: false, message: "Passwords do not match" });
     }
-    const { rows } = await pool.query(
-      `SELECT * FROM temp_users WHERE email=$1 AND type='reset' AND is_verified=true`,
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT * FROM temp_users WHERE email=$1 AND type='reset' AND is_verified=true FOR UPDATE`,
       [email]
     );
     if (!rows[0]) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: "OTP not verified" });
     }
     const password_hash = await hashPassword(new_password);
-    await pool.query(
-      `UPDATE users SET password_hash=$1, updated_at=NOW() WHERE email=$2`,
+    await client.query(
+      `UPDATE users SET password_hash=$1, token_version = token_version + 1, updated_at=NOW() WHERE email=$2`,
       [password_hash, email]
     );
-    await pool.query(`DELETE FROM temp_users WHERE email=$1 AND type='reset'`, [email]);
+    await client.query(`DELETE FROM temp_users WHERE email=$1 AND type='reset'`, [email]);
+    await client.query(`DELETE FROM refresh_tokens WHERE user_id=(SELECT id FROM users WHERE email=$1)`, [email]);
+    await client.query('COMMIT');
     return res.status(200).json({ success: true, message: "Password reset successful" });
-  } catch {
+  } catch (error) {
+    await client.query('ROLLBACK');
     return res.status(500).json({ success: false, message: "Reset failed" });
+  } finally {
+    client.release();
   }
 };
 
@@ -318,50 +336,52 @@ export const googleAuth = async (req, res) => {
         avatar_url: googleUser.avatar_url,
         subscription: "free"
       });
+    } else if (user.auth_provider !== 'google') {
+      return res.status(409).json({
+        success: false,
+        message: "Account exists with password. Please login with password."
+      });
     }
     const token = generateAccessToken({
       id: user.id,
       role: user.role,
-      subscription: resolveSubscription(user)
+      subscription: resolveSubscription(user),
+      tokenVersion: user.token_version
     });
-    return res.status(200).json({
-      success: true,
-      token,
-      user
-    });
+    return res.status(200).json({ success: true, token, user });
   } catch {
     return res.status(500).json({ success: false, message: "Google auth failed" });
   }
 };
 
-export const guestAccess = async (req, res) => {
-  try {
-    const token = generateGuestToken();
-    return res.status(200).json({ success: true, token, role: "guest" });
-  } catch {
-    return res.status(500).json({ success: false, message: "Guest failed" });
-  }
-};
-
 export const logoutUser = async (req, res) => {
   try {
-    const userId = req.user.id;
     const refreshToken = req.body.refreshToken;
+    const accessToken = req.token;
     if (!refreshToken) {
       return res.status(400).json({ success: false, message: "Refresh token required" });
     }
     await deleteRefreshToken(refreshToken);
-    const decoded = verifyRefreshToken(refreshToken);
-    const ttl = decoded.exp - Math.floor(Date.now() / 1000);
-    if (ttl > 0) {
-      await redisClient.set(`bl_${refreshToken}`, "1", "EX", ttl);
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+      if (ttl > 0) {
+        await redisClient.set(`bl:${refreshToken}`, "1", "EX", ttl);
+      }
+    } catch (error) {
+      console.error("Error occurred while verifying refresh token:", error);
     }
-    return res.status(200).json({
-      success: true,
-      message: "Logged out"
-    });
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+        const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+        if (ttl > 0) {
+          await redisClient.set(`bl:${accessToken}`, "1", "EX", ttl);
+        }
+      } catch {}
+    }
+    return res.status(200).json({ success: true, message: "Logged out" });
   } catch (error) {
-    console.error("Logout Error : ", error);
     return res.status(500).json({ success: false, message: "Logout failed" });
   }
 };
@@ -371,13 +391,10 @@ export const logoutAllUserDevices = async (req, res) => {
     const userId = req.user.id;
     await deleteAllUserTokens(userId);
     await pool.query(
-      `UPDATE users SET updated_at=NOW() WHERE id=$1`,
+      `UPDATE users SET token_version = token_version + 1, updated_at=NOW() WHERE id=$1`,
       [userId]
     );
-    return res.status(200).json({
-      success: true,
-      message: "Logged out from all devices"
-    });
+    return res.status(200).json({ success: true, message: "Logged out from all devices" });
   } catch {
     return res.status(500).json({ success: false, message: "Force logout failed" });
   }

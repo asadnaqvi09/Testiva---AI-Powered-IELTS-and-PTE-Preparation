@@ -3,7 +3,8 @@ CREATE TABLE temp_users (
   email VARCHAR(255) UNIQUE NOT NULL,
   full_name VARCHAR(150),
   password_hash TEXT,
-  otp_code VARCHAR(10),
+  otp_code TEXT,
   expires_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
 );

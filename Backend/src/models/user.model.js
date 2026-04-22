@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 
 export const findUserByEmail = async (email) => {
   const result = await pool.query(
-    "SELECT id, full_name, email, role, subscription, password_hash, auth_provider, is_email_verified FROM users WHERE email=$1",
+    "SELECT id, full_name, email, role, subscription, password_hash, auth_provider, is_email_verified, token_version FROM users WHERE email=$1",
     [email]
   );
   return result.rows[0];
@@ -11,20 +11,18 @@ export const findUserByEmail = async (email) => {
 
 export const createUser = async (userData) => {
   const { full_name, email, password_hash, auth_provider = "email", is_email_verified = false } = userData;
-
   const result = await pool.query(
     `INSERT INTO users (full_name, email, password_hash, auth_provider, is_email_verified)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id, full_name, email, role, subscription, auth_provider, created_at`,
     [full_name, email, password_hash, auth_provider, is_email_verified]
   );
-
   return result.rows[0];
 };
 
 export const findUserById = async (id) => {
   const result = await pool.query(
-    `SELECT id, full_name, email, avatar_url, country, role, subscription, created_at 
+    `SELECT id, full_name, email, bio, avatar_url, role, subscription, created_at 
      FROM users WHERE id=$1`,
     [id]
   );
@@ -32,35 +30,47 @@ export const findUserById = async (id) => {
 };
 
 export const updateUserProfile = async (id, data) => {
-  const { full_name, password, confirm_password } = data;
-
-  if (password) {
-    if (password !== confirm_password) {
-      throw new Error("Password mismatch");
-    }
-
-    const password_hash = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `UPDATE users 
-       SET full_name=$1, password_hash=$2, updated_at=NOW()
-       WHERE id=$3
-       RETURNING id, full_name, email, country, avatar_url, role, subscription`,
-      [full_name, password_hash, id]
-    );
-
-    return result.rows[0];
-  }
-
+  const { full_name, bio } = data;
   const result = await pool.query(
     `UPDATE users 
-     SET full_name=$1, updated_at=NOW()
-     WHERE id=$2
-     RETURNING id, full_name, email, country, avatar_url, role, subscription`,
-    [full_name, id]
+     SET full_name=$1, bio=$2, updated_at=NOW()
+     WHERE id=$3
+     RETURNING id, full_name, email, bio, avatar_url, country, role, subscription`,
+    [full_name, bio, id]
   );
-
+  if (result.rows.length === 0) throw new Error("User not found");
   return result.rows[0];
+};
+
+export const updateUserPassword = async (id, data) => {
+  const { current_password, new_password, confirm_password } = data;
+  if (new_password !== confirm_password) throw new Error("Passwords do not match");
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userRes = await client.query(
+      'SELECT password_hash FROM users WHERE id=$1 FOR UPDATE',
+      [id]
+    );
+    if (userRes.rows.length === 0) throw new Error("User not found");
+    const valid = await bcrypt.compare(current_password, userRes.rows[0].password_hash);
+    if (!valid) throw new Error("Current password is incorrect");
+    const password_hash = await bcrypt.hash(new_password, parseInt(process.env.BCRYPT_ROUNDS || "12"));
+    const result = await client.query(
+      `UPDATE users 
+       SET password_hash=$1, token_version = token_version + 1, updated_at=NOW()
+       WHERE id=$2
+       RETURNING id, full_name, email, role, subscription`,
+      [password_hash, id]
+    );
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export const uploadUserAvatar = async (userID, avatarUrl) => {
@@ -71,20 +81,17 @@ export const uploadUserAvatar = async (userID, avatarUrl) => {
      RETURNING id, full_name, email, avatar_url`,
     [avatarUrl, userID]
   );
-
   return result.rows[0];
 };
 
 export const createGoogleUser = async (data) => {
   const { email, full_name, avatar_url, subscription = "free" } = data;
-
   const result = await pool.query(
     `INSERT INTO users (email, full_name, avatar_url, auth_provider, subscription, is_email_verified)
      VALUES ($1, $2, $3, 'google', $4, true)
      RETURNING id, full_name, email, role, subscription, avatar_url`,
     [email, full_name, avatar_url, subscription]
   );
-
   return result.rows[0];
 };
 
@@ -97,7 +104,6 @@ export const getAdminStats = async () => {
       COUNT(*) FILTER (WHERE subscription='premium') AS premium_users
      FROM users`
   );
-
   return result.rows[0];
 };
 
@@ -109,7 +115,6 @@ export const fetchAllUsers = async (limit, offset) => {
      LIMIT $1 OFFSET $2`,
     [limit, offset]
   );
-
   return result.rows;
 };
 
@@ -121,14 +126,20 @@ export const updateUserSubscriptionStatus = async (id, subscription) => {
      RETURNING id, email, full_name, subscription`,
     [id, subscription]
   );
+  return result.rows[0];
+};
 
+export const incrementTokenVersion = async (id) => {
+  const result = await pool.query(
+    `UPDATE users SET token_version = token_version + 1, updated_at=NOW() WHERE id=$1 RETURNING token_version`,
+    [id]
+  );
   return result.rows[0];
 };
 
 export const saveRefreshToken = async (userId, token, expiresAt) => {
   await pool.query(
-    `INSERT INTO refresh_tokens (user_id, token, expires_at)
-     VALUES ($1, $2, $3)`,
+    `INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`,
     [userId, token, expiresAt]
   );
 };
@@ -138,7 +149,6 @@ export const findRefreshToken = async (token) => {
     `SELECT * FROM refresh_tokens WHERE token=$1`,
     [token]
   );
-
   return result.rows[0];
 };
 
