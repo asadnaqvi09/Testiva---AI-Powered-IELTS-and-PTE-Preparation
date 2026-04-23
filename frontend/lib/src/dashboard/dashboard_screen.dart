@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home/home_page.dart';
 import 'widgets/custom_drawer.dart';
+import '../profile/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,10 +17,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final _screens = [
       HomePage(scaffoldKey: _scaffoldKey),
-      const Scaffold(body: Center(child: Text("Mocks"))),
-      const Scaffold(body: Center(child: Text("Prep"))),
-      const Scaffold(body: Center(child: Text("Community"))),
-      const Scaffold(body: Center(child: Text("Profile"))),
+      const Center(child: Text('Mocks')),
+      const Center(child: Text('Prep')),
+      const Center(child: Text('Community')),
+      const ProfileScreen(),
     ];
 
     return Scaffold(

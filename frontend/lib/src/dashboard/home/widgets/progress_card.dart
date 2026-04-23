@@ -25,7 +25,7 @@ class ProgressCard extends StatelessWidget {
                 children: [
                   _tabItem("IELTS", true),
                   const SizedBox(width: 10),
-                  _tabItem("TOEFL", false),
+                  _tabItem("PTE", false),
                 ],
               )
             ],

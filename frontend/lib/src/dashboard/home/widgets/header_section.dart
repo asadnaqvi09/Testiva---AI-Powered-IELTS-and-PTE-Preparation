@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../profile/profile_screen.dart';
+
 class HeaderSection extends StatelessWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   const HeaderSection({super.key, required this.scaffoldKey});
@@ -33,52 +35,37 @@ class HeaderSection extends StatelessWidget {
                 child: const Icon(Icons.auto_stories, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 8),
-              const Text("Testiva", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Testiva', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ]),
-            const CircleAvatar(
-              radius: 18,
-              backgroundColor: Color(0xFF007BFF),
-              child: Text("AK", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              },
+              child: const CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFF007BFF),
+                child: Text('AK', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 25),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Text('Tuesday, April 21', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            SizedBox(height: 4),
+            Row(
               children: [
-                const Text("Tuesday, April 21", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(height: 4),
-                Row(
-                  children: const [
-                    Text("Hello, Ahmed!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    SizedBox(width: 8),
-                    Text("👋", style: TextStyle(fontSize: 20)),
-                  ],
-                ),
-                const Text("Keep up the great work!", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                Text('Hello, Ahmed!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                SizedBox(width: 8),
+                Text('👋', style: TextStyle(fontSize: 20)),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-              child: Stack(
-                children: [
-                  const Icon(Icons.notifications_none_outlined, color: Colors.black54),
-                  Positioned(
-                    right: 2,
-                    top: 2,
-                    child: Container(
-                      height: 8,
-                      width: 8,
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                    ),
-                  ),
-                ],
-              ),
-            )
+            Text('Keep up the great work!', style: TextStyle(color: Colors.grey, fontSize: 14)),
           ],
         ),
         const SizedBox(height: 20),
@@ -94,13 +81,13 @@ class HeaderSection extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: const Color(0xFFFFE58F)),
     ),
-    child: Row(
-      children: const [
+    child: const Row(
+      children: [
         Icon(Icons.workspace_premium_outlined, color: Color(0xFFD48806), size: 20),
         SizedBox(width: 12),
         Expanded(
           child: Text(
-            "Unlock TOEFL & PTE - Get Premium",
+            'Unlock IELTS & PTE - Get Premium',
             style: TextStyle(color: Color(0xFF874D00), fontWeight: FontWeight.w600),
           ),
         ),

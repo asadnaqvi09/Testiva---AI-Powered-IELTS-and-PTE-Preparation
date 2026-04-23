@@ -16,7 +16,7 @@ class QuickActionsGrid extends StatelessWidget {
         _actionCard("Start Mock", "IELTS Reading", Icons.description_outlined, Colors.blue),
         _actionCard("Continue Prep", "IELTS Writing", Icons.menu_book_outlined, Colors.green),
         _actionCard("Community", "3 new replies", Icons.people_outline, Colors.orange),
-        _actionCard("TOEFL Prep", "Unlock Premium", Icons.track_changes, Colors.grey, isLocked: true),
+        _actionCard("PTE Prep", "Unlock Premium", Icons.track_changes, Colors.grey, isLocked: true),
       ],
     );
   }

@@ -14,6 +14,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      // AppBar yahan se hata diya doubling khatam karne ke liye
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -27,7 +28,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 25),
               const StatsRow(),
               const SizedBox(height: 30),
-              const Text("Quick Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
               const QuickActionsGrid(),
               const SizedBox(height: 25),

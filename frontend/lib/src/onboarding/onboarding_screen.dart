@@ -143,11 +143,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: const Text("Get Started", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ),
-        const SizedBox(height: 10),
-        TextButton(
-          onPressed: () {},
-          child: const Text("Continue as Guest", style: TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.w600)),
-        ),
         const SizedBox(height: 20),
       ],
     );
