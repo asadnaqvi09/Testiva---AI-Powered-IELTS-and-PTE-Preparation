@@ -35,7 +35,7 @@ export const updateUserProfile = async (id, data) => {
     `UPDATE users 
      SET full_name=$1, bio=$2, updated_at=NOW()
      WHERE id=$3
-     RETURNING id, full_name, email, bio, avatar_url, country, role, subscription`,
+     RETURNING id, full_name, email, bio, avatar_url,role,subscription`,
     [full_name, bio, id]
   );
   if (result.rows.length === 0) throw new Error("User not found");
@@ -101,20 +101,30 @@ export const getAdminStats = async () => {
       COUNT(*) AS total_users,
       COUNT(*) FILTER (WHERE subscription='free') AS free_users,
       COUNT(*) FILTER (WHERE subscription='basic') AS basic_users,
-      COUNT(*) FILTER (WHERE subscription='premium') AS premium_users
+      COUNT(*) FILTER (WHERE subscription='premium') AS premium_users,
+      COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days) AS active_users
      FROM users`
   );
   return result.rows[0];
 };
 
-export const fetchAllUsers = async (limit, offset) => {
-  const result = await pool.query(
-    `SELECT id, full_name, email, role, subscription, created_at
-     FROM users
-     ORDER BY created_at DESC
-     LIMIT $1 OFFSET $2`,
-    [limit, offset]
-  );
+export const fetchAllUsers = async (limit, offset, search = "", subscription = "") => {
+  let query = `SELECT id,full_name,email,role,subscription,created_at FROM users WHERE 1=1`;
+  const params = [];
+  let paramIndex = 1;
+  if (search) {
+    query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
+  if (subscription) {
+    query += `AND subscription= $${paramIndex}`;
+    params.push(subscription);
+    paramIndex++;
+  }
+  query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  params.push(limit, offset);
+  const result = await pool.query(query, params);
   return result.rows;
 };
 
