@@ -22,6 +22,11 @@ export const authenticate = async (req, res, next) => {
     };
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    // Gap Fix: Backend now identifies TokenExpiredError specifically
+    const message = error.name === "TokenExpiredError" 
+      ? "TokenExpiredError" 
+      : "Invalid or expired token";
+      
+    return res.status(401).json({ success: false, message });
   }
 };

@@ -1,8 +1,6 @@
-import Joi from 'joi';
+import joi from 'joi'
 
-// ==================== LESSON HEADER ====================
-
-export const createLessonSchema = Joi.object({
+export const createLessonSchema = joi.object({
     title: Joi.string().min(5).max(255).required().messages({
         'string.empty': 'Title is required',
         'string.min': 'Title must be at least 5 characters'
@@ -36,8 +34,6 @@ export const updateLessonSchema = Joi.object({
     tags: Joi.array().items(Joi.string().max(50)).max(10).optional()
 }).min(1);
 
-// ==================== LESSON PARTS ====================
-
 export const createPartSchema = Joi.object({
     part_title: Joi.string().min(3).max(255).required(),
     part_content: Joi.string().min(10).required(),
@@ -49,8 +45,6 @@ export const updatePartSchema = Joi.object({
     part_content: Joi.string().min(10).optional(),
     order_number: Joi.number().integer().min(1).optional()
 }).min(1);
-
-// ==================== FILTERS ====================
 
 export const lessonFilterSchema = Joi.object({
     test_type: Joi.string().valid('IELTS', 'PTE').optional(),

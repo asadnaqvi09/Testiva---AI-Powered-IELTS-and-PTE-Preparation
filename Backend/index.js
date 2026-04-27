@@ -9,7 +9,9 @@ import adminRoutes from './src/modules/admin/admin.routes.js';
 import testRoutes from './src/modules/test/test.routes.js';
 import prepRoutes from './src/modules/preparation/preparation.routes.js';
 import progressRoutes from './src/modules/progress/progress.routes.js';
+import aiRoutes from './src/modules/ai/ai.routes.js';
 import './src/modules/offline/sync.worker.js';
+import {errorHandler} from './src/middleware/error.middleware.js';
 dotenv.config();
 
 const app = express();
@@ -38,6 +40,9 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/content/test', testRoutes);
 app.use('/api/v1/content/preparations', prepRoutes);
 app.use('/api/v1/progress', progressRoutes);
+app.use('/api/v1/ai', aiRoutes);
+
+app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {

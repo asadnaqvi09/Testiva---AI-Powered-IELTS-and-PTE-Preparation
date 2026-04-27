@@ -6,7 +6,8 @@ import {
   findRefreshToken,
   deleteRefreshToken,
   deleteAllUserTokens,
-  incrementTokenVersion
+  incrementTokenVersion,
+  findUserById
 } from "../../models/user.model.js";
 import * as authValidator from "../../validators/auth.validator.js";
 import {
@@ -15,10 +16,11 @@ import {
   verifyRefreshToken
 } from "../../utils/jwt.js";
 import { verifyGoogleToken } from "./google.service.js";
-import { sendOtpEmail } from "../../config/nodemailer.js";
+import { sendOtpEmail } from "../../email_templates/email.service.js";
 import { hashPassword, generateOTP, resolveSubscription, hashOTP } from "../../utils/helpers.js";
 import { redisClient } from "../../config/redis.js";
 import bcrypt from "bcrypt";
+import jwt from 'jsonwebtoken';
 
 const hashOtpValue = async (otp) => {
   return await hashOTP(String(otp));
@@ -52,7 +54,7 @@ export const registerUser = async (req, res) => {
          is_verified = false`,
       [email, full_name, password_hash, otp_hash, expiresAt]
     );
-    await sendOtpEmail(email, otp);
+    await sendOtpEmail(email, otp,"register");
     return res.status(200).json({ success: true, message: "OTP sent", email });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Registration failed" });
@@ -101,7 +103,7 @@ export const loginUser = async (req, res) => {
         full_name: user.full_name,
         email: user.email,
         role: user.role,
-        subscription: user.subscription
+        subscription: resolveSubscription(user)
       }
     });
   } catch (error) {
@@ -109,31 +111,53 @@ export const loginUser = async (req, res) => {
   }
 };
 
-export const refreshToken = async (req, res) => {
+export const refreshAccessToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
-      return res.status(401).json({ success: false, message: "Refresh token required" });
-    }
-    const stored = await findRefreshToken(refreshToken);
-    if (!stored) {
-      return res.status(401).json({ success: false, message: "Invalid refresh token" });
-    }
-    if (new Date(stored.expires_at) < new Date()) {
-      await deleteRefreshToken(refreshToken);
-      return res.status(401).json({ success: false, message: "Refresh token expired" });
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token required"
+      });
     }
     let decoded;
     try {
       decoded = verifyRefreshToken(refreshToken);
     } catch {
-      return res.status(401).json({ success: false, message: "Invalid token" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid refresh token"
+      });
+    }
+    const stored = await findRefreshToken(refreshToken);
+    if (!stored) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token not found"
+      });
+    }
+    if (new Date(stored.expires_at) < new Date()) {
+      await deleteRefreshToken(refreshToken);
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token expired"
+      });
     }
     const user = await findUserById(decoded.userId);
     if (!user) {
-      return res.status(401).json({ success: false, message: "User not found" });
+      return res.status(401).json({
+        success: false,
+        message: "User not found"
+      });
     }
-    const newAccessToken = generateAccessToken({
+    if (decoded.tokenVersion !== user.token_version) {
+      await deleteRefreshToken(refreshToken);
+      return res.status(401).json({
+        success: false,
+        message: "Token invalidated"
+      });
+    }
+    const accessToken = generateAccessToken({
       id: user.id,
       role: user.role,
       subscription: resolveSubscription(user),
@@ -142,17 +166,24 @@ export const refreshToken = async (req, res) => {
     const newRefreshToken = generateRefreshToken(user.id);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await pool.query(
-      `UPDATE refresh_tokens SET token=$1, expires_at=$2 WHERE token=$3`,
-      [newRefreshToken, expiresAt, refreshToken]
+      `DELETE FROM refresh_tokens WHERE user_id = $1`,
+      [user.id]
+    );
+    await pool.query(
+      `INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1,$2,$3)`,
+      [user.id, newRefreshToken, expiresAt]
     );
     return res.status(200).json({
       success: true,
-      accessToken: newAccessToken,
+      accessToken,
       refreshToken: newRefreshToken,
       expiresIn: "15m"
     });
   } catch {
-    return res.status(500).json({ success: false, message: "Token refresh failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Token refresh failed"
+    });
   }
 };
 
@@ -180,7 +211,7 @@ export const forgotPassword = async (req, res) => {
          is_verified = false`,
       [email, otp_hash, expiresAt]
     );
-    await sendOtpEmail(email, otp);
+    await sendOtpEmail(email, otp,"reset");
     return res.status(200).json({ success: true, message: "OTP sent" });
   } catch {
     return res.status(500).json({ success: false, message: "Request failed" });
@@ -314,7 +345,7 @@ export const resendOTP = async (req, res) => {
       `UPDATE temp_users SET otp_code=$1, expires_at=$2, attempts=0 WHERE email=$3 AND type=$4`,
       [otp_hash, expiresAt, email, type]
     );
-    await sendOtpEmail(email, otp);
+    await sendOtpEmail(email, otp,"resest");
     return res.status(200).json({ success: true, message: "OTP resent" });
   } catch {
     return res.status(500).json({ success: false, message: "Resend failed" });

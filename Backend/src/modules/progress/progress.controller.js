@@ -79,3 +79,28 @@ export const getMyStats = async (req, res) => {
         res.status(500).json({ success: false, message: "Error fetching stats" });
     }
 };
+
+export const getTestResult = async (req, res) => {
+    const { attempt_id } = req.params;
+    const userId = req.user.id;
+    try {
+        const attempt = await progressModel.getFullAttemptDetail(attempt_id);
+        if (!attempt) {
+            return res.status(404).json({ success: false, message: "Result not found" });
+        }
+        if (attempt.user_id !== userId) {
+            return res.status(403).json({ success: false, message: "Unauthorized access to result" });
+        }
+        const responses = await progressModel.getAttemptResponses(attempt_id);
+        res.status(200).json({
+            success: true,
+            data: {
+                summary: attempt,
+                detailed_responses: responses
+            }
+        });
+    } catch (error) {
+        console.error("Fetch Result Error:", error);
+        res.status(500).json({ success: false, message: "Error fetching test result" });
+    }
+};

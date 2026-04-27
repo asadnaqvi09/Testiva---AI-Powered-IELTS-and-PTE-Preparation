@@ -3,17 +3,22 @@ import multer from "multer";
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.mimetype)) {
-    return cb(new Error("Only JPEG, PNG, WEBP files are allowed"));
+  const allowedTypes = [
+    "image/jpeg", "image/png", "image/webp", 
+    "audio/mpeg", "audio/wav", "audio/x-wav"
+  ];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only Images and Audio allowed."), false);
   }
-  cb(null, true);
 };
 
-export const uploadAvatar = multer({
+export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize: 10 * 1024 * 1024
   }
 });

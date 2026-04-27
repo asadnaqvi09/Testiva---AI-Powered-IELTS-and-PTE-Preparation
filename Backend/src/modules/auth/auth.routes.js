@@ -12,7 +12,7 @@ Router.post('/resend-otp', rateLimiter.otpLimiter, authController.resendOTP);
 Router.post('/forgot-password', rateLimiter.authLimiter, authController.forgotPassword);
 Router.post('/reset-password', rateLimiter.authLimiter, authController.resetPassword);
 Router.post('/google', rateLimiter.authLimiter, authController.googleAuth);
-Router.post('/refresh-token', authController.refreshToken);
+Router.post('/refresh-token', rateLimiter.authLimiter, authController.refreshAccessToken);
 Router.post('/logout', authenticate, rateLimiter.authLimiter, authController.logoutUser);
 Router.post('/logout-all', authenticate, rateLimiter.authLimiter, authController.logoutAllUserDevices);
 

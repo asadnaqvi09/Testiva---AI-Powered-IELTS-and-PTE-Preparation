@@ -116,6 +116,25 @@ export const deletePreparation = async (id,client = pool) => {
 }
 
 export const deletePreparationParts = async (lesson_id, client = pool) => {
-    await client.query(`DELETE FROM lesson_parts WHERE lesson_id = $1`, [lesson_id]);
-    
+    const result = await client.query(`DELETE FROM lesson_parts WHERE lesson_id = $1 RETURNING id,lesson_id`, [lesson_id]);
+    return result.rows[0];
+}
+
+export const getRecommendedLessons = async (subscription,weakSections,currentBand,targetBand) => {
+    const allowedSubscriptions = ['free'];
+    if (subscription === 'basic' || subscription === 'premium') allowedSubscriptions.push('basic');
+    if (subscription === 'premium') allowedSubscriptions.push('premium');
+    const sectionPlaceholders = weakSections.map((_, i) => `$${i + 3}`).join(', ');
+    const values = [allowedSubscriptions, currentBand, ...weakSections, targetBand];
+    const query = `SELECT id, title, test_type, section, summary, target_band, estimated_minutes, tags 
+    FROM lessons 
+    WHERE status = 'published' 
+    AND min_subscription = ANY($1)
+    AND target_band > $2 
+    AND target_band <= $${values.length}
+    AND section IN (${sectionPlaceholders})
+    ORDER BY target_band ASC, estimated_minutes ASC
+    LIMIT 10`;
+    const result = await pool.query(query,values);
+    return result.rows;
 }

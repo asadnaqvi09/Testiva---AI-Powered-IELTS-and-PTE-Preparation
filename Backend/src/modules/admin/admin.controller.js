@@ -74,7 +74,7 @@ export const updateUserSubscription = async (req, res) => {
         if(!targetUser) return res.status(404).json({ success: false, message: "User not found"})
         if(targetUser.role === "admin") return res.status(403).json( { success: false, message: "You cannot update this user subscription" } ) 
         const updatedUserRole = await updateUserSubscriptionStatus(targetID, newSubscription);
-        await pool.query(`INSERT INTO admin_logs (admin_id,action,taret_user_id,details,created_at)
+        await pool.query(`INSERT INTO admin_logs (admin_id,action,target_user_id,details,created_at)
         VALUES ($1,$2,$3,$4,NOW())`,
         [req.user.id,"Subscription Change",targetID,`Changed subscription to ${newSubscription}`]
         )
