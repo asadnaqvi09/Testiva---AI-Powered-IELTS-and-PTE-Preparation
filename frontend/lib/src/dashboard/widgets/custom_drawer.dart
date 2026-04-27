@@ -20,32 +20,12 @@ class CustomDrawer extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Color(0xFF007BFF),
-                    child: Text("AK", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 15),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Ahmed Khan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text("Free Member", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    ],
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                  ),
-                ],
-              ),
+              _buildHeader(context),
               const SizedBox(height: 30),
               _drawerItem(
+                context,
                 Icons.settings_outlined,
-                "Settings",
+                'Settings',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -54,9 +34,20 @@ class CustomDrawer extends StatelessWidget {
                   );
                 },
               ),
-              _drawerItem(Icons.chat_bubble_outline, "Feedback", onTap: () {}),
-              _drawerItem(Icons.notifications_none_outlined, "Notifications", onTap: () {}),
-              _drawerItem(Icons.star_outline, "Rate App", onTap: () {}),
+              _drawerItem(
+                context,
+                Icons.chat_bubble_outline,
+                'Feedback',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                  );
+                },
+              ),
+              _drawerItem(context, Icons.notifications_none_outlined, 'Notifications', onTap: () {}),
+              _drawerItem(context, Icons.star_outline, 'Rate App', onTap: () {}),
               const Spacer(),
               _logoutBtn(context),
             ],
@@ -66,7 +57,32 @@ class CustomDrawer extends StatelessWidget {
     );
   }
 
-  Widget _drawerItem(IconData icon, String title, {required VoidCallback onTap}) => Container(
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        const CircleAvatar(
+          radius: 25,
+          backgroundColor: Color(0xFF007BFF),
+          child: Text('AK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(width: 15),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ahmed Khan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Free Member', style: TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.close, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _drawerItem(BuildContext context, IconData icon, String title, {required VoidCallback onTap}) => Container(
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
       color: const Color(0xFFF8F9FA),
@@ -101,7 +117,7 @@ class CustomDrawer extends StatelessWidget {
           Icon(Icons.logout, color: Colors.redAccent, size: 20),
           SizedBox(width: 10),
           Text(
-            "Logout",
+            'Logout',
             style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ],

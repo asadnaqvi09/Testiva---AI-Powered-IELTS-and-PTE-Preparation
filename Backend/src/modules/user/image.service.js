@@ -4,14 +4,15 @@ import cloudinary from "../../config/cloudinary.js";
 
 export const processAndUploadAvatar = async (fileBuffer) => {
   const type = await fileTypeFromBuffer(fileBuffer);
-  if (!type || !["image/jpeg", "image/png"].includes(type.mime)) {
-    throw new Error("Incompatible file type. Only JPEG and PNG are allowed.");
-  }
   let processedImage;
   if (type.mime === "image/png") {
     processedImage = await sharp(fileBuffer).resize(300, 300).png().toBuffer();
-  } else {
+  } else if (type.mime === "image/jpeg") {
     processedImage = await sharp(fileBuffer).resize(300, 300).jpeg({ quality: 80 }).toBuffer();
+  } else if (type.mime === "image/webp") {
+    processedImage = await sharp(fileBuffer).resize(300,300).webp({ quality: 80 }).toBuffer();
+  } else {
+    throw new Error("Unsupported file type. Only JPEG,PNG and WEBP are allowed")
   }
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(

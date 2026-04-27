@@ -305,7 +305,7 @@ export const resendOTP = async (req, res) => {
       [email, type]
     );
     if (!rows[0]) {
-      return res.status(400).json({ success: false, message: "No OTP found" });
+      return res.status(400).json({ success: false, message: "Account already verified. Please login." });
     }
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
