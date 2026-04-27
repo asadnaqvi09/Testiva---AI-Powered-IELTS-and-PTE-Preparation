@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/app_button.dart';
-import '../../dashboard/dashboard_screen.dart';
+import '../../../../widgets/app_button.dart';
+import '../../../dashboard/dashboard_screen.dart';
 import 'social_login_btns.dart';
-import '../../auth/forgot_password/forgot_password_screen.dart';
+import '../../forgot_password/forgot_password_screen.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});

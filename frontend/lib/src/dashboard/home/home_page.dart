@@ -12,9 +12,10 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      // AppBar yahan se hata diya doubling khatam karne ke liye
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -28,7 +29,14 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 25),
               const StatsRow(),
               const SizedBox(height: 30),
-              const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                  'Quick Actions',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.titleLarge?.color
+                  )
+              ),
               const SizedBox(height: 15),
               const QuickActionsGrid(),
               const SizedBox(height: 25),
