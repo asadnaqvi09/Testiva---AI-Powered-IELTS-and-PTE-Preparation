@@ -4,7 +4,9 @@ import '../dashboard/home/widgets/stats_row.dart';
 import 'widgets/progress_graph.dart';
 import 'widgets/preference_tiles.dart';
 import 'widgets/support_section.dart';
-import '../onboarding/onboarding_screen.dart';
+
+import '../../widgets/custom_drawer.dart';
+import '../../widgets/logout_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -15,12 +17,19 @@ class ProfileScreen extends StatelessWidget {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
+
+      drawer: const CustomDrawer(),
       appBar: AppBar(
-        title: const Text("Profile"),
+        title: const Text('Profile'),
         centerTitle: false,
         elevation: 0,
         backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: theme.textTheme.titleLarge?.color,
+        // Burger menu button for Drawer
+        leading: Builder(builder: (context) => IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        )),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -34,17 +43,17 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 25),
               const ProgressGraph(),
               const SizedBox(height: 30),
-              const Text("Preferences", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Preferences', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
               PreferenceTiles(isDarkMode: isDarkMode),
               const SizedBox(height: 25),
-              const Text("Support", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Support', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
               const SupportSection(),
               const SizedBox(height: 30),
               _buildLogoutButton(context),
               const SizedBox(height: 25),
-              const Center(child: Text("Testiva v1.0.0 • © 2026", style: TextStyle(color: Colors.grey, fontSize: 11))),
+              const Center(child: Text('Testiva v1.0.0 • © 2026', style: TextStyle(color: Colors.grey, fontSize: 11))),
               const SizedBox(height: 20),
             ],
           ),
@@ -64,18 +73,19 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: MaterialButton(
         onPressed: () {
-          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-                (route) => false,
+
+          showDialog(
+            context: context,
+            builder: (context) => const LogoutDialog(),
           );
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.logout, color: Colors.red, size: 18),
             SizedBox(width: 8),
-            Text("Logout", style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.w600)),
+            Text('Logout', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

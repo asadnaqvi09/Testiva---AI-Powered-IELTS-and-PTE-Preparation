@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../main.dart';
+import '../../../../providers/theme_provider.dart';
 
 class PreferenceTiles extends StatelessWidget {
   final bool isDarkMode;
@@ -15,7 +15,7 @@ class PreferenceTiles extends StatelessWidget {
         boxShadow: [
           if (!isDarkMode)
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 5),
             )
@@ -26,7 +26,7 @@ class PreferenceTiles extends StatelessWidget {
           _buildSwitchTile(
             context,
             Icons.notifications_none,
-            "Push Notifications",
+            'Push Notifications',
             true,
                 (v) {},
           ),
@@ -34,7 +34,7 @@ class PreferenceTiles extends StatelessWidget {
           _buildSwitchTile(
             context,
             Icons.dark_mode_outlined,
-            "Dark Mode",
+            'Dark Mode',
             isDarkMode,
                 (value) {
               Provider.of<ThemeProvider>(context, listen: false).toggleTheme(value);
@@ -52,7 +52,7 @@ class PreferenceTiles extends StatelessWidget {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: Colors.blue,
+        activeTrackColor: Colors.blue,
       ),
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
