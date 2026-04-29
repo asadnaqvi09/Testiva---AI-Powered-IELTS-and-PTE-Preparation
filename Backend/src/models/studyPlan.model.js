@@ -15,7 +15,6 @@ export const addStudyPlanItems = async (planId, items, client = pool) => {
     if (items.length === 0) return [];
     const placeholders = items.map((_, i) => `($${i * 6 + 1}, $${i * 6 + 2}, $${i * 6 + 3}, $${i * 6 + 4}, $${i * 6 + 5}, $${i * 6 + 6})`).join(', ');
     const flatValues = items.flatMap(item => [planId, item.day_number, item.item_type, item.item_id, item.title, item.estimated_minutes]);
-    
     const result = await client.query(
         `INSERT INTO study_plan_items (plan_id, day_number, item_type, item_id, title, estimated_minutes)
          VALUES ${placeholders}

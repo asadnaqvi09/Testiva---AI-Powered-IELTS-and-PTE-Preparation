@@ -1,5 +1,4 @@
 import Queue from 'bull';
-import pool from '../../config/db.js';
 
 export const syncQueue = new Queue('sync-tests', {
     redis : {

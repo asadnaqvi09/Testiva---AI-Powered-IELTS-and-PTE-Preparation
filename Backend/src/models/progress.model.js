@@ -32,57 +32,56 @@ export const startNewAttempt = async (data, client = pool) => {
 };
 
 export const saveUserResponse = async (data, client = pool) => {
-    const { attempt_id, question_id, user_answer, audio_response_url, client_created_at } = data;
-    const dbClient = client === pool ? await pool.connect() : client;
-    try {
-        if (client === pool) await dbClient.query('BEGIN');
-        const qResult = await dbClient.query(
-            `SELECT correct_answer, marks, question_type FROM questions WHERE id = $1 FOR SHARE`,
-            [question_id]
-        );
-        if (qResult.rows.length === 0) {
-            throw new Error("Question not found");
-        }
-        const question = qResult.rows[0];
-        let is_correct = false;
-        let marks_obtained = 0;
-        const qType = (question.question_type || '').toLowerCase();
-        if (qType === 'mcq' || qType === 'true_false') {
-            const normalizedUser = String(user_answer).trim().toLowerCase();
-            const normalizedCorrect = String(question.correct_answer).trim().toLowerCase();
-            if (normalizedUser === normalizedCorrect) {
-                is_correct = true;
-                marks_obtained = question.marks;
-            }
-        } else if (qType === 'fill_blank') {
-            const acceptable = String(question.correct_answer).split('|').map(a => a.trim().toLowerCase());
-            if (acceptable.includes(String(user_answer).trim().toLowerCase())) {
-                is_correct = true;
-                marks_obtained = question.marks;
-            }
-        }
-        const result = await dbClient.query(
-            `INSERT INTO user_responses (attempt_id, question_id, user_answer, audio_response_url, is_correct, marks_obtained, client_created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (attempt_id, question_id) 
-             DO UPDATE SET 
-                user_answer = EXCLUDED.user_answer,
-                audio_response_url = COALESCE(EXCLUDED.audio_response_url, user_responses.audio_response_url),
-                is_correct = EXCLUDED.is_correct,
-                marks_obtained = EXCLUDED.marks_obtained,
-                updated_at = NOW()
-             RETURNING id, attempt_id, question_id, is_correct, marks_obtained, updated_at`,
-            [attempt_id, question_id, JSON.stringify(user_answer), audio_response_url, is_correct, marks_obtained, client_created_at]
-        );
-        if (client === pool) await dbClient.query('COMMIT');
-        return result.rows[0];
-    } catch (error) {
-        if (client === pool) await dbClient.query('ROLLBACK');
-        throw error;
-    } finally {
-        if (client === pool) dbClient.release();
+  const { attempt_id, question_id, user_answer, audio_response_url, client_created_at } = data
+  const dbClient = client === pool ? await pool.connect() : client
+  const normalize = v => {
+    if (typeof v === 'string') return v.trim().toLowerCase()
+    if (Array.isArray(v)) return v.map(x => String(x).toLowerCase()).sort().join(',')
+    if (v && typeof v === 'object') return JSON.stringify(v)
+    return String(v).toLowerCase()
+  }
+  try {
+    if (client === pool) await dbClient.query('BEGIN')
+    const qResult = await dbClient.query(`SELECT correct_answer, marks, question_type FROM questions WHERE id = $1 FOR SHARE`,[question_id])
+    if (qResult.rows.length === 0) throw new Error('Question not found')
+    const question = qResult.rows[0]
+    let is_correct = false
+    let marks_obtained = 0
+    const qType = (question.question_type || '').toLowerCase()
+    if (qType === 'mcq' || qType === 'true_false') {
+      if (normalize(user_answer) === normalize(question.correct_answer)) {
+        is_correct = true
+        marks_obtained = question.marks
+      }
+    } else if (qType === 'fill_blank') {
+      const acceptable = String(question.correct_answer).split('|').map(a => a.trim().toLowerCase())
+      if (acceptable.includes(normalize(user_answer))) {
+        is_correct = true
+        marks_obtained = question.marks
+      }
     }
-};
+    const result = await dbClient.query(
+      `INSERT INTO user_responses (attempt_id, question_id, user_answer, audio_response_url, is_correct, marks_obtained, client_created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (attempt_id, question_id)
+       DO UPDATE SET
+        user_answer = EXCLUDED.user_answer,
+        audio_response_url = COALESCE(EXCLUDED.audio_response_url,user_responses.audio_response_url),
+        is_correct = EXCLUDED.is_correct,
+        marks_obtained = EXCLUDED.marks_obtained,
+        updated_at = NOW()
+       RETURNING id,attempt_id,question_id,is_correct,marks_obtained,updated_at`,
+      [attempt_id,question_id,user_answer,audio_response_url,is_correct,marks_obtained,client_created_at]
+    )
+    if (client === pool) await dbClient.query('COMMIT')
+    return result.rows[0]
+  } catch (error) {
+    if (client === pool) await dbClient.query('ROLLBACK')
+    throw error
+  } finally {
+    if (client === pool) dbClient.release()
+  }
+}
 
 export const finalizeAttempt = async (id, data, client = pool) => {
     const { overall_band_score, feedback, client_completed_at, status } = data;
@@ -184,7 +183,7 @@ export const getFullAttemptDetail = async (attemptId) => {
         `SELECT 
             ta.*, 
             t.title as test_title, 
-            t.category as test_category,
+            t.exam_type as test_type,
             af.overall_band_score as ai_overall_score,
             af.task_response_score,
             af.coherence_cohesion_score,

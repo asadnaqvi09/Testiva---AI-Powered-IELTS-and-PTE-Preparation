@@ -18,19 +18,19 @@ syncQueue.process(async (job) => {
             await Progress.saveUserResponse({
                 attempt_id: attempt.id,
                 question_id: resp.question_id,
-                user_answer: resp_user.answer,
+                user_answer: resp.user.answer,
                 audio_response_url: resp.audio_url || null,
                 client_created_at: resp.client_created_at
             }, client);
-            await Progress.finalizeAttempt(attempt.id, {
-                overall_band_score: 0.0,
-                client_completed_at: testData.client_completed_at,
-                status: 'synced'
-            }, client);
-            await Progress.updatedUserStats(userID, client);
-            await client.query('COMMIT');
-            return { success: true, attemptId: attempt.id };
         }
+        await Progress.finalizeAttempt(attempt.id, {
+            overall_band_score: 0.0,
+            client_completed_at: testData.client_completed_at,
+            status: 'synced'
+        }, client);
+        await Progress.updateUserStats(userID);
+        await client.query('COMMIT');
+        return { success: true, attemptId: attempt.id };
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error processing sync job : ', error);

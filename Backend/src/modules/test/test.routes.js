@@ -14,7 +14,7 @@ router.put('/:id/header', authenticate, authorizeRoles('admin'), testController.
 router.put('/questions/:id', authenticate, authorizeRoles('admin'), testController.updateTestQuestionByID);
 
 // User routes (with subscription filter)
-router.get('/available', authenticate, requireSubscription('free', 'basic', 'premium'), testController.fetchAvailableTests);
-router.get('/:id', authenticate, requireSubscription('free', 'basic', 'premium'), testController.getTestById);
+router.get('/available', authenticate, testController.fetchAvailableTests);
+router.get('/:id', authenticate, testController.getTestById);
 
 export default router;

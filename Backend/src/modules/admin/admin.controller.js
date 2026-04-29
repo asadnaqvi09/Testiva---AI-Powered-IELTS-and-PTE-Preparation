@@ -91,9 +91,3 @@ export const updateUserSubscription = async (req, res) => {
         })
     }
 };
-
-export const readingController = (req, res) => { };
-
-export const listeningController = (req, res) => { };
-
-export const analyticsController = (req, res) => { };
