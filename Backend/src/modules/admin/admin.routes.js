@@ -8,6 +8,6 @@ const router = express.Router();
 router.get('/stats', authenticate, authorizeRoles('admin') , adminController.getDashboardStats);
 router.get('/users', authenticate, authorizeRoles('admin') , adminController.getAllUsers);
 router.put('/users/subscription', authenticate, authorizeRoles('admin') , adminController.updateUserSubscription);
-router.get('/test/analytics', authenticate, authorizeRoles('admin') , adminController.analyticsController);
+// router.get('/test/analytics', authenticate, authorizeRoles('admin') , adminController.getAnalytics);
 
 export default router;

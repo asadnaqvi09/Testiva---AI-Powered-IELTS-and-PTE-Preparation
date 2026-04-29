@@ -181,18 +181,18 @@ CREATE TABLE public.user_responses (
 );
 
 CREATE TABLE public.ai_feedback (
-    id serial PRIMARY KEY,
-    attempt_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    overall_band_score numeric(3,1) DEFAULT 0.0,
-    task_response_score numeric(3,1),
-    coherence_cohesion_score numeric(3,1),
-    lexical_resource_score numeric(3,1),
-    grammatical_range_score numeric(3,1),
-    detailed_analysis jsonb,
-    improvement_suggestions text,
-    model_used character varying(50) DEFAULT 'gemini-1.5-flash',
-    evaluated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    attempt_id UUID NOT NULL REFERENCES test_attempts(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id), -- Type matched with users table
+    overall_band_score DECIMAL(3, 1) DEFAULT 0.0,
+    task_response_score DECIMAL(3, 1),
+    coherence_cohesion_score DECIMAL(3, 1),
+    lexical_resource_score DECIMAL(3, 1),
+    grammatical_range_score DECIMAL(3, 1),
+    detailed_analysis JSONB, -- Stores strengths/weaknesses/mistakes
+    improvement_suggestions TEXT,
+    model_used VARCHAR(50) DEFAULT 'gemini-1.5-flash',
+    evaluated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE public.user_progress_stats (
@@ -373,7 +373,6 @@ CREATE INDEX idx_study_plans_user ON public.study_plans USING btree (user_id);
 CREATE INDEX idx_study_plans_status ON public.study_plans USING btree (status);
 CREATE INDEX idx_study_plan_items_plan ON public.study_plan_items USING btree (plan_id);
 CREATE INDEX idx_study_plan_items_day ON public.study_plan_items USING btree (day_number);
-
 -- ============================================
 -- SAMPLE DATA
 -- ============================================

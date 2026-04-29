@@ -1,19 +1,18 @@
-import {model} from '../../../config/gemini.js';
+import { model } from '../../../config/gemini.js';
 import { writingPrompt } from '../prompts/Gemini Prompts/writingEvaluation.prompt.js';
 import * as aiModel from '../../../models/ai.model.js';
+import { processWritingResponse } from '../processors (Input Cleaning)/writing.processor.js';
 
-export const evaluateWriting = async (userID,attempt_id,questionText,studentResponse) => {
+export const evaluateWriting = async (userId, attemptId, questionText, studentResponse) => {
     try {
-        // 1. Prepare Prompt
-        const prompt = writingPrompt("IELTS Writing", questionText, studentResponse);
-
-        // 2. Call Gemini API
+        const { processedText } = processWritingResponse(studentResponse);
+        const prompt = writingPrompt("IELTS Writing", questionText, processedText);
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const feedbackJson = JSON.parse(response.text());
-
-        // 3. Save to Database via AI Model
-        const savedFeedback = await aiModel.saveFeedback({
+        let text = response.text();
+        const cleanJsonText = text.replace(/```json|```/gi, '').trim();
+        const feedbackJson = JSON.parse(cleanJsonText);
+        return await aiModel.saveFeedback({
             attempt_id: attemptId,
             user_id: userId,
             overall_band_score: feedbackJson.overall_band_score,
@@ -26,9 +25,8 @@ export const evaluateWriting = async (userID,attempt_id,questionText,studentResp
             model_used: 'gemini-1.5-flash'
         });
 
-        return savedFeedback;
     } catch (error) {
         console.error("Writing Evaluation Error:", error);
-        throw new Error("Failed to evaluate writing task via Gemini");
+        throw new Error(`AI Evaluation Failed: ${error.message}`);
     }
-}
+};
