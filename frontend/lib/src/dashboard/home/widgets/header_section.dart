@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../../profile/profile_screen.dart';
 
 class HeaderSection extends StatelessWidget {
@@ -21,6 +20,12 @@ class HeaderSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                    )
+                  ],
                 ),
                 child: const Icon(Icons.menu, size: 20),
               ),
@@ -56,7 +61,7 @@ class HeaderSection extends StatelessWidget {
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Tuesday, April 21', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            Text('Tuesday, April 28', style: TextStyle(color: Colors.grey, fontSize: 13)),
             SizedBox(height: 4),
             Row(
               children: [

@@ -14,38 +14,35 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 10),
-              HeaderSection(scaffoldKey: scaffoldKey),
-              const SizedBox(height: 20),
-              const ProgressCard(),
-              const SizedBox(height: 25),
-              const StatsRow(),
-              const SizedBox(height: 30),
-              Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.textTheme.titleLarge?.color
-                  )
-              ),
-              const SizedBox(height: 15),
-              const QuickActionsGrid(),
-              const SizedBox(height: 25),
-              const AIRecommendationCard(),
-              const SizedBox(height: 25),
-              const DailyTipsList(),
-              const SizedBox(height: 30),
-            ],
-          ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            HeaderSection(scaffoldKey: scaffoldKey),
+            const SizedBox(height: 20),
+            const ProgressCard(),
+            const SizedBox(height: 25),
+            const StatsRow(),
+            const SizedBox(height: 30),
+            Text(
+                'Quick Actions',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color
+                )
+            ),
+            const SizedBox(height: 15),
+            const QuickActionsGrid(),
+            const SizedBox(height: 25),
+            const AIRecommendationCard(),
+            const SizedBox(height: 25),
+            const DailyTipsList(),
+            const SizedBox(height: 30),
+          ],
         ),
       ),
     );
