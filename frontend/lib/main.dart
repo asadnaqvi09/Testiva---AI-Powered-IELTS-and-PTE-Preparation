@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'src/onboarding/onboarding_screen.dart';
-import 'src/dashboard/dashboard_screen.dart';
+import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/providers/theme_provider.dart';
+import 'package:frontend/providers/feedback_provider.dart';
+import 'package:frontend/src/onboarding/onboarding_screen.dart';
+import 'package:frontend/src/dashboard/dashboard_screen.dart';
+import 'package:frontend/src/profile/profile_screen.dart';
+import 'package:frontend/src/features/settings/presentation/feedback_screen.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => FeedbackProvider()),
+      ],
       child: const TestivaApp(),
     ),
   );
-}
-
-class ThemeProvider extends ChangeNotifier {
-  bool _isDarkMode = false;
-  bool get isDarkMode => _isDarkMode;
-
-  void toggleTheme(bool value) {
-    _isDarkMode = value;
-    notifyListeners();
-  }
 }
 
 class TestivaApp extends StatelessWidget {
@@ -27,39 +25,37 @@ class TestivaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const bool userIsLoggedIn = false;
-
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'Testiva AI',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            useMaterial3: true,
-            colorSchemeSeed: const Color(0xFF007BFF),
-            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-            cardColor: Colors.white,
+          theme: ThemeData.light(useMaterial3: true).copyWith(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.primary,
+              brightness: Brightness.light,
+            ),
+            scaffoldBackgroundColor: AppColors.scaffoldBackground,
+            cardColor: AppColors.cardLight,
             appBarTheme: const AppBarTheme(backgroundColor: Colors.white),
           ),
-          darkTheme: ThemeData.dark().copyWith(
-            useMaterial3: true,
-            colorScheme: const ColorScheme.dark(
-              surface: Color(0xFF121212),
-              primary: Color(0xFF007BFF),
+          darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.primary,
+              brightness: Brightness.dark,
             ),
-            cardColor: const Color(0xFF1E1E1E),
+            cardColor: AppColors.cardDark,
           ),
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: _getHome(userIsLoggedIn),
+          initialRoute: '/',
+          routes: {
+            '/': (context) => const OnboardingScreen(),
+            '/dashboard': (context) => const DashboardScreen(),
+            '/settings': (context) => const ProfileScreen(),
+            '/feedback': (context) => const FeedbackScreen(),
+          },
         );
       },
     );
-  }
-
-  Widget _getHome(bool isLoggedIn) {
-    if (isLoggedIn) {
-      return const DashboardScreen();
-    }
-    return const OnboardingScreen();
   }
 }

@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 
 class AppButton extends StatelessWidget {
   final String text;
-  final VoidCallback? onPressed; // Maine yahan '?' add kiya hai
+  final VoidCallback? onPressed;
   final bool isOutline;
+  final IconData? icon;
+  final bool isLoading;
 
   const AppButton({
     super.key,
     required this.text,
-    this.onPressed, // 'required' hata diya taake null aa sake
+    this.onPressed,
     this.isOutline = false,
+    this.icon,
+    this.isLoading = false,
   });
 
   @override
@@ -17,35 +21,34 @@ class AppButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: 56,
-      child: isOutline
-          ? OutlinedButton(
+      child: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : isOutline
+          ? OutlinedButton.icon(
         onPressed: onPressed,
+        icon: icon != null ? Icon(icon, size: 20) : const SizedBox.shrink(),
+        label: Text(text),
         style: OutlinedButton.styleFrom(
+          foregroundColor: onPressed == null ? Colors.grey : const Color(0xFF007BFF),
           side: BorderSide(
-              color: onPressed == null ? Colors.grey.shade300 : const Color(0xFF007BFF),
-              width: 1.5
+            color: onPressed == null ? Colors.grey.shade300 : const Color(0xFF007BFF),
+            width: 1.5,
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: Text(
-            text,
-            style: TextStyle(
-                color: onPressed == null ? Colors.grey : const Color(0xFF007BFF),
-                fontWeight: FontWeight.w600
-            )
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       )
-          : ElevatedButton(
+          : ElevatedButton.icon(
         onPressed: onPressed,
+        icon: icon != null ? Icon(icon, color: Colors.white, size: 20) : const SizedBox.shrink(),
+        label: Text(text),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF007BFF),
-          disabledBackgroundColor: const Color(0xFFB0D4FF), // Disable hone par light blue color
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFB0D4FF),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: Text(
-            text,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
     );

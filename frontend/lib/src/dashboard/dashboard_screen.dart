@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home/home_page.dart';
-import 'widgets/custom_drawer.dart';
+import '../../widgets/custom_drawer.dart';
 import '../profile/profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {

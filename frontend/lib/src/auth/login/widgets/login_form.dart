@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../../widgets/app_button.dart';
-import '../../../dashboard/dashboard_screen.dart';
+import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/utils/validators.dart';
+import 'package:frontend/widgets/app_button.dart';
+import 'package:frontend/src/dashboard/dashboard_screen.dart';
+import 'package:frontend/src/auth/forgot_password/forgot_password_screen.dart';
 import 'social_login_btns.dart';
-import '../../forgot_password/forgot_password_screen.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -11,25 +13,10 @@ class LoginForm extends StatefulWidget {
 }
 
 class _LoginFormState extends State<LoginForm> {
+  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass = TextEditingController();
   bool _showDemo = false;
-  bool _canLogin = false; // Button enable/disable ke liye
-
-  @override
-  void initState() {
-    super.initState();
-    // Dono fields par listeners laga diye taake typing check ho
-    _email.addListener(_validate);
-    _pass.addListener(_validate);
-  }
-
-  void _validate() {
-    setState(() {
-      // Basic validation: email mein @ ho aur password 6 letters se bara ho
-      _canLogin = _email.text.contains('@') && _pass.text.length >= 6;
-    });
-  }
 
   void _fill(String e, String p) => setState(() {
     _email.text = e;
@@ -45,73 +32,81 @@ class _LoginFormState extends State<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _label("Email Address"),
-      _buildField('Enter your email', Icons.email_outlined, controller: _email),
-      const SizedBox(height: 20),
-      _label("Password"),
-      _buildField('Enter your password', Icons.lock_outline, isPass: true, controller: _pass),
-
-      // Forgot Password Navigation Update
-      Align(
-        alignment: Alignment.centerRight,
-        child: TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (c) => const ForgotPasswordScreen()),
-            );
-          },
-          child: const Text('Forgot Password?',
-              style: TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.w600)),
+    return Form(
+      key: _formKey,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _label("Email Address"),
+        _buildField(
+          'Enter your email',
+          Icons.email_outlined,
+          controller: _email,
+          validator: AppValidators.validateEmail,
         ),
-      ),
-
-      SizedBox(
-        width: double.infinity,
-        child: AppButton(
+        const SizedBox(height: 20),
+        _label("Password"),
+        _buildField(
+          'Enter your password',
+          Icons.lock_outline,
+          isPass: true,
+          controller: _pass,
+          validator: AppValidators.validatePassword,
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (c) => const ForgotPasswordScreen()),
+              );
+            },
+            child: const Text(
+              'Forgot Password?',
+              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        AppButton(
           text: 'Login',
-          // Agar validation fail hai to null pass hoga (Button grey ho jayega)
-          onPressed: _canLogin
-              ? () => Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (c) => const DashboardScreen()),
-          )
-              : null,
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (c) => const DashboardScreen()),
+              );
+            }
+          },
         ),
-      ),
-      const SizedBox(height: 20),
-      const SocialLoginBtns(),
-      Center(
-        child: TextButton.icon(
-          onPressed: () => setState(() => _showDemo = !_showDemo),
-          icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility,
-              size: 18, color: Colors.grey),
-          label: Text("${_showDemo ? 'Hide' : 'Show'} Demo Credentials",
-              style: const TextStyle(color: Colors.grey)),
+        const SizedBox(height: 20),
+        const SocialLoginBtns(),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => setState(() => _showDemo = !_showDemo),
+            icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility, size: 18, color: AppColors.textGrey),
+            label: Text("${_showDemo ? 'Hide' : 'Show'} Demo Credentials", style: const TextStyle(color: AppColors.textGrey)),
+          ),
         ),
-      ),
-      if (_showDemo) _demoBox(),
-    ]);
+        if (_showDemo) _demoBox(),
+      ]),
+    );
   }
 
   Widget _label(String t) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(t,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)));
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+  );
 
   Widget _demoBox() => Container(
     margin: const EdgeInsets.only(top: 10),
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-        color: const Color(0xFFE3F2FD),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.blue.shade100)),
+      color: AppColors.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+    ),
     child: Column(children: [
-      _demoTile("Free User", "freeuser@example.com", Icons.person_outline,
-          Colors.blue),
-      _demoTile("Premium", "premiumuser@example.com", Icons.star_outline,
-          Colors.orange),
+      _demoTile("Free User", "freeuser@example.com", Icons.person_outline, AppColors.primary),
+      _demoTile("Premium", "premiumuser@example.com", Icons.star_outline, Colors.orange),
     ]),
   );
 
@@ -122,27 +117,21 @@ class _LoginFormState extends State<LoginForm> {
         child: Row(children: [
           Icon(i, size: 16, color: c),
           const SizedBox(width: 8),
-          Text("$l: $e",
-              style: TextStyle(fontSize: 12, color: Colors.blue[900]))
+          Text("$l: $e", style: TextStyle(fontSize: 12, color: AppColors.primary)),
         ])),
   );
 
-  Widget _buildField(String h, IconData i,
-      {bool isPass = false, required TextEditingController controller}) =>
-      TextField(
-        controller: controller,
-        obscureText: isPass,
-        decoration: InputDecoration(
-          hintText: h,
-          prefixIcon: Icon(i, color: Colors.grey),
-          filled: true,
-          fillColor: const Color(0xFFF8F9FA),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF007BFF))),
-        ),
-      );
+  Widget _buildField(String h, IconData i, {bool isPass = false, required TextEditingController controller, String? Function(String?)? validator}) => TextFormField(
+    controller: controller,
+    obscureText: isPass,
+    validator: validator,
+    decoration: InputDecoration(
+      hintText: h,
+      prefixIcon: Icon(i, color: AppColors.textGrey),
+      filled: true,
+      fillColor: const Color(0xFFF8F9FA),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+    ),
+  );
 }
