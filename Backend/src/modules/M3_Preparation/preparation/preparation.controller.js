@@ -1,9 +1,9 @@
 import pool from "../../../config/db.js";
 import * as prepModel from "../preparation.model.js";
-import * as practiceModel from "../practice.model.js";
+import * as practiceModel from "../practise.model.js";
 import * as studyPlanModel from "../studyPlan.model.js";
 import { generateRecommendations } from "../../../utils/recommendationEngine.js";
-import { generateStudyPlan } from "../../../utils/studyPlanGenerator.js";
+import { generateStudyPlan } from "../../../utils/studyPlan.js";
 import { analyzeWeakness } from "../../../utils/weaknessAnalyzer.js";
 import { createLessonSchema, updateLessonSchema, updatePartSchema, lessonFilterSchema } from "./preparation.validator.js";
 

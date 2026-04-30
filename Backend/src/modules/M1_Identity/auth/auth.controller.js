@@ -1,4 +1,4 @@
-import pool from "../../config/db.js";
+import pool from "../../../config/db.js";
 import {
   createGoogleUser,
   createUser,
@@ -8,17 +8,17 @@ import {
   deleteAllUserTokens,
   incrementTokenVersion,
   findUserById
-} from "../../models/user.model.js";
-import * as authValidator from "../../validators/auth.validator.js";
+} from "../user.model.js";
+import * as authValidator from "./auth.validator.js";
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken
-} from "../../utils/jwt.js";
+} from "../../../utils/jwt.js";
 import { verifyGoogleToken } from "./google.service.js";
-import { sendOtpEmail } from "../../email_templates/email.service.js";
-import { hashPassword, generateOTP, resolveSubscription, hashOTP } from "../../utils/helpers.js";
-import { redisClient } from "../../config/redis.js";
+import { sendOtpEmail } from "../../../email_templates/email.service.js";
+import { hashPassword, generateOTP, resolveSubscription, hashOTP } from "../../../utils/helpers.js";
+import { redisClient } from "../../../config/redis.js";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken';
 

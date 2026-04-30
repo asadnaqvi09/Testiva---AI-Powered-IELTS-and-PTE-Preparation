@@ -1,8 +1,8 @@
 import express from "express";
 import * as prepController from "./preparation.controller.js";
-import { authenticate } from "../../middleware/auth.middleware.js";
-import { authorizeRoles } from "../../middleware/role.middleware.js";
-import { requireSubscription } from "../../middleware/subscription.middleware.js";
+import { authenticate } from "../../../middleware/auth.middleware.js";
+import { authorizeRoles } from "../../../middleware/role.middleware.js";
+import { requireSubscription } from "../../../middleware/subscription.middleware.js";
 
 const router = express.Router();
 

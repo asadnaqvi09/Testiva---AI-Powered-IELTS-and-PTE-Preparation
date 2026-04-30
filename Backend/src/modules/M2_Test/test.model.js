@@ -1,8 +1,4 @@
-import pool from "../../config/db.js";
-
-/**
- * CORE TEST OPERATIONS
- */
+import pool from '../../config/db.js';
 
 export const createTest = async (testData, client = pool) => {
     const { title, exam_type, is_full_mock, total_time_minutes, created_by } = testData;
@@ -30,10 +26,6 @@ export const updateTestDuration = async (testId, client = pool) => {
     return result.rows[0];
 };
 
-/**
- * SECTION & QUESTION OPERATIONS
- */
-
 export const createSection = async (sectionData, client = pool) => {
     const { test_id, section_name, time_limit_minutes, order_number, instructions } = sectionData;
     const query = `
@@ -42,10 +34,7 @@ export const createSection = async (sectionData, client = pool) => {
         RETURNING *;
     `;
     const result = await client.query(query, [test_id, section_name, time_limit_minutes, order_number, instructions]);
-    
-    // Auto-update total test time
     await updateTestDuration(test_id, client);
-    
     return result.rows[0];
 };
 
@@ -67,9 +56,6 @@ export const createQuestionsBatch = async (questionsArray, client = pool) => {
     return result.rows;
 };
 
-/**
- * FETCH OPERATIONS (Tier & Role Based)
- */
 
 export const getAllTests = async (limit, offset, examType = null) => {
     let query = `SELECT id, title, exam_type, is_full_mock, total_time_minutes, created_at FROM tests`;
@@ -92,12 +78,10 @@ export const getTestsByFilters = async (examTypes, allowedSections = null) => {
         WHERE t.exam_type = ANY($1) AND t.is_published = true
     `;
     const params = [examTypes];
-
     if (allowedSections) {
         query += ` AND ts.section_name = ANY($2)`;
         params.push(allowedSections);
     }
-
     query += ` ORDER BY t.created_at DESC`;
     const result = await pool.query(query, params);
     return result.rows;
@@ -117,7 +101,6 @@ export const getFullTestDetails = async (id) => {
     `;
     const result = await pool.query(query, [id]);
     if (result.rows.length === 0) return null;
-
     const test = {
         id: result.rows[0].test_id,
         title: result.rows[0].title,
@@ -126,7 +109,6 @@ export const getFullTestDetails = async (id) => {
         total_time_minutes: result.rows[0].total_time_minutes,
         sections: []
     };
-
     const sectionMap = new Map();
     result.rows.forEach(row => {
         if (!row.section_id) return;
@@ -158,10 +140,6 @@ export const getFullTestDetails = async (id) => {
     });
     return test;
 };
-
-/**
- * UPDATE & DELETE OPERATIONS
- */
 
 export const updateTestHeader = async (id, data) => {
     const { title, is_full_mock } = data;

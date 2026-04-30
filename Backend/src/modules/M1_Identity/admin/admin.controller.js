@@ -1,4 +1,4 @@
-import { fetchAllUsers, findUserById, getAdminStats, updateUserSubscriptionStatus } from '../../models/user.model.js'
+import { fetchAllUsers, findUserById, getAdminStats, updateUserSubscriptionStatus } from '../user.model.js'
 import { v4 as uuidv4 } from "uuid";
 
 export const getDashboardStats = async (req, res) => {
