@@ -8,17 +8,13 @@ export const createFullTest = async (req, res) => {
     try {
         const { error, value } = createTestSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
-
         const { title, exam_type, is_full_mock, sections } = value;
         const adminId = req.user.id;
-
         await client.query("BEGIN");
-
         const newTest = await testModel.createTest(
             { title, exam_type, is_full_mock, total_time_minutes: 0, created_by: adminId }, 
             client
         );
-
         for (const section of sections) {
             const newSection = await testModel.createSection({
                 test_id: newTest.id,
@@ -36,7 +32,6 @@ export const createFullTest = async (req, res) => {
                 await testModel.createQuestionsBatch(questionsData, client);
             }
         }
-
         await client.query("COMMIT");
         res.status(201).json({ success: true, data: { id: newTest.id, title } });
     } catch (error) {
@@ -50,15 +45,12 @@ export const createFullTest = async (req, res) => {
 export const fetchAvailableTests = async (req, res) => {
     try {
         const { subscription, role } = req.user;
-        
         if (role === 'admin') {
             const tests = await testModel.getAllTests(100, 0);
             return res.status(200).json({ success: true, data: tests });
         }
-
         let examTypes = ['IELTS'];
         let allowedSections = null;
-
         if (subscription === 'free') {
             allowedSections = ['Reading', 'Writing'];
         } else if (subscription === 'basic') {
@@ -66,7 +58,6 @@ export const fetchAvailableTests = async (req, res) => {
         } else if (subscription === 'premium') {
             examTypes = ['IELTS', 'PTE'];
         }
-
         const tests = await testModel.getTestsByFilters(examTypes, allowedSections);
         res.status(200).json({ success: true, data: tests });
     } catch (error) {
@@ -80,7 +71,6 @@ export const fetchTests = async (req, res) => {
         const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100);
         const offset = (page - 1) * limit;
         const examType = req.query.exam_type || null;
-
         const tests = await testModel.getAllTests(limit, offset, examType);
         res.status(200).json({ success: true, count: tests.length, data: tests });
     } catch (error) {
@@ -92,7 +82,6 @@ export const getTestById = async (req, res) => {
     try {
         const testDetails = await testModel.getFullTestDetails(req.params.id);
         if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
-
         if (req.user.role !== 'admin') {
             testDetails.sections.forEach(section => {
                 section.questions.forEach(q => {
@@ -101,7 +90,6 @@ export const getTestById = async (req, res) => {
                 });
             });
         }
-
         res.status(200).json({ success: true, data: testDetails });
     } catch (error) {
         res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -112,10 +100,8 @@ export const updateTestHeaderByID = async (req, res) => {
     try {
         const { error, value } = updateHeaderSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
-
         const updatedTest = await testModel.updateTestHeader(req.params.id, value);
         if (!updatedTest) return res.status(404).json({ success: false, message: "Test not found" });
-
         res.status(200).json({ success: true, data: updatedTest });
     } catch (error) {
         res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -126,10 +112,8 @@ export const updateTestQuestionByID = async (req, res) => {
     try {
         const { error, value } = updateQuestionSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
-
         const updatedQuestion = await testModel.updateQuestionById(req.params.id, value);
         if (!updatedQuestion) return res.status(404).json({ success: false, message: "Question not found" });
-
         res.status(200).json({ success: true, data: updatedQuestion });
     } catch (error) {
         res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -140,12 +124,10 @@ export const deleteTest = async (req, res) => {
     try {
         const testDetails = await testModel.getFullTestDetails(req.params.id);
         if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
-
         const audioUrls = [];
         testDetails.sections.forEach(s => s.questions.forEach(q => {
             if (q.audio_url) audioUrls.push(q.audio_url);
         }));
-
         for (const url of audioUrls) {
             try {
                 const parts = url.split('/');
@@ -155,10 +137,10 @@ export const deleteTest = async (req, res) => {
                 await cloudinary.uploader.destroy(publicId);
             } catch (e) { /* Silently fail if cloud delete fails */ }
         }
-
         await testModel.deleteTestById(req.params.id);
         res.status(200).json({ success: true, message: "Test deleted successfully" });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 };

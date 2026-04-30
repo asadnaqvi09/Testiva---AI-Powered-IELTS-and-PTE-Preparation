@@ -1,5 +1,6 @@
+import pool from '../../../config/db.js'
 import { fetchAllUsers, findUserById, getAdminStats, updateUserSubscriptionStatus } from '../user.model.js'
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4, validate as validateUUID } from "uuid";
 
 export const getDashboardStats = async (req, res) => {
     try {
@@ -57,7 +58,7 @@ export const updateUserSubscription = async (req, res) => {
                 message: "Please Provide targetID and new Subscription"
             })
         }
-        if (!uuidv4.validate(targetID)) {
+        if (!validateUUID(targetID)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid targetID format"
@@ -71,12 +72,13 @@ export const updateUserSubscription = async (req, res) => {
             })
         }
         const targetUser = await findUserById(targetID)
-        if(!targetUser) return res.status(404).json({ success: false, message: "User not found"})
-        if(targetUser.role === "admin") return res.status(403).json( { success: false, message: "You cannot update this user subscription" } ) 
+        if (!targetUser) return res.status(404).json({ success: false, message: "User not found" })
+        if (targetUser.role === "admin") return res.status(403).json({ success: false, message: "You cannot update this user subscription" })
         const updatedUserRole = await updateUserSubscriptionStatus(targetID, newSubscription);
+        const logDetails = JSON.stringify({ message: `Changed subscription to ${newSubscription}` });
         await pool.query(`INSERT INTO admin_logs (admin_id,action,target_user_id,details,created_at)
         VALUES ($1,$2,$3,$4,NOW())`,
-        [req.user.id,"Subscription Change",targetID,`Changed subscription to ${newSubscription}`]
+            [req.user.id, "Subscription Change", targetID, logDetails]
         )
         return res.status(200).json({
             success: true,

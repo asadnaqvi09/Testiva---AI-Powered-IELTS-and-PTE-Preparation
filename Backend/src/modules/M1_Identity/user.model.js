@@ -102,7 +102,7 @@ export const getAdminStats = async () => {
       COUNT(*) FILTER (WHERE subscription='free') AS free_users,
       COUNT(*) FILTER (WHERE subscription='basic') AS basic_users,
       COUNT(*) FILTER (WHERE subscription='premium') AS premium_users,
-      COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days) AS active_users
+      COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days') AS active_users
      FROM users`
   );
   return result.rows[0];
