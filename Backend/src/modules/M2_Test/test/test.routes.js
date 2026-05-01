@@ -11,6 +11,8 @@ router.get('/all-tests', authenticate, authorizeRoles('admin'), testController.f
 router.delete('/:id', authenticate, authorizeRoles('admin'), testController.deleteTest);
 router.put('/:id/header', authenticate, authorizeRoles('admin'), testController.updateTestHeaderByID);
 router.put('/questions/:id', authenticate, authorizeRoles('admin'), testController.updateTestQuestionByID);
+router.put('/questions', authenticate, authorizeRoles('admin'), testController.addQuestionToSection);
+router.delete('/questions/:id', authenticate, authorizeRoles('admin'), testController.deleteQuestionFromSection);
 
 // User routes (with subscription filter)
 router.get('/available', authenticate, testController.fetchAvailableTests);

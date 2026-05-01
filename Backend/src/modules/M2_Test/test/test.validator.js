@@ -53,3 +53,15 @@ export const updateQuestionSchema = Joi.object({
     audio_url: Joi.string().uri().allow('', null).optional(),
     marks: Joi.number().integer().min(1).optional()
 }).min(1);
+
+export const addQuestionSchema = Joi.object({
+    section_id: Joi.string().uuid().required(),
+    question_type: Joi.string().required(),
+    question_text: Joi.string().required(),
+    passage_text: Joi.string().allow(null, '').optional(),
+    options: Joi.array().items(Joi.string()).required(), // Options array format
+    correct_answer: Joi.string().required(),
+    audio_url: Joi.string().uri().allow(null, '').optional(),
+    order_number: Joi.number().integer().required(),
+    marks: Joi.number().integer().default(1)
+});

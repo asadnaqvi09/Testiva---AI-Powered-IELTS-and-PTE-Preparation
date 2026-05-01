@@ -1,6 +1,6 @@
 import pool from "../../../config/db.js";
 import * as testModel from "../test.model.js";
-import { createTestSchema, updateHeaderSchema, updateQuestionSchema } from "./test.validator.js";
+import { createTestSchema, updateHeaderSchema, updateQuestionSchema, addQuestionSchema } from "./test.validator.js";
 import cloudinary from "../../../config/cloudinary.js";
 
 export const createFullTest = async (req, res) => {
@@ -141,6 +141,43 @@ export const deleteTest = async (req, res) => {
         res.status(200).json({ success: true, message: "Test deleted successfully" });
     } catch (error) {
         console.log(error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+
+export const addQuestionToSection = async (req,res) => {
+    try {
+        const {error,value} = addQuestionSchema.validate(req.body);
+        if (error) return res.status(400).json({
+            success : false,
+            message : error.details[0].message
+        });
+        const newQuestion = await testModel.createSingleQuestion(value);
+        res.status(201).json({ success: true, data: newQuestion });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error adding question: " + error.message });
+    }
+}
+
+export const deleteQuestionFromSection = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const question = await testModel.getQuestionById(id);
+        if (!question) return res.status(404).json({ success: false, message: "Question not found" });
+        if (question.audio_url) {
+            try {
+                const parts = question.audio_url.split('/');
+                const filename = parts.pop().split('.')[0];
+                const folder = parts.slice(parts.indexOf('upload') + 2).join('/');
+                const publicId = folder ? `${folder}/${filename}` : filename;
+                await cloudinary.uploader.destroy(publicId);
+            } catch (cloudErr) {
+                console.error("Cloudinary delete failed:", cloudErr);
+            }
+        }
+        await testModel.deleteQuestionById(id);
+        res.status(200).json({ success: true, message: "Question deleted successfully" });
+    } catch (error) {
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 };
