@@ -8,30 +8,40 @@ export const createFullTest = async (req, res) => {
     try {
         const { error, value } = createTestSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
-        const { title, exam_type, is_full_mock, sections } = value;
+        const { title, exam_type, test_category, sections, difficulty_level, passing_score } = value;
         const adminId = req.user.id;
         await client.query("BEGIN");
-        const newTest = await testModel.createTest(
-            { title, exam_type, is_full_mock, total_time_minutes: 0, created_by: adminId }, 
-            client
-        );
+        let totalTime = 0;
+        const newTest = await testModel.createTest({
+            title,
+            exam_type,
+            test_category,
+            total_time_minutes: 0,
+            created_by: adminId,
+            difficulty_level,
+            passing_score
+        }, client);
         for (const section of sections) {
             const newSection = await testModel.createSection({
                 test_id: newTest.id,
                 section_name: section.section_name,
                 time_limit_minutes: section.time_limit_minutes,
                 order_number: section.order_number,
-                instructions: section.instructions
+                instructions: section.instructions,
+                question_types_allowed: section.question_types_allowed || [],
+                task_count: section.task_count || 1
             }, client);
-
             if (section.questions && section.questions.length > 0) {
-                const questionsData = section.questions.map(q => ({
+                const questionsData = section.questions.map((q, index) => ({
                     ...q,
-                    section_id: newSection.id
+                    section_id: newSection.id,
+                    order_number: index + 1
                 }));
                 await testModel.createQuestionsBatch(questionsData, client);
             }
+            totalTime += section.time_limit_minutes;
         }
+        await testModel.updateTestDuration(newTest.id, totalTime, client);
         await client.query("COMMIT");
         res.status(201).json({ success: true, data: { id: newTest.id, title } });
     } catch (error) {
@@ -112,7 +122,7 @@ export const updateTestQuestionByID = async (req, res) => {
     try {
         const { error, value } = updateQuestionSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
-        const updatedQuestion = await testModel.updateQuestionById(req.params.id, value);
+        const updatedQuestion = await testModel.updateQuestion(req.params.id, value);
         if (!updatedQuestion) return res.status(404).json({ success: false, message: "Question not found" });
         res.status(200).json({ success: true, data: updatedQuestion });
     } catch (error) {
@@ -120,44 +130,16 @@ export const updateTestQuestionByID = async (req, res) => {
     }
 };
 
-export const deleteTest = async (req, res) => {
+export const addQuestionToSection = async (req, res) => {
     try {
-        const testDetails = await testModel.getFullTestDetails(req.params.id);
-        if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
-        const audioUrls = [];
-        testDetails.sections.forEach(s => s.questions.forEach(q => {
-            if (q.audio_url) audioUrls.push(q.audio_url);
-        }));
-        for (const url of audioUrls) {
-            try {
-                const parts = url.split('/');
-                const filename = parts.pop().split('.')[0];
-                const folder = parts.slice(parts.indexOf('upload') + 2).join('/');
-                const publicId = folder ? `${folder}/${filename}` : filename;
-                await cloudinary.uploader.destroy(publicId);
-            } catch (e) { /* Silently fail if cloud delete fails */ }
-        }
-        await testModel.deleteTestById(req.params.id);
-        res.status(200).json({ success: true, message: "Test deleted successfully" });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ success: false, message: "Internal Server Error" });
-    }
-};
-
-export const addQuestionToSection = async (req,res) => {
-    try {
-        const {error,value} = addQuestionSchema.validate(req.body);
-        if (error) return res.status(400).json({
-            success : false,
-            message : error.details[0].message
-        });
+        const { error, value } = addQuestionSchema.validate(req.body);
+        if (error) return res.status(400).json({ success: false, message: error.details[0].message });
         const newQuestion = await testModel.createSingleQuestion(value);
         res.status(201).json({ success: true, data: newQuestion });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error adding question: " + error.message });
     }
-}
+};
 
 export const deleteQuestionFromSection = async (req, res) => {
     try {
@@ -175,8 +157,34 @@ export const deleteQuestionFromSection = async (req, res) => {
                 console.error("Cloudinary delete failed:", cloudErr);
             }
         }
-        await testModel.deleteQuestionById(id);
+        await testModel.deleteQuestion(id);
         res.status(200).json({ success: true, message: "Question deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+
+export const deleteTest = async (req, res) => {
+    try {
+        const testDetails = await testModel.getFullTestDetails(req.params.id);
+        if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
+        const audioUrls = [];
+        testDetails.sections.forEach(s => {
+            s.questions.forEach(q => {
+                if (q.audio_url) audioUrls.push(q.audio_url);
+            });
+        });
+        for (const url of audioUrls) {
+            try {
+                const parts = url.split('/');
+                const filename = parts.pop().split('.')[0];
+                const folder = parts.slice(parts.indexOf('upload') + 2).join('/');
+                const publicId = folder ? `${folder}/${filename}` : filename;
+                await cloudinary.uploader.destroy(publicId);
+            } catch (e) {}
+        }
+        await testModel.deleteTest(req.params.id);
+        res.status(200).json({ success: true, message: "Test deleted successfully" });
     } catch (error) {
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }

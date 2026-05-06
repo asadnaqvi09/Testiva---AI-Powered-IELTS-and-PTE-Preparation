@@ -214,10 +214,7 @@ CREATE TABLE public.lessons (
     created_by uuid NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    min_subscription character varying(20) DEFAULT 'free' NOT NULL,
-    target_band numeric(3,1) DEFAULT 5.0,
-    estimated_minutes integer DEFAULT 30,
-    tags jsonb DEFAULT '[]'
+    min_subscription character varying(20) DEFAULT 'free' NOT NULL
 );
 
 CREATE TABLE public.lesson_parts (
@@ -228,6 +225,8 @@ CREATE TABLE public.lesson_parts (
     order_number integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    part_type character varying(20),
+    media_url text,
     CONSTRAINT unique_part_order UNIQUE (lesson_id, order_number)
 );
 

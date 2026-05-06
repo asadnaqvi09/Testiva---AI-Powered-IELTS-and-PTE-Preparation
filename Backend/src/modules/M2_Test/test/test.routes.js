@@ -5,17 +5,17 @@ import { authorizeRoles } from '../../../middleware/role.middleware.js';
 
 const router = express.Router();
 
-// Admin routes
+// Admin Routes
 router.post('/create-full-test', authenticate, authorizeRoles('admin'), testController.createFullTest);
 router.get('/all-tests', authenticate, authorizeRoles('admin'), testController.fetchTests);
-router.delete('/:id', authenticate, authorizeRoles('admin'), testController.deleteTest);
-router.put('/:id/header', authenticate, authorizeRoles('admin'), testController.updateTestHeaderByID);
-router.put('/questions/:id', authenticate, authorizeRoles('admin'), testController.updateTestQuestionByID);
+router.get('/:id', authenticate, authorizeRoles('admin'), testController.getTestById);
+router.put('/header/:id', authenticate, authorizeRoles('admin'), testController.updateTestHeaderByID);
 router.put('/questions', authenticate, authorizeRoles('admin'), testController.addQuestionToSection);
+router.put('/questions/:id', authenticate, authorizeRoles('admin'), testController.updateTestQuestionByID);
 router.delete('/questions/:id', authenticate, authorizeRoles('admin'), testController.deleteQuestionFromSection);
+router.delete('/:id', authenticate, authorizeRoles('admin'), testController.deleteTest);
 
-// User routes (with subscription filter)
+// User Routes
 router.get('/available', authenticate, testController.fetchAvailableTests);
-router.get('/:id', authenticate, testController.getTestById);
 
 export default router;

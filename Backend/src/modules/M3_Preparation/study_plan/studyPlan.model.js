@@ -1,4 +1,4 @@
-import pool from '../../config/db.js';
+import pool from '../../../config/db.js';
 
 export const createStudyPlan = async (data) => {
     const { user_id, title, target_band, start_date, end_date } = data;

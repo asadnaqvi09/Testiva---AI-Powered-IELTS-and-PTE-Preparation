@@ -1,4 +1,4 @@
-import pool from '../../config/db.js';
+import pool from '../../../config/db.js';
 
 export const createPracticeSession = async (data, client = pool) => {
     const { user_id, section_name, question_type, difficulty_level } = data;
