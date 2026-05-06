@@ -1,7 +1,7 @@
-import pool from "../../../config/db.js";
-import * as testModel from "../test.model.js";
+import pool from "../../config/db.js";
+import * as testModel from "./test.model.js";
 import { createTestSchema, updateHeaderSchema, updateQuestionSchema, addQuestionSchema } from "./test.validator.js";
-import cloudinary from "../../../config/cloudinary.js";
+import cloudinary from "../../config/cloudinary.js";
 
 export const createFullTest = async (req, res) => {
     const client = await pool.connect();
