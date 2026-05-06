@@ -1,6 +1,6 @@
 import pool from '../../config/db.js';
 import * as progressModel from './progress.model.js';
-import { addSyncJob } from '../M5_Offline/offline/sync.queue.js';
+import { addSyncJob } from '../M5_Offline/sync.queue.js';
 import { submitTestSchema } from './progress.validator.js';
 
 export const submitTest = async (req, res) => {
