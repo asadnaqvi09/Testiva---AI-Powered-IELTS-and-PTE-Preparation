@@ -1,0 +1,453 @@
+import * as PostModel from '../models/post.model.js';
+import * as CommentModel from '../models/comment.model.js';
+import * as LikeModel from '../models/like.model.js';
+import * as ShareModel from '../models/share.model.js';
+import * as FlagModel from '../models/flag.model.js';
+import {validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts, validateSharePost, validateCreateComment, validateUpdateComment, validateCommentId, validateAdminFlagPost, validateAdminDeletePost} from '../validator/community.validator.js';
+import { getOnlineCount } from '../../M6_AI/ai/services/presence.service.js';
+import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
+import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
+
+const USER_PAGE_LIMIT = 10;
+const ADMIN_PAGE_LIMIT = 8;
+const sendError = (res, err) => {
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    errors: err.errors || [],
+  });
+};
+const buildPagination = ({ page, limit, total }) => ({
+  page,
+  limit,
+  total,
+  pages: Math.ceil(total / limit),
+});
+export const createPost = async (req, res) => {
+  try {
+    const body = validateCreatePost(req.body);
+    const post = await PostModel.createPost({
+      userId: req.user.id,
+      topicTag: body.topic_tag,
+      title: body.title,
+      content: body.content,
+    });
+    const fullPost = await PostModel.getPostById(post.id);
+    return res.status(201).json({
+      success: true,
+      data: fullPost,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const getPosts = async (req, res) => {
+  try {
+    const query = validateGetPosts(req.query);
+    const page = Number(query.page || 1);
+    const limit = USER_PAGE_LIMIT;
+    const offset = (page - 1) * limit;
+    const { posts, total } = await PostModel.getPostsPaginated({
+      topicTag: query.topic_tag || 'All',
+      filter: query.filter,
+      search: query.search,
+      limit,
+      offset,
+      userId: req.user.id,
+    });
+    return res.json({
+      success: true,
+      data: posts,
+      meta: buildPagination({ page, limit, total }),
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const getPostDetail = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const post = await PostModel.getPostById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+    return res.json({
+      success: true,
+      data: post,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const updatePost = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const body = validateUpdatePost(req.body);
+    const updated = await PostModel.updatePost({
+      postId,
+      userId: req.user.id,
+      title: body.title,
+      content: body.content,
+    });
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found or unauthorized',
+      });
+    }
+    const fullPost = await PostModel.getPostById(postId);
+    return res.json({
+      success: true,
+      data: fullPost,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const deletePost = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const deleted = await PostModel.softDeletePost({
+      postId,
+      userId: req.user.id,
+    });
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found or unauthorized',
+      });
+    }
+    return res.json({
+      success: true,
+      message: 'Post deleted successfully',
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const togglePostLike = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const result = await LikeModel.togglePostLike({
+      postId,
+      userId: req.user.id,
+    });
+    const likeCount = await LikeModel.getPostLikeCount(postId);
+    return res.json({
+      success: true,
+      data: {
+        ...result,
+        like_count: likeCount,
+      },
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const sharePost = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const body = validateSharePost(req.body);
+    const post = await PostModel.getPostById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+    await ShareModel.recordShare({
+      postId,
+      userId: req.user.id,
+      platform: body.platform,
+    });
+    return res.json({
+      success: true,
+      message: 'Share recorded successfully',
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const createComment = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const body = validateCreateComment(req.body);
+    if (body.parent_id) {
+      const parent = await CommentModel.getParentCommentPostId(body.parent_id);
+      if (!parent || parent.post_id !== postId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid parent comment',
+        });
+      }
+      if (parent.parent_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Replies can only be one level deep',
+        });
+      }
+    }
+    const comment = await CommentModel.createComment({
+      postId,
+      userId: req.user.id,
+      parentId: body.parent_id || null,
+      content: body.content,
+    });
+    const fullComment = await CommentModel.getCommentById(comment.id);
+    return res.status(201).json({
+      success: true,
+      data: fullComment,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const getComments = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const comments = await CommentModel.getCommentsForPost({
+      postId,
+      userId: req.user.id,
+    });
+    const nestedComments = comments
+      .filter((comment) => !comment.parent_id)
+      .map((parent) => ({
+        ...parent,
+        replies: comments.filter(
+          (reply) => reply.parent_id === parent.id
+        ),
+      }));
+    return res.json({
+      success: true,
+      data: nestedComments,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const updateComment = async (req, res) => {
+  try {
+    const { commentId } = validateCommentId(req.params);
+    const body = validateUpdateComment(req.body);
+    const updated = await CommentModel.updateComment({
+      commentId,
+      userId: req.user.id,
+      content: body.content,
+    });
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found or unauthorized',
+      });
+    }
+    const fullComment = await CommentModel.getCommentById(commentId);
+    return res.json({
+      success: true,
+      data: fullComment,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  try {
+    const { commentId } = validateCommentId(req.params);
+    const deleted = await CommentModel.softDeleteComment({
+      commentId,
+      userId: req.user.id,
+    });
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found or unauthorized',
+      });
+    }
+    return res.json({
+      success: true,
+      message: 'Comment deleted successfully',
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const toggleCommentLike = async (req, res) => {
+  try {
+    const { commentId } = validateCommentId(req.params);
+    const result = await LikeModel.toggleCommentLike({
+      commentId,
+      userId: req.user.id,
+    });
+    const likeCount = await LikeModel.getCommentLikeCount(commentId);
+    return res.json({
+      success: true,
+      data: {
+        ...result,
+        like_count: likeCount,
+      },
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const getOnlineUsers = async (req, res) => {
+  try {
+    const onlineCount = await getOnlineCount();
+    return res.json({
+      success: true,
+      data: {
+        online_count: onlineCount,
+      },
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const adminGetPosts = async (req, res) => {
+  try {
+    const query = validateGetPosts(req.query);
+    const page = Number(query.page || 1);
+    const limit = ADMIN_PAGE_LIMIT;
+    const offset = (page - 1) * limit;
+    const [stats, postData] = await Promise.all([
+      PostModel.getAdminPostStats(),
+      PostModel.getPostsPaginated({
+        topicTag: query.topic_tag || 'All',
+        filter: query.filter,
+        search: query.search,
+        limit,
+        offset,
+        userId: req.user.id,
+      }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: postData.posts,
+      stats,
+      meta: buildPagination({
+        page,
+        limit,
+        total: postData.total,
+      }),
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const adminFlagPost = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const body = validateAdminFlagPost(req.body);
+    const post = await PostModel.getPostWithUserEmail(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+    const adminFeedback =
+      body.reason?.trim() || DEFAULT_MODERATION_REASON;
+    const flagged = await PostModel.flagPost({
+      postId,
+      flaggedBy: 'admin',
+      flagReason: adminFeedback,
+    });
+    await sendPostFlaggedEmail({
+      email: post.email,
+      userName: post.full_name,
+      postTitle: post.title,
+      adminFeedback,
+    });
+    await FlagModel.insertModerationLog({
+      adminId: req.user.id,
+      targetId: postId,
+      action: 'flag',
+      adminFeedback,
+      emailSent: true,
+    });
+    return res.json({
+      success: true,
+      data: flagged,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const adminUnflagPost = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const unflagged = await PostModel.unflagPost(postId);
+    if (!unflagged) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+    await FlagModel.insertModerationLog({
+      adminId: req.user.id,
+      targetId: postId,
+      action: 'unflag',
+    });
+    return res.json({
+      success: true,
+      data: unflagged,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};
+
+export const adminDeletePost = async (req, res) => {
+  try {
+    const { postId } = validatePostId(req.params);
+    const body = validateAdminDeletePost(req.body);
+    const post = await PostModel.getPostWithUserEmail(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+    const adminFeedback =
+      body.reason?.trim() || DEFAULT_MODERATION_REASON;
+    const deleted = await PostModel.adminDeletePost(postId);
+    await sendPostFlaggedEmail({
+      email: post.email,
+      userName: post.full_name,
+      postTitle: post.title,
+      adminFeedback,
+    });
+    await FlagModel.insertModerationLog({
+      adminId: req.user.id,
+      targetId: postId,
+      action: 'delete',
+      adminFeedback,
+      emailSent: true,
+    });
+    return res.json({
+      success: true,
+      message: 'Post deleted successfully',
+      data: deleted,
+    });
+  } catch (err) {
+    return sendError(res, err);
+  }
+};

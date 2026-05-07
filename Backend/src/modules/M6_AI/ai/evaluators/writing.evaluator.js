@@ -1,5 +1,5 @@
 import { model } from '../../../../config/gemini.js';
-import { writingPrompt } from '../prompts/Gemini Prompts/writingEvaluation.prompt.js';
+import { writingPrompt } from '../prompts/writingEvaluation.prompt.js';
 import * as aiModel from '../../ai.model.js';
 import { processWritingResponse } from '../processors (Input Cleaning)/writing.processor.js';
 

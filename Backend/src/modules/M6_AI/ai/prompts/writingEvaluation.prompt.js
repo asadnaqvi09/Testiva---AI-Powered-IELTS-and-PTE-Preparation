@@ -1,4 +1,4 @@
-import { writingRubric } from '../../rubrics/writing.rubric.js';
+import { writingRubric } from '../rubrics/writing.rubric.js';
 
 export const writingPrompt = (taskType, question, studentResponse) => {
     return `

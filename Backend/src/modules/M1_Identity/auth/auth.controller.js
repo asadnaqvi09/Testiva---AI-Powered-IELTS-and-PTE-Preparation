@@ -6,7 +6,6 @@ import {
   findRefreshToken,
   deleteRefreshToken,
   deleteAllUserTokens,
-  incrementTokenVersion,
   findUserById
 } from "../user.model.js";
 import * as authValidator from "./auth.validator.js";
@@ -54,7 +53,7 @@ export const registerUser = async (req, res) => {
          is_verified = false`,
       [email, full_name, password_hash, otp_hash, expiresAt]
     );
-    await sendOtpEmail(email, otp,"register");
+    await sendOtpEmail({email, otp, type:"register"});
     return res.status(200).json({ success: true, message: "OTP sent", email });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Registration failed" });
@@ -211,7 +210,7 @@ export const forgotPassword = async (req, res) => {
          is_verified = false`,
       [email, otp_hash, expiresAt]
     );
-    await sendOtpEmail(email, otp,"reset");
+    await sendOtpEmail({email, otp,type:"reset"});
     return res.status(200).json({ success: true, message: "OTP sent" });
   } catch {
     return res.status(500).json({ success: false, message: "Request failed" });
@@ -345,7 +344,7 @@ export const resendOTP = async (req, res) => {
       `UPDATE temp_users SET otp_code=$1, expires_at=$2, attempts=0 WHERE email=$3 AND type=$4`,
       [otp_hash, expiresAt, email, type]
     );
-    await sendOtpEmail(email, otp,"resest");
+    await sendOtpEmail({email, otp,type:"reset"});
     return res.status(200).json({ success: true, message: "OTP resent" });
   } catch {
     return res.status(500).json({ success: false, message: "Resend failed" });

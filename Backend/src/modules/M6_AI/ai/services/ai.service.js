@@ -1,4 +1,4 @@
-import * as writingEvaluation from "./evaluators/writing.evaluator.js";
+import * as writingEvaluation from "../evaluators/writing.evaluator.js";
 
 export const processEvaluation = async (userId, attemptId, testType, moduleType, data) => {
     try {

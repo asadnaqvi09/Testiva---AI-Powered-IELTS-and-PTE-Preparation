@@ -1,36 +1,59 @@
-import nodemailer from "nodemailer";
-import { registerOtpTemplate } from "./templates/registerOtp.js";
-import { resetOtpTemplate } from "./templates/resetOtp.js";
+import nodemailer from 'nodemailer';
+import { registerOtpTemplate } from './templates/registerOtp.js';
+import { resetOtpTemplate } from './templates/resetOtp.js';
+import { postFlaggedTemplate } from './templates/postFlagged.js';
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
-const templates = {
-  register: registerOtpTemplate,
-  reset: resetOtpTemplate
+const emailTemplates = {
+  register: {
+    subject: 'Verify Your Account',
+    template: registerOtpTemplate,
+  },
+  reset: {
+    subject: 'Password Reset OTP',
+    template: resetOtpTemplate,
+  },
+  postFlagged: {
+    subject: 'Community Post Moderation Notice',
+    template: postFlaggedTemplate,
+  },
 };
 
-export const sendOtpEmail = async (email, otp, type = "register") => {
-  const templateFn = templates[type];
-
-  if (!templateFn) {
-    throw new Error("Invalid email template type");
-  }
-
-  const html = templateFn(otp);
-
-  await transporter.sendMail({
+const sendEmail = async ({ to, subject, html }) => {
+  return transporter.sendMail({
     from: process.env.EMAIL_USER,
+    to,
+    subject,
+    html,
+  });
+};
+
+export const sendOtpEmail = async ({ email, otp, type = 'register' }) => {
+  const emailConfig = emailTemplates[type];
+  if (!emailConfig) {
+    throw new Error('Invalid email template type');
+  }
+  const html = emailConfig.template(otp);
+  await sendEmail({
     to: email,
-    subject:
-      type === "reset"
-        ? "Password Reset OTP"
-        : "Verify Your Account",
-    html
+    subject: emailConfig.subject,
+    html,
+  });
+};
+
+export const sendPostFlaggedEmail = async ({ email, userName, postTitle, adminFeedback }) => {
+  const emailConfig = emailTemplates.postFlagged;
+  const html = emailConfig.template({ userName, postTitle, adminFeedback, });
+  await sendEmail({
+    to: email,
+    subject: emailConfig.subject,
+    html,
   });
 };
