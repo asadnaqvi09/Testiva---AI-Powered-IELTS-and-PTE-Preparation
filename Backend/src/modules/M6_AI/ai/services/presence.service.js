@@ -1,27 +1,57 @@
-import Redis from 'ioredis';
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-const PRESENCE_KEY = 'community:online_users';
-const TTL_SECONDS = 30;
-export const markUserOnline = async (userId) => {
-  await redis.setex(`${PRESENCE_KEY}:${userId}`, TTL_SECONDS, '1');
-  await redis.sadd(PRESENCE_KEY, userId);
+import { redisClient as redis } from "../../../../config/redis.js";
+const PRESENCE_KEY = "presence:user:";
+const ROOM_KEY = "presence:room:";
+const LAST_SEEN_KEY = "presence:last_seen:";
+const TTL_SECONDS = 35;
+export const markUserOnline = async (userId, preference = "GENERAL") => {
+  const pref = preference || "GENERAL";
+  await redis.pipeline()
+    .setex(`${PRESENCE_KEY}${userId}`, TTL_SECONDS, pref)
+    .sadd(`${ROOM_KEY}${pref}`, userId)
+    .set(`${LAST_SEEN_KEY}${userId}`, Date.now())
+    .exec();
 };
-export const markUserOffline = async (userId) => {
-  await redis.del(`${PRESENCE_KEY}:${userId}`);
-  await redis.srem(PRESENCE_KEY, userId);
+export const markUserOffline = async (userId, preference = null) => {
+  const pref = preference || (await redis.get(`${PRESENCE_KEY}${userId}`));
+  const multi = redis.multi();
+  multi.del(`${PRESENCE_KEY}${userId}`);
+  multi.del(`${LAST_SEEN_KEY}${userId}`);
+  if (pref) {
+    multi.srem(`${ROOM_KEY}${pref}`, userId);
+  }
+  await multi.exec();
 };
 export const refreshPresence = async (userId) => {
-  await redis.setex(`${PRESENCE_KEY}:${userId}`, TTL_SECONDS, '1');
+  const pref = await redis.get(`${PRESENCE_KEY}${userId}`);
+  if (!pref) return;
+  await redis.pipeline()
+    .setex(`${PRESENCE_KEY}${userId}`, TTL_SECONDS, pref)
+    .set(`${LAST_SEEN_KEY}${userId}`, Date.now())
+    .exec();
 };
-export const getOnlineCount = async () => {
-  const members = await redis.smembers(PRESENCE_KEY);
-  const pipeline = redis.pipeline();
-  members.forEach((uid) => pipeline.exists(`${PRESENCE_KEY}:${uid}`));
-  const results = await pipeline.exec();
-  const active = results.filter(([, v]) => v === 1);
-  const expired = members.filter((_, i) => results[i][1] === 0);
-  if (expired.length > 0) {
-    await redis.srem(PRESENCE_KEY, ...expired);
+export const getOnlineCount = async (preference = null) => {
+  if (preference) {
+    return await redis.scard(`${ROOM_KEY}${preference}`);
   }
-  return active.length;
+  const keys = await redis.keys(`${PRESENCE_KEY}*`);
+  return keys.length;
+};
+export const getRoomOnlineUsers = async (preference) => {
+  return await redis.smembers(`${ROOM_KEY}${preference}`);
+};
+export const getLastSeen = async (userId) => {
+  const ts = await redis.get(`${LAST_SEEN_KEY}${userId}`);
+  return ts ? Number(ts) : null;
+};
+export const cleanupExpiredUsers = async () => {
+  const keys = await redis.keys(`${PRESENCE_KEY}*`);
+  const activeUserIds = keys.map(k => k.replace(PRESENCE_KEY, ""));
+
+  const lastSeenKeys = await redis.keys(`${LAST_SEEN_KEY}*`);
+  for (const lsKey of lastSeenKeys) {
+    const userId = lsKey.replace(LAST_SEEN_KEY, "");
+    if (!activeUserIds.includes(userId)) {
+      await redis.del(lsKey);
+    }
+  }
 };

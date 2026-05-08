@@ -2,6 +2,7 @@ import express from 'express';
 import * as authController from './auth.controller.js';
 import * as rateLimiter from '../../../middleware/rateLimiter.middleware.js';
 import { authenticate } from '../../../middleware/auth.middleware.js';
+import {onboardingMiddleware} from '../../../middleware/onBoarding.middleware.js';
 
 const Router = express.Router();
 
@@ -15,5 +16,6 @@ Router.post('/google', rateLimiter.authLimiter, authController.googleAuth);
 Router.post('/refresh-token', rateLimiter.authLimiter, authController.refreshAccessToken);
 Router.post('/logout', authenticate, rateLimiter.authLimiter, authController.logoutUser);
 Router.post('/logout-all', authenticate, rateLimiter.authLimiter, authController.logoutAllUserDevices);
+Router.post('/user/preferences', authenticate, onboardingMiddleware,rateLimiter.authLimiter, authController.setUserPreference);
 
 export default Router;
