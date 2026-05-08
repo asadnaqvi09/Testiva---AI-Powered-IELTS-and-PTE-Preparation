@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/widgets/app_button.dart';
+import 'package:frontend/widgets/custom_textfield.dart';
 import 'package:frontend/src/dashboard/dashboard_screen.dart';
 import 'package:frontend/src/auth/forgot_password/forgot_password_screen.dart';
 import 'social_login_btns.dart';
@@ -35,19 +36,20 @@ class _LoginFormState extends State<LoginForm> {
     return Form(
       key: _formKey,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _label("Email Address"),
-        _buildField(
-          'Enter your email',
-          Icons.email_outlined,
+        AppTextField(
+          label: 'Email Address',
+          hint: 'Enter your email',
+          prefixIcon: Icons.email_outlined,
           controller: _email,
           validator: AppValidators.validateEmail,
+          keyboardType: TextInputType.emailAddress,
         ),
         const SizedBox(height: 20),
-        _label("Password"),
-        _buildField(
-          'Enter your password',
-          Icons.lock_outline,
-          isPass: true,
+        AppTextField(
+          label: 'Password',
+          hint: 'Enter your password',
+          prefixIcon: Icons.lock_outline,
+          isPassword: true,
           controller: _pass,
           validator: AppValidators.validatePassword,
         ),
@@ -91,11 +93,6 @@ class _LoginFormState extends State<LoginForm> {
     );
   }
 
-  Widget _label(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-  );
-
   Widget _demoBox() => Container(
     margin: const EdgeInsets.only(top: 10),
     padding: const EdgeInsets.all(15),
@@ -105,33 +102,19 @@ class _LoginFormState extends State<LoginForm> {
       border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
     ),
     child: Column(children: [
-      _demoTile("Free User", "freeuser@example.com", Icons.person_outline, AppColors.primary),
-      _demoTile("Premium", "premiumuser@example.com", Icons.star_outline, Colors.orange),
+      _demoTile('Free User', 'freeuser@example.com', Icons.person_outline, AppColors.primary),
+      _demoTile('Premium', 'premiumuser@example.com', Icons.star_outline, Colors.orange),
     ]),
   );
 
   Widget _demoTile(String l, String e, IconData i, Color c) => GestureDetector(
-    onTap: () => _fill(e, "password123"),
+    onTap: () => _fill(e, 'password123'),
     child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(children: [
           Icon(i, size: 16, color: c),
           const SizedBox(width: 8),
-          Text("$l: $e", style: TextStyle(fontSize: 12, color: AppColors.primary)),
+          Text('$l: $e', style: const TextStyle(fontSize: 12, color: AppColors.primary)),
         ])),
-  );
-
-  Widget _buildField(String h, IconData i, {bool isPass = false, required TextEditingController controller, String? Function(String?)? validator}) => TextFormField(
-    controller: controller,
-    obscureText: isPass,
-    validator: validator,
-    decoration: InputDecoration(
-      hintText: h,
-      prefixIcon: Icon(i, color: AppColors.textGrey),
-      filled: true,
-      fillColor: const Color(0xFFF8F9FA),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
-    ),
   );
 }

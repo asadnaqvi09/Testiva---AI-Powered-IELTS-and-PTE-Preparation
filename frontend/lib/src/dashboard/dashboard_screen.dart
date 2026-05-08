@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'home/home_page.dart';
 import '../../widgets/custom_drawer.dart';
 import '../profile/profile_screen.dart';
+import '../mocks/mocks_screen.dart';
+import '../prep/prep_screen.dart';
+import '../features/community/presentation/community_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,11 +18,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     final _screens = [
       HomePage(scaffoldKey: _scaffoldKey),
-      const Center(child: Text('Mocks')),
-      const Center(child: Text('Prep')),
-      const Center(child: Text('Community')),
+      const MocksScreen(),
+      const PrepScreen(),
+      const CommunityScreen(),
       const ProfileScreen(),
     ];
 

@@ -1,4 +1,4 @@
-// lib/src/onboarding/widgets/onboarding_stats.dart
+
 import 'package:flutter/material.dart';
 
 class OnboardingStats extends StatelessWidget {

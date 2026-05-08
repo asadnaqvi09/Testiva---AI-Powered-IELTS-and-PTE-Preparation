@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/widgets/app_button.dart';
+import 'package:frontend/widgets/custom_textfield.dart';
 import 'package:frontend/src/auth/login/widgets/google_button.dart';
 
 class SignupForm extends StatefulWidget {
   const SignupForm({super.key});
-
   @override
   State<SignupForm> createState() => _SignupFormState();
 }
@@ -34,29 +34,45 @@ class _SignupFormState extends State<SignupForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label("Full Name"),
-          _buildTextField("e.g. Ahmed Khan", Icons.person_outline, controller: _nameController),
+          AppTextField(
+            label: 'Full Name',
+            hint: 'e.g. Ahmed Khan',
+            prefixIcon: Icons.person_outline,
+            controller: _nameController,
+          ),
           const SizedBox(height: 16),
-          _label("Email Address"),
-          _buildTextField("Enter your email", Icons.email_outlined, controller: _emailController, validator: AppValidators.validateEmail),
+          AppTextField(
+            label: 'Email Address',
+            hint: 'Enter your email',
+            prefixIcon: Icons.email_outlined,
+            controller: _emailController,
+            validator: AppValidators.validateEmail,
+            keyboardType: TextInputType.emailAddress,
+          ),
           const SizedBox(height: 16),
-          _label("Password"),
-          _buildTextField("Enter your password", Icons.lock_outline, isPass: true, controller: _passController, validator: AppValidators.validatePassword),
+          AppTextField(
+            label: 'Password',
+            hint: 'Enter your password',
+            prefixIcon: Icons.lock_outline,
+            isPassword: true,
+            controller: _passController,
+            validator: AppValidators.validatePassword,
+          ),
           const SizedBox(height: 16),
-          _label("Confirm Password"),
-          _buildTextField(
-            "Confirm your password",
-            Icons.lock_outline,
-            isPass: true,
+          AppTextField(
+            label: 'Confirm Password',
+            hint: 'Confirm your password',
+            prefixIcon: Icons.lock_outline,
+            isPassword: true,
             controller: _confirmPassController,
             validator: (val) {
-              if (val != _passController.text) return "Passwords do not match";
+              if (val != _passController.text) return 'Passwords do not match';
               return null;
             },
           ),
           const SizedBox(height: 25),
           AppButton(
-            text: "Create Account",
+            text: 'Create Account',
             onPressed: () {
               if (_formKey.currentState!.validate()) {
                 // Signup Logic
@@ -70,7 +86,7 @@ class _SignupFormState extends State<SignupForm> {
                 Expanded(child: Divider()),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: Text("or continue with", style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
+                  child: Text('or continue with', style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
                 ),
                 Expanded(child: Divider()),
               ],
@@ -78,28 +94,6 @@ class _SignupFormState extends State<SignupForm> {
           ),
           Center(child: GoogleButton(onTap: () {})),
         ],
-      ),
-    );
-  }
-
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-  );
-
-  Widget _buildTextField(String hint, IconData icon, {bool isPass = false, required TextEditingController controller, String? Function(String?)? validator}) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPass,
-      validator: validator,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: AppColors.textGrey, size: 20),
-        suffixIcon: isPass ? Icon(Icons.visibility_outlined, color: AppColors.textGrey, size: 20) : null,
-        filled: true,
-        fillColor: const Color(0xFFF8F9FA),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
       ),
     );
   }
