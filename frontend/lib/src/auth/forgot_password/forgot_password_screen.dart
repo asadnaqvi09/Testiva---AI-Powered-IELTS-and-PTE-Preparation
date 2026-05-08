@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/utils/validators.dart';
+import 'package:frontend/widgets/custom_textfield.dart';
 import '../../../widgets/app_button.dart';
 import 'otp_screen.dart';
 
@@ -11,23 +13,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
-  bool _isEmailValid = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _emailController.addListener(_validateEmail);
-  }
-
-  void _validateEmail() {
-    final email = _emailController.text;
-    final bool isValid = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-        .hasMatch(email);
-
-    setState(() {
-      _isEmailValid = isValid;
-    });
-  }
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
@@ -49,52 +35,46 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Reset Password",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              "Enter your email address and we'll send you a link to reset your password.",
-              style: TextStyle(color: Colors.grey, fontSize: 15),
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _emailController,
-              autofocus: true,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                hintText: "Email Address",
-                prefixIcon: const Icon(Icons.email_outlined),
-                filled: true,
-                fillColor: const Color(0xFFF8F9FA),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF007BFF)),
-                ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Reset Password',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-            ),
-            const Spacer(),
-            AppButton(
-              text: "Send Reset Link",
-              onPressed: _isEmailValid ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OTPScreen(email: _emailController.text),
-                  ),
-                );
-              } : null,
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 10),
+              const Text(
+                "Enter your email address and we'll send you a link to reset your password.",
+                style: TextStyle(color: Colors.grey, fontSize: 15),
+              ),
+              const SizedBox(height: 30),
+              AppTextField(
+                label: 'Email Address',
+                hint: 'Email Address',
+                prefixIcon: Icons.email_outlined,
+                controller: _emailController,
+                validator: AppValidators.validateEmail,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const Spacer(),
+              AppButton(
+                text: 'Send Reset Link',
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OTPScreen(email: _emailController.text),
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

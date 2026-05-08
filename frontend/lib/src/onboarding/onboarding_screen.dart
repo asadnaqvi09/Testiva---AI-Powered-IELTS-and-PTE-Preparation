@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/constants/app_colors.dart';
 import '../auth/auth_screen.dart';
 import './widgets/onboarding_header.dart';
 import './widgets/onboarding_stats.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
-
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
@@ -17,16 +17,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<Map<String, String>> onboardingData = [
     {
-      "title": "Personalized Learning",
-      "subtitle": "AI-powered study plans tailored to your unique strengths and learning style.",
+      'title': 'Personalized Learning',
+      'subtitle': 'AI-powered study plans tailored to your unique strengths and learning style.',
     },
     {
-      "title": "AI-Powered Mocks",
-      "subtitle": "Practice with realistic IELTS & PTE mock tests. Get instant AI feedback.",
+      'title': 'AI-Powered Mocks',
+      'subtitle': 'Practice with realistic IELTS & PTE mock tests. Get instant AI feedback.',
     },
     {
-      "title": "Start Free Today",
-      "subtitle": "Join 50,000+ students already improving their scores with Testiva.",
+      'title': 'Start Free Today',
+      'subtitle': 'Join 50,000+ students already improving their scores with Testiva.',
     },
   ];
 
@@ -95,19 +95,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Icon(
               index == 0 ? Icons.psychology : index == 1 ? Icons.bolt_rounded : Icons.shield_outlined,
               size: 80,
-              color: const Color(0xFF007BFF),
+              color: AppColors.primary,
             ),
           ),
         ),
         const SizedBox(height: 40),
         Text(
-          onboardingData[index]["title"]!,
+          onboardingData[index]['title']!,
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
         ),
         const SizedBox(height: 20),
         Text(
-          onboardingData[index]["subtitle"]!,
+          onboardingData[index]['subtitle']!,
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, color: Color(0xFF64748B), height: 1.5),
         ),
@@ -136,11 +136,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF007BFF),
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 0,
             ),
-            child: const Text("Get Started", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Get Started', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(height: 20),
@@ -155,7 +155,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       width: _currentPage == index ? 24 : 8,
       margin: const EdgeInsets.only(right: 6),
       decoration: BoxDecoration(
-        color: _currentPage == index ? const Color(0xFF007BFF) : const Color(0xFFCBD5E1),
+        color: _currentPage == index ? AppColors.primary : const Color(0xFFCBD5E1),
         borderRadius: BorderRadius.circular(4),
       ),
     );

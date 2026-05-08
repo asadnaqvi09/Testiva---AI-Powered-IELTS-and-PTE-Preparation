@@ -1,7 +1,19 @@
 import 'package:flutter/material.dart';
+import '../../../../../../core/constants/app_colors.dart';
+
+import 'feedback_success_screen.dart';
 
 class FeedbackInput extends StatelessWidget {
-  const FeedbackInput({super.key});
+  final TextEditingController controller;
+  final int currentRating;
+  final String ratingLabel;
+
+  const FeedbackInput({
+    super.key,
+    required this.controller,
+    required this.currentRating,
+    required this.ratingLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -9,19 +21,29 @@ class FeedbackInput extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Your Comments", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Your Comments',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 15),
               TextField(
+                controller: controller,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  hintText: "Tell us about overall experience...",
+                  hintText: 'Tell us about overall experience...',
                   fillColor: const Color(0xFFF8FAFC),
                   filled: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ],
@@ -33,21 +55,32 @@ class FeedbackInput extends StatelessWidget {
           height: 55,
           child: ElevatedButton.icon(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text("Feedback submitted successfully!"),
-                  backgroundColor: Colors.green,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  margin: const EdgeInsets.all(20),
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FeedbackSuccessScreen(
+                    rating: currentRating,
+                    ratingLabel: ratingLabel,
+                  ),
                 ),
+              );
+
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Feedback Submitted!')),
               );
             },
             icon: const Icon(Icons.send, color: Colors.white),
-            label: const Text("Submit Feedback", style: TextStyle(color: Colors.white, fontSize: 16)),
+            label: const Text(
+              'Submit Feedback',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF007BFF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
             ),
           ),
         ),
