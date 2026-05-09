@@ -7,7 +7,7 @@ export const handlePostCreatedNotification = async (io, post) => {
     if (!topic_tag || topic_tag === "GENERAL") return;
     const result = await pool.query(
         `SELECT id FROM users 
-     WHERE (preferences = $1 OR preferences = 'ALL') 
+     WHERE (preference = $1) 
      AND id != $2`,
         [topic_tag, authorId]
     );

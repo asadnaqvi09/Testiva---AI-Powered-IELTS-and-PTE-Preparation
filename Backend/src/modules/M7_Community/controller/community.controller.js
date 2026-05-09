@@ -3,40 +3,19 @@ import * as CommentModel from '../models/comment.model.js';
 import * as LikeModel from '../models/like.model.js';
 import * as ShareModel from '../models/share.model.js';
 import * as FlagModel from '../models/flag.model.js';
-import {
-  validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts,
-  validateSharePost, validateCreateComment, validateUpdateComment,
-  validateCommentId, validateAdminFlagPost, validateAdminDeletePost
-} from '../validator/community.validator.js';
+import {validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts,validateSharePost, validateCreateComment, validateUpdateComment,validateCommentId, validateAdminFlagPost, validateAdminDeletePost} from '../validator/community.validator.js';
 import { getOnlineCount } from '../../M6_AI/ai/services/presence.service.js';
 import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
 import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
+import {emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser} from '../../M9_Notification/socketIO/event.engine.js';
+import {handlePostCreatedNotification, handleLikeNotification, handleCommentNotification,handleReplyNotification, handleModerationNotification} from '../../M9_Notification/engine/notification.engine.js';
+import { sendError,buildPagination } from '../../../utils/helpers.js';
 
-import {
-  emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser
-} from '../../M9_Notification/socketIO/event.engine.js';
 
-import {
-  handlePostCreatedNotification, handleLikeNotification, handleCommentNotification,
-  handleReplyNotification, handleModerationNotification
-} from '../../M9_Notification/engine/notification.engine.js';
-
-// --- Configuration & Helpers ---
 const USER_PAGE_LIMIT = 10;
 const ADMIN_PAGE_LIMIT = 8;
 
-const sendError = (res, err) => res.status(err.statusCode || 500).json({
-  success: false,
-  message: err.message || 'Internal server error',
-  errors: err.errors || [],
-});
 
-const buildPagination = ({ page, limit, total }) => ({
-  page, limit, total,
-  pages: Math.ceil(total / limit),
-});
-
-// --- Post Handlers ---
 
 export const createPost = async (req, res) => {
   try {

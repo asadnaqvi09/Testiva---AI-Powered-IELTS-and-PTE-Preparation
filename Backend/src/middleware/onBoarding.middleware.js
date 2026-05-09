@@ -4,7 +4,7 @@ export const onboardingMiddleware = (req, res, next) => {
     if (user.subscription === "premium") {
       return next();
     }
-    if (!user.preferences) {
+    if (!user.preference) {
       return res.status(403).json({
         success: false,
         message: "Please select your learning preference to continue"

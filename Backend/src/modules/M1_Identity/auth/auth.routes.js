@@ -16,6 +16,6 @@ Router.post('/google', rateLimiter.authLimiter, authController.googleAuth);
 Router.post('/refresh-token', rateLimiter.authLimiter, authController.refreshAccessToken);
 Router.post('/logout', authenticate, rateLimiter.authLimiter, authController.logoutUser);
 Router.post('/logout-all', authenticate, rateLimiter.authLimiter, authController.logoutAllUserDevices);
-Router.post('/user/preferences', authenticate, onboardingMiddleware,rateLimiter.authLimiter, authController.setUserPreference);
+Router.post('/user/preferences', authenticate,rateLimiter.authLimiter, authController.setUserPreference);
 
 export default Router;

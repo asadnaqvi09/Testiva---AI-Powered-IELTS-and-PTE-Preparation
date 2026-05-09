@@ -19,3 +19,14 @@ export const generateOTP = () => {
 export const resolveSubscription = (user) => {
   return user.role === "admin" ? "premium" : user.subscription;
 };
+
+export const sendError = (res, err) => res.status(err.statusCode || 500).json({
+  success: false,
+  message: err.message || 'Internal server error',
+  errors: err.errors || [],
+});
+
+export const buildPagination = ({ page, limit, total }) => ({
+  page, limit, total,
+  pages: Math.ceil(total / limit),
+});

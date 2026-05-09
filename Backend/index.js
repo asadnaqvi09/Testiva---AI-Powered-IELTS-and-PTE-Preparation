@@ -8,14 +8,14 @@ import { Server } from "socket.io";
 import authRoutes from './src/modules/M1_Identity/auth/auth.routes.js';
 import userRoutes from './src/modules/M1_Identity/user/user.routes.js';
 import adminRoutes from './src/modules/M1_Identity/admin/admin.routes.js';
-import testRoutes from './src/modules/M2_Test/test/test.routes.js';
+import testRoutes from './src/modules/M2_Test/test.routes.js';
 import prepRoutes from './src/modules/M3_Preparation/preparation/preparation.routes.js';
-import progressRoutes from './src/modules/M4_Progress/progress/progress.routes.js';
+import progressRoutes from './src/modules/M4_Progress/progress.routes.js';
 import communityRoutes from './src/modules/M7_Community/routes/community.routes.js';
 import notificationRoutes from './src/modules/M9_Notification/routes/notification.routes.js';
 import aiRoutes from './src/modules/M6_AI/ai/ai.routes.js';
 import { initSocketIO } from './src/modules/M9_Notification/socketIO/index.js';
-import './src/modules/M5_Offline/offline/sync.worker.js';
+import './src/modules/M5_Offline/sync.worker.js';
 import { errorHandler } from './src/middleware/error.middleware.js';
 
 dotenv.config();

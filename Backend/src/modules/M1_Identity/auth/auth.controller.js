@@ -5,7 +5,8 @@ import {
   findRefreshToken,
   deleteRefreshToken,
   deleteAllUserTokens,
-  findUserById
+  findUserById,
+  updateUserPreference
 } from "../user.model.js";
 import * as authValidator from "./auth.validator.js";
 import {
@@ -21,9 +22,7 @@ import {
   resolveSubscription,
   hashOTP
 } from "../../../utils/helpers.js";
-import { redisClient } from "../../../config/redis.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 const hashOtpValue = async (otp) => hashOTP(String(otp));
 
 const buildToken = (user) => ({
@@ -53,7 +52,8 @@ export const registerUser = async (req, res) => {
     );
     await sendOtpEmail({ email, otp, type: "register" });
     return res.json({ success: true, message: "OTP sent", email });
-  } catch {
+  } catch (error) {
+    console.log("Error In Register Controller : ", error.message);
     return res.status(500).json({ success: false, message: "Registration failed" });
   }
 };
@@ -87,10 +87,11 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         subscription: resolveSubscription(user),
-        preferences: user.preferences
+        preference: user.preference
       }
     });
-  } catch {
+  } catch (error) {
+    console.log("Error In Login Controller : ", error.message);
     return res.status(500).json({ success: false, message: "Login failed" });
   }
 };
@@ -131,7 +132,7 @@ export const verifyOTP = async (req, res) => {
     }
     if (type === "register") {
       const { rows: userRows } = await client.query(
-        `INSERT INTO users (full_name,email,password_hash,auth_provider,is_email_verified,subscription,preferences)
+        `INSERT INTO users (full_name,email,password_hash,auth_provider,is_email_verified,subscription,preference)
          VALUES ($1,$2,$3,'email',true,'free',NULL)
          RETURNING *`,
         [temp.full_name, temp.email, temp.password_hash]
@@ -329,7 +330,7 @@ export const googleAuth = async (req, res) => {
         full_name: googleUser.full_name,
         avatar_url: googleUser.avatar_url,
         subscription: "free",
-        preferences: null
+        preference: null
       });
     }
     const token = generateAccessToken(buildToken(user));

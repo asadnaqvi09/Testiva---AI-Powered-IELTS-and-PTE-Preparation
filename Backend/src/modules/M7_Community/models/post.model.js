@@ -4,7 +4,7 @@ export const createPost = async ({ userId, topicTag, title, content }) => {
   const result = await pool.query(
     `INSERT INTO posts (user_id, topic_tag, title, content)
      VALUES ($1, $2, $3, $4)
-     RETURNING id, user_id, topic_tag, title, content, is_flagged, created_at`,
+     RETURNING id, user_id, topic_tag, title, content, is_flagged,created_at`,
     [userId, topicTag, title, content]
   );
   return result.rows[0];
@@ -12,22 +12,40 @@ export const createPost = async ({ userId, topicTag, title, content }) => {
 
 export const getPostById = async (postId) => {
   const result = await pool.query(
-    `SELECT p.id, p.user_id, p.topic_tag, p.title, p.content,
-            p.is_flagged, p.flagged_by, p.flag_reason,
-            p.created_at, p.updated_at,
-            u.full_name, u.profile_image,
-            s.plan_type AS subscription_type,
-            COUNT(DISTINCT pl.user_id)::INT AS like_count,
-            COUNT(DISTINCT c.id)::INT        AS comment_count,
-            COUNT(DISTINCT ps.id)::INT       AS share_count
+    `SELECT 
+        p.id,
+        p.user_id,
+        p.topic_tag,
+        p.title,
+        p.content,
+        p.is_flagged,
+        p.flagged_by,
+        p.flag_reason,
+        p.created_at,
+        p.updated_at,
+        u.full_name,
+        u.avatar_url,
+        u.subscription AS subscription_type,
+        COUNT(DISTINCT pl.user_id)::INT AS like_count,
+        COUNT(DISTINCT c.id)::INT AS comment_count,
+        COUNT(DISTINCT ps.id)::INT AS share_count
      FROM posts p
-     JOIN users u              ON u.id = p.user_id
-     LEFT JOIN subscriptions s ON s.user_id = p.user_id AND s.status = 'active'
-     LEFT JOIN post_likes pl   ON pl.post_id = p.id
-     LEFT JOIN comments c      ON c.post_id = p.id AND c.deleted_at IS NULL
-     LEFT JOIN post_shares ps  ON ps.post_id = p.id
-     WHERE p.id = $1 AND p.deleted_at IS NULL
-     GROUP BY p.id, u.full_name, u.profile_image, s.plan_type`,
+     JOIN users u 
+        ON u.id = p.user_id
+     LEFT JOIN post_likes pl
+        ON pl.post_id = p.id
+     LEFT JOIN comments c
+        ON c.post_id = p.id
+        AND c.deleted_at IS NULL
+     LEFT JOIN post_shares ps
+        ON ps.post_id = p.id
+     WHERE p.id = $1
+     AND p.deleted_at IS NULL
+     GROUP BY 
+        p.id,
+        u.full_name,
+        u.avatar_url,
+        u.subscription`,
     [postId]
   );
   return result.rows[0] || null;
@@ -74,7 +92,7 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
       `SELECT p.id, p.user_id, p.topic_tag, p.title, p.content,
               p.is_flagged, p.flagged_by, p.flag_reason,
               p.created_at, p.updated_at,
-              u.full_name, u.profile_image,
+              u.full_name, u.avatar_url,
               s.plan_type AS subscription_type,
               COUNT(DISTINCT pl.user_id)::INT AS like_count,
               COUNT(DISTINCT c.id)::INT        AS comment_count,
@@ -90,7 +108,7 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
        LEFT JOIN comments c      ON c.post_id = p.id AND c.deleted_at IS NULL
        LEFT JOIN post_shares ps  ON ps.post_id = p.id
        WHERE ${where}
-       GROUP BY p.id, u.full_name, u.profile_image, s.plan_type
+       GROUP BY p.id, u.full_name, u.avatar_url, s.plan_type
        ORDER BY p.created_at DESC
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       dataParams

@@ -9,7 +9,7 @@ bio,
 avatar_url,
 role,
 subscription,
-preferences,
+preference,
 auth_provider,
 is_email_verified,
 token_version,
@@ -41,7 +41,7 @@ export const createUser = async ({
   auth_provider = "email",
   is_email_verified = true,
   subscription = "free",
-  preferences = null
+  preference = null
 }) => {
   const result = await pool.query(
     `INSERT INTO users (
@@ -51,7 +51,7 @@ export const createUser = async ({
       auth_provider,
       is_email_verified,
       subscription,
-      preferences
+      preference
      )
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      RETURNING ${USER_FIELDS}`,
@@ -62,25 +62,25 @@ export const createUser = async ({
       auth_provider,
       is_email_verified,
       subscription,
-      preferences
+      preference
     ]
   );
   return result.rows[0];
 };
 
-export const updateUserPreference = async (id, preferences) => {
+export const updateUserPreference = async (id, preference) => {
   const result = await pool.query(
-    `UPDATE users SET preferences=$1,updated_at=NOW()
+    `UPDATE users SET preference=$1,updated_at=NOW()
      WHERE id=$2
      RETURNING ${USER_FIELDS}`,
-    [preferences, id]
+    [preference, id]
   );
   return result.rows[0] || null;
 };
 
 export const getUserPreference = async (id) => {
   const result = await pool.query(
-    `SELECT id,preferences,subscription FROM users WHERE id=$1`,
+    `SELECT id,preference,subscription FROM users WHERE id=$1`,
     [id]
   );
   return result.rows[0] || null;
@@ -100,33 +100,26 @@ export const updateUserPassword = async (id, data) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-
     const user = await client.query(
       `SELECT password_hash FROM users WHERE id=$1 FOR UPDATE`,
       [id]
     );
-
     if (!user.rows[0]) throw new Error("User not found");
-
     const valid = await bcrypt.compare(
       data.current_password,
       user.rows[0].password_hash
     );
-
     if (!valid) throw new Error("Invalid password");
-
     const hash = await bcrypt.hash(
       data.new_password,
       Number(process.env.BCRYPT_ROUNDS || 12)
     );
-
     const result = await client.query(
       `UPDATE users SET password_hash=$1,token_version=token_version+1,updated_at=NOW()
        WHERE id=$2
        RETURNING ${USER_FIELDS}`,
       [hash, id]
     );
-
     await client.query("COMMIT");
     return result.rows[0];
   } catch (e) {
@@ -155,6 +148,50 @@ export const updateUserSubscriptionStatus = async (id, subscription) => {
     [id, subscription]
   );
   return result.rows[0] || null;
+};
+
+export const createGoogleUser = async (data) => {
+  const { email, full_name, avatar_url, subscription = "free" } = data;
+  const result = await pool.query(
+    `INSERT INTO users (email, full_name, avatar_url, auth_provider, subscription, is_email_verified)
+     VALUES ($1, $2, $3, 'google', $4, true)
+     RETURNING id, full_name, email, role, subscription, avatar_url`,
+    [email, full_name, avatar_url, subscription]
+  );
+  return result.rows[0];
+};
+
+export const getAdminStats = async () => {
+  const result = await pool.query(
+    `SELECT 
+      COUNT(*) AS total_users,
+      COUNT(*) FILTER (WHERE subscription='free') AS free_users,
+      COUNT(*) FILTER (WHERE subscription='basic') AS basic_users,
+      COUNT(*) FILTER (WHERE subscription='premium') AS premium_users,
+      COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days') AS active_users
+     FROM users`
+  );
+  return result.rows[0];
+};
+
+export const fetchAllUsers = async (limit, offset, search = "", subscription = "") => {
+  let query = `SELECT id,full_name,email,role,subscription,created_at FROM users WHERE 1=1`;
+  const params = [];
+  let paramIndex = 1;
+  if (search) {
+    query += ` AND (full_name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
+  if (subscription) {
+    query += `AND subscription= $${paramIndex}`;
+    params.push(subscription);
+    paramIndex++;
+  }
+  query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  params.push(limit, offset);
+  const result = await pool.query(query, params);
+  return result.rows;
 };
 
 export const incrementTokenVersion = async (id) => {
