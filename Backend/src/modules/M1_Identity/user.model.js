@@ -112,7 +112,7 @@ export const updateUserPassword = async (id, data) => {
     if (!valid) throw new Error("Invalid password");
     const hash = await bcrypt.hash(
       data.new_password,
-      Number(process.env.BCRYPT_ROUNDS || 12)
+      Number(12)
     );
     const result = await client.query(
       `UPDATE users SET password_hash=$1,token_version=token_version+1,updated_at=NOW()
@@ -231,4 +231,15 @@ export const deleteAllUserTokens = async (userId) => {
     `DELETE FROM refresh_tokens WHERE user_id=$1`,
     [userId]
   );
+};
+
+export const updateUserFcmToken = async (id, fcm_token) => {
+  const result = await pool.query(
+    `UPDATE users SET fcm_token=$1, updated_at=NOW()
+     WHERE id=$2
+     RETURNING id, fcm_token, updated_at`,
+    [fcm_token, id]
+  );
+  if (result.rowCount === 0) throw new Error("User not found");
+  return result.rows[0];
 };

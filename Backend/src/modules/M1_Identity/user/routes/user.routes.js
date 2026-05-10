@@ -9,5 +9,6 @@ Router.get("/profile", authenticate, authorizeRoles("user", "admin"), userContro
 Router.put("/profile", authenticate, authorizeRoles("user", "admin"), userController.updateProfileController);
 Router.put("/password", authenticate, authorizeRoles("user", "admin"), userController.changePasswordController);
 Router.post("/avatar", authenticate, authorizeRoles("user", "admin"), upload.single("avatar"), userController.uploadAvatarController);
+Router.put("/fcm-token", authenticate, authorizeRoles("user", "admin"), userController.updateFcmTokenController);
 
 export default Router;

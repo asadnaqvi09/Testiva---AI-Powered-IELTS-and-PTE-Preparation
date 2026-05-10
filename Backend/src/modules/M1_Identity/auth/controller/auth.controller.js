@@ -6,21 +6,22 @@ import {
   deleteRefreshToken,
   deleteAllUserTokens,
   findUserById,
-  updateUserPreference
+  updateUserPreference,
 } from "../../user.model.js";
 import * as authValidator from "../validator/auth.validator.js";
 import {
   generateAccessToken,
   generateRefreshToken,
-  verifyRefreshToken
+  verifyRefreshToken,
 } from "../../../../utils/jwt.js";
+import { handleAdminNewUserNotification } from "../../../M9_Notification/engine/notification.engine.js";
 import { verifyGoogleToken } from "../services/google.service.js";
 import { sendOtpEmail } from "../../../../email_templates/email.service.js";
 import {
   hashPassword,
   generateOTP,
   resolveSubscription,
-  hashOTP
+  hashOTP,
 } from "../../../../utils/helpers.js";
 import bcrypt from "bcrypt";
 const hashOtpValue = async (otp) => hashOTP(String(otp));
@@ -29,16 +30,22 @@ const buildToken = (user) => ({
   id: user.id,
   role: user.role,
   subscription: resolveSubscription(user),
-  tokenVersion: user.token_version
+  tokenVersion: user.token_version,
 });
 
 export const registerUser = async (req, res) => {
   try {
     const { error, value } = authValidator.registerSchema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+    if (error)
+      return res
+        .status(400)
+        .json({ success: false, message: error.details[0].message });
     const { full_name, email, password } = value;
     const exists = await findUserByEmail(email);
-    if (exists) return res.status(409).json({ success: false, message: "Email already registered" });
+    if (exists)
+      return res
+        .status(409)
+        .json({ success: false, message: "Email already registered" });
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
     const password_hash = await hashPassword(password);
@@ -48,34 +55,50 @@ export const registerUser = async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,'register',0,false)
        ON CONFLICT (email, type)
        DO UPDATE SET full_name=$2, password_hash=$3, otp_code=$4, expires_at=$5, attempts=0, is_verified=false`,
-      [email, full_name, password_hash, otp_hash, expiresAt]
+      [email, full_name, password_hash, otp_hash, expiresAt],
     );
     await sendOtpEmail({ email, otp, type: "register" });
     return res.json({ success: true, message: "OTP sent", email });
   } catch (error) {
     console.log("Error In Register Controller : ", error.message);
-    return res.status(500).json({ success: false, message: "Registration failed" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Registration failed" });
   }
 };
 
 export const loginUser = async (req, res) => {
   try {
     const { error, value } = authValidator.loginSchema.validate(req.body);
-    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+    if (error)
+      return res
+        .status(400)
+        .json({ success: false, message: error.details[0].message });
     const { email, password } = value;
     const user = await findUserByEmail(email);
-    if (!user?.password_hash) return res.status(400).json({ success: false, message: "Invalid credentials" });
-    if (!user.is_email_verified) return res.status(403).json({ success: false, message: "Email not verified" });
+    if (!user?.password_hash)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
+    if (!user.is_email_verified)
+      return res
+        .status(403)
+        .json({ success: false, message: "Email not verified" });
     const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) return res.status(400).json({ success: false, message: "Invalid credentials" });
+    if (!match)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
     const accessToken = generateAccessToken(buildToken(user));
     const refreshToken = generateRefreshToken(user.id);
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
        VALUES ($1,$2,$3)`,
-      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
+      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
     );
-    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]);
+    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [
+      user.id,
+    ]);
     return res.json({
       success: true,
       accessToken,
@@ -87,8 +110,8 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         subscription: resolveSubscription(user),
-        preference: user.preference
-      }
+        preference: user.preference,
+      },
     });
   } catch (error) {
     console.log("Error In Login Controller : ", error.message);
@@ -100,11 +123,14 @@ export const verifyOTP = async (req, res) => {
   const client = await pool.connect();
   try {
     const { email, otp, type } = req.body;
-    if (!email || !otp || !type) return res.status(400).json({ success: false, message: "All fields required" });
+    if (!email || !otp || !type)
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields required" });
     await client.query("BEGIN");
     const { rows } = await client.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
-      [email, type]
+      [email, type],
     );
     const temp = rows[0];
     if (!temp) {
@@ -112,21 +138,29 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
     if (temp.attempts >= 5) {
-      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [
+        email,
+        type,
+      ]);
       await client.query("COMMIT");
-      return res.status(400).json({ success: false, message: "Too many attempts" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Too many attempts" });
     }
     const match = await bcrypt.compare(String(otp), temp.otp_code);
     if (!match) {
       await client.query(
         `UPDATE temp_users SET attempts = attempts + 1 WHERE email=$1 AND type=$2`,
-        [email, type]
+        [email, type],
       );
       await client.query("COMMIT");
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
     if (new Date(temp.expires_at) < new Date()) {
-      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [email, type]);
+      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [
+        email,
+        type,
+      ]);
       await client.query("COMMIT");
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
@@ -135,20 +169,29 @@ export const verifyOTP = async (req, res) => {
         `INSERT INTO users (full_name,email,password_hash,auth_provider,is_email_verified,subscription,preference)
          VALUES ($1,$2,$3,'email',true,'free',NULL)
          RETURNING *`,
-        [temp.full_name, temp.email, temp.password_hash]
+        [temp.full_name, temp.email, temp.password_hash],
       );
-      await client.query(`DELETE FROM temp_users WHERE email=$1 AND type='register'`, [email]);
+      const user = userRows[0];
+      try {
+        await handleAdminNewUserNotification(req.io, user);
+      } catch (e) {
+        console.error(e);
+      }
+      await client.query(
+        `DELETE FROM temp_users WHERE email=$1 AND type='register'`,
+        [email],
+      );
       await client.query("COMMIT");
       return res.status(201).json({
         success: true,
         message: "Account verified",
-        user: userRows[0]
+        user: user,
       });
     }
     if (type === "reset") {
       await client.query(
         `UPDATE temp_users SET is_verified=true WHERE email=$1 AND type='reset'`,
-        [email]
+        [email],
       );
       await client.query("COMMIT");
       return res.json({ success: true, message: "OTP verified" });
@@ -156,7 +199,9 @@ export const verifyOTP = async (req, res) => {
     await client.query("ROLLBACK");
   } catch {
     await client.query("ROLLBACK");
-    return res.status(500).json({ success: false, message: "Verification failed" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Verification failed" });
   } finally {
     client.release();
   }
@@ -169,19 +214,19 @@ export const setUserPreference = async (req, res) => {
     if (!preference || !["IELTS", "PTE"].includes(preference)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid preference"
+        message: "Invalid preference",
       });
     }
     const user = await updateUserPreference(userId, preference);
     return res.status(200).json({
       success: true,
       message: "Preference updated successfully",
-      user
+      user,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Failed to set preference"
+      message: "Failed to set preference",
     });
   }
 };
@@ -189,19 +234,28 @@ export const setUserPreference = async (req, res) => {
 export const refreshAccessToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(401).json({ success: false, message: "Refresh token required" });
+    if (!refreshToken)
+      return res
+        .status(401)
+        .json({ success: false, message: "Refresh token required" });
     const decoded = verifyRefreshToken(refreshToken);
     const stored = await findRefreshToken(refreshToken);
-    if (!stored) return res.status(401).json({ success: false, message: "Invalid token" });
+    if (!stored)
+      return res.status(401).json({ success: false, message: "Invalid token" });
     if (new Date(stored.expires_at) < new Date()) {
       await deleteRefreshToken(refreshToken);
       return res.status(401).json({ success: false, message: "Expired token" });
     }
     const user = await findUserById(decoded.userId);
-    if (!user) return res.status(401).json({ success: false, message: "User not found" });
+    if (!user)
+      return res
+        .status(401)
+        .json({ success: false, message: "User not found" });
     if (decoded.tokenVersion !== user.token_version) {
       await deleteRefreshToken(refreshToken);
-      return res.status(401).json({ success: false, message: "Token invalidated" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Token invalidated" });
     }
     const accessToken = generateAccessToken(buildToken(user));
     const newRefreshToken = generateRefreshToken(user.id);
@@ -209,13 +263,17 @@ export const refreshAccessToken = async (req, res) => {
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
        VALUES ($1,$2,$3)`,
-      [user.id, newRefreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
+      [
+        user.id,
+        newRefreshToken,
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      ],
     );
     return res.json({
       success: true,
       accessToken,
       refreshToken: newRefreshToken,
-      expiresIn: "15m"
+      expiresIn: "15m",
     });
   } catch {
     return res.status(500).json({ success: false, message: "Refresh failed" });
@@ -225,9 +283,15 @@ export const refreshAccessToken = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: "Email required" });
+    if (!email)
+      return res
+        .status(400)
+        .json({ success: false, message: "Email required" });
     const user = await findUserByEmail(email);
-    if (!user) return res.status(400).json({ success: false, message: "User not found" });
+    if (!user)
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -236,7 +300,7 @@ export const forgotPassword = async (req, res) => {
        VALUES ($1,$2,$3,'reset',0,false)
        ON CONFLICT (email, type)
        DO UPDATE SET otp_code=$2, expires_at=$3, attempts=0, is_verified=false`,
-      [email, otp_hash, expiresAt]
+      [email, otp_hash, expiresAt],
     );
     await sendOtpEmail({ email, otp, type: "reset" });
     return res.json({ success: true, message: "OTP sent" });
@@ -250,46 +314,52 @@ export const resetPassword = async (req, res) => {
   try {
     const { email, new_password, confirm_password } = req.body;
     if (!email || !new_password || !confirm_password) {
-      return res.status(400).json({ success: false, message: "All fields required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields required" });
     }
     if (new_password !== confirm_password) {
-      return res.status(400).json({ success: false, message: "Passwords do not match" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Passwords do not match" });
     }
     await client.query("BEGIN");
     const { rows } = await client.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type='reset' AND is_verified=true FOR UPDATE`,
-      [email]
+      [email],
     );
     if (!rows[0]) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ success: false, message: "OTP not verified" });
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP not verified" });
     }
     const password_hash = await hashPassword(new_password);
     await client.query(
       `UPDATE users 
        SET password_hash=$1, token_version = token_version + 1, updated_at=NOW() 
        WHERE email=$2`,
-      [password_hash, email]
+      [password_hash, email],
     );
     await client.query(
       `DELETE FROM temp_users WHERE email=$1 AND type='reset'`,
-      [email]
+      [email],
     );
     await client.query(
       `DELETE FROM refresh_tokens 
        WHERE user_id = (SELECT id FROM users WHERE email=$1)`,
-      [email]
+      [email],
     );
     await client.query("COMMIT");
     return res.status(200).json({
       success: true,
-      message: "Password reset successful"
+      message: "Password reset successful",
     });
   } catch (error) {
     await client.query("ROLLBACK");
     return res.status(500).json({
       success: false,
-      message: "Reset failed"
+      message: "Reset failed",
     });
   } finally {
     client.release();
@@ -299,17 +369,21 @@ export const resetPassword = async (req, res) => {
 export const resendOTP = async (req, res) => {
   try {
     const { email, type } = req.body;
-    if (!email || !type) return res.status(400).json({ success: false, message: "Required fields missing" });
+    if (!email || !type)
+      return res
+        .status(400)
+        .json({ success: false, message: "Required fields missing" });
     const { rows } = await pool.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type=$2`,
-      [email, type]
+      [email, type],
     );
-    if (!rows[0]) return res.status(400).json({ success: false, message: "Not found" });
+    if (!rows[0])
+      return res.status(400).json({ success: false, message: "Not found" });
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
     await pool.query(
       `UPDATE temp_users SET otp_code=$1, expires_at=$2, attempts=0 WHERE email=$3 AND type=$4`,
-      [otp_hash, new Date(Date.now() + 15 * 60 * 1000), email, type]
+      [otp_hash, new Date(Date.now() + 15 * 60 * 1000), email, type],
     );
     await sendOtpEmail({ email, otp, type });
     return res.json({ success: true, message: "OTP resent" });
@@ -321,7 +395,10 @@ export const resendOTP = async (req, res) => {
 export const googleAuth = async (req, res) => {
   try {
     const { idToken } = req.body;
-    if (!idToken) return res.status(400).json({ success: false, message: "Token required" });
+    if (!idToken)
+      return res
+        .status(400)
+        .json({ success: false, message: "Token required" });
     const googleUser = await verifyGoogleToken(idToken);
     let user = await findUserByEmail(googleUser.email);
     if (!user) {
@@ -330,15 +407,20 @@ export const googleAuth = async (req, res) => {
         full_name: googleUser.full_name,
         avatar_url: googleUser.avatar_url,
         subscription: "free",
-        preference: null
+        preference: null,
       });
+      try {
+        await handleAdminNewUserNotification(req.io, user);
+      } catch (e) {
+        console.error(e);
+      }
     }
     const accessToken = generateAccessToken(buildToken(user));
     const refreshToken = generateRefreshToken(user.id);
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
        VALUES ($1,$2,$3)`,
-      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
+      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
     );
     return res.json({
       success: true,
@@ -352,12 +434,14 @@ export const googleAuth = async (req, res) => {
         role: user.role,
         subscription: resolveSubscription(user),
         preference: user.preference,
-        avatar_url: user.avatar_url
-      }
+        avatar_url: user.avatar_url,
+      },
     });
   } catch (error) {
     console.error("Error in googleAuth:", error);
-    return res.status(500).json({ success: false, message: "Google auth failed" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Google auth failed" });
   }
 };
 
@@ -377,7 +461,7 @@ export const logoutAllUserDevices = async (req, res) => {
     await deleteAllUserTokens(userId);
     await pool.query(
       `UPDATE users SET token_version = token_version + 1 WHERE id=$1`,
-      [userId]
+      [userId],
     );
     return res.json({ success: true, message: "Logged out all devices" });
   } catch {

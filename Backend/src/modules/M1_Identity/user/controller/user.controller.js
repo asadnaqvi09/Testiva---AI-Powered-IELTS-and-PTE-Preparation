@@ -1,4 +1,4 @@
-import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar } from "../../user.model.js";
+import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken } from "../../user.model.js";
 import { processAndUploadAvatar } from "../services/image.service.js";
 import * as userValidator from "../validator/user.validator.js";
 
@@ -60,5 +60,22 @@ export const uploadAvatarController = async (req, res) => {
     res.status(200).json({ success: true, message: "Avatar uploaded successfully", user });
   } catch (error) {
     res.status(500).json({ success: false, message: "Avatar upload failed" });
+  }
+};
+
+export const updateFcmTokenController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fcm_token } = req.body;
+    if (!fcm_token) {
+      return res.status(400).json({ success: false, message: "FCM token is required" });
+    }
+    const updatedUser = await updateUserFcmToken(userId, fcm_token);
+    res.status(200).json({ success: true, message: "FCM token updated successfully", updatedUser });
+  } catch (error) {
+    if (error.message === "User not found") {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: "Failed to update FCM token" });
   }
 };

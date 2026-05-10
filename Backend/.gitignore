@@ -10,3 +10,7 @@ Task3.md
 Task4.md
 /generated/prisma
 project_report.md
+notification_module.md
+/src/database/setup_triggers.js
+developer_handbook.md
+/src/config/firebase-adminsdk.json

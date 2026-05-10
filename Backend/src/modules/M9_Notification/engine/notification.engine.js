@@ -82,3 +82,48 @@ export const handleModerationNotification = async (io, { postId, postOwnerId, ac
         entityType: "post"
     });
 };
+
+export const handleAdminNewUserNotification = async (io, newUser) => {
+    const result = await pool.query(`SELECT id FROM users WHERE role = 'admin'`);
+    const adminIds = result.rows.map(r => r.id);
+    if (!adminIds.length) return;
+    return sendBulkNotifications({
+        io,
+        recipientIds: adminIds,
+        type: "admin_new_user",
+        title: "New User Registration",
+        message: `${newUser.full_name} (${newUser.email}) just joined the platform.`,
+        entityId: newUser.id,
+        entityType: "user"
+    });
+};
+
+export const handleAdminNewPostNotification = async (io, newPost) => {
+    const result = await pool.query(`SELECT id FROM users WHERE role = 'admin'`);
+    const adminIds = result.rows.map(r => r.id);
+    if (!adminIds.length) return;
+    return sendBulkNotifications({
+        io,
+        recipientIds: adminIds,
+        type: "admin_new_post",
+        title: "New Community Post",
+        message: `A new post was created in the ${newPost.topic_tag} tag.`,
+        entityId: newPost.id,
+        entityType: "post"
+    });
+};
+
+export const handleAdminSubscriptionNotification = async (io, payload) => {
+    const result = await pool.query(`SELECT id FROM users WHERE role = 'admin'`);
+    const adminIds = result.rows.map(r => r.id);
+    if (!adminIds.length) return;
+    return sendBulkNotifications({
+        io,
+        recipientIds: adminIds,
+        type: "admin_subscription_changed",
+        title: "Manual Subscription Update",
+        message: `${payload.full_name}'s subscription was manually changed from ${payload.old_sub} to ${payload.new_sub}.`,
+        entityId: payload.user_id,
+        entityType: "user"
+    });
+};

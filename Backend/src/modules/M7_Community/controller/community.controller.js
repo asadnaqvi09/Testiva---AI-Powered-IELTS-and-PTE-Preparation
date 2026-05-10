@@ -8,14 +8,11 @@ import { getOnlineCount } from '../../M6_AI/services/presence.service.js';
 import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
 import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
 import {emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser} from '../../M9_Notification/socketIO/event.engine.js';
-import {handlePostCreatedNotification, handleLikeNotification, handleCommentNotification,handleReplyNotification, handleModerationNotification} from '../../M9_Notification/engine/notification.engine.js';
+import {handlePostCreatedNotification, handleLikeNotification, handleCommentNotification,handleReplyNotification, handleModerationNotification, handleAdminNewPostNotification} from '../../M9_Notification/engine/notification.engine.js';
 import { sendError,buildPagination } from '../../../utils/helpers.js';
-
 
 const USER_PAGE_LIMIT = 10;
 const ADMIN_PAGE_LIMIT = 8;
-
-
 
 export const createPost = async (req, res) => {
   try {
@@ -28,7 +25,8 @@ export const createPost = async (req, res) => {
     });
     const fullPost = await PostModel.getPostById(post.id);
     emitPostCreated(req.io, fullPost);
-    await handlePostCreatedNotification(req.io, fullPost);
+    handlePostCreatedNotification(req.io, fullPost).catch(console.error);
+    handleAdminNewPostNotification(req.io, fullPost).catch(console.error);
     return res.status(201).json({ success: true, data: fullPost });
   } catch (err) { return sendError(res, err); }
 };
@@ -80,8 +78,6 @@ export const deletePost = async (req, res) => {
   } catch (err) { return sendError(res, err); }
 };
 
-// --- Like Handlers ---
-
 export const togglePostLike = async (req, res) => {
   try {
     const { postId } = validatePostId(req.params);
@@ -97,8 +93,6 @@ export const togglePostLike = async (req, res) => {
     return res.json({ success: true, data: { ...result, like_count: likeCount } });
   } catch (err) { return sendError(res, err); }
 };
-
-// --- Comment Handlers ---
 
 export const createComment = async (req, res) => {
   try {
@@ -178,8 +172,6 @@ export const toggleCommentLike = async (req, res) => {
   } catch (err) { return sendError(res, err); }
 };
 
-// --- Presence & Share ---
-
 export const getOnlineUsers = async (req, res) => {
   try {
     const onlineCount = await getOnlineCount();
@@ -197,8 +189,6 @@ export const sharePost = async (req, res) => {
     return res.json({ success: true, message: 'Share recorded' });
   } catch (err) { return sendError(res, err); }
 };
-
-// --- Admin Moderation ---
 
 export const adminGetPosts = async (req, res) => {
   try {
