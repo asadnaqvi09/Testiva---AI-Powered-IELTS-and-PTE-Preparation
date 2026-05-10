@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { fileTypeFromBuffer } from "file-type";
-import cloudinary from "../../../config/cloudinary.js";
+import cloudinary from "../../../../config/cloudinary.js";
 
 export const processAndUploadAvatar = async (fileBuffer) => {
   const type = await fileTypeFromBuffer(fileBuffer);

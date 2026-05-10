@@ -1,7 +1,7 @@
-import pool from "../../config/db.js";
-import * as testModel from "./test.model.js";
-import { createTestSchema, updateHeaderSchema, updateQuestionSchema, addQuestionSchema } from "./test.validator.js";
-import cloudinary from "../../config/cloudinary.js";
+import pool from "../../../config/db.js";
+import * as testModel from "../models/test.model.js";
+import { createTestSchema, updateHeaderSchema, updateQuestionSchema, addQuestionSchema } from "../validators/test.validator.js";
+import cloudinary from "../../../config/cloudinary.js";
 
 export const createFullTest = async (req, res) => {
     const client = await pool.connect();
@@ -93,6 +93,14 @@ export const getTestById = async (req, res) => {
         const testDetails = await testModel.getFullTestDetails(req.params.id);
         if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
         if (req.user.role !== 'admin') {
+            // Subscription check for free users
+            if (req.user.subscription === 'free') {
+                const allowedSections = ['Reading', 'Writing'];
+                testDetails.sections = testDetails.sections.filter(section => 
+                    allowedSections.includes(section.section_name)
+                );
+            }
+            
             testDetails.sections.forEach(section => {
                 section.questions.forEach(q => {
                     delete q.correct_answer;

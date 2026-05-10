@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool from "../../../../config/db.js";
 import {
   createGoogleUser,
   findUserByEmail,
@@ -7,21 +7,21 @@ import {
   deleteAllUserTokens,
   findUserById,
   updateUserPreference
-} from "../user.model.js";
-import * as authValidator from "./auth.validator.js";
+} from "../../user.model.js";
+import * as authValidator from "../validator/auth.validator.js";
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken
-} from "../../../utils/jwt.js";
-import { verifyGoogleToken } from "./google.service.js";
-import { sendOtpEmail } from "../../../email_templates/email.service.js";
+} from "../../../../utils/jwt.js";
+import { verifyGoogleToken } from "../services/google.service.js";
+import { sendOtpEmail } from "../../../../email_templates/email.service.js";
 import {
   hashPassword,
   generateOTP,
   resolveSubscription,
   hashOTP
-} from "../../../utils/helpers.js";
+} from "../../../../utils/helpers.js";
 import bcrypt from "bcrypt";
 const hashOtpValue = async (otp) => hashOTP(String(otp));
 
@@ -333,9 +333,30 @@ export const googleAuth = async (req, res) => {
         preference: null
       });
     }
-    const token = generateAccessToken(buildToken(user));
-    return res.json({ success: true, token, user });
-  } catch {
+    const accessToken = generateAccessToken(buildToken(user));
+    const refreshToken = generateRefreshToken(user.id);
+    await pool.query(
+      `INSERT INTO refresh_tokens (user_id, token, expires_at)
+       VALUES ($1,$2,$3)`,
+      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
+    );
+    return res.json({
+      success: true,
+      accessToken,
+      refreshToken,
+      expiresIn: "15m",
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+        subscription: resolveSubscription(user),
+        preference: user.preference,
+        avatar_url: user.avatar_url
+      }
+    });
+  } catch (error) {
+    console.error("Error in googleAuth:", error);
     return res.status(500).json({ success: false, message: "Google auth failed" });
   }
 };

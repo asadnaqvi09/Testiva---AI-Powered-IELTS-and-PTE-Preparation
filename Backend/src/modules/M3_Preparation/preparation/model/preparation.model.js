@@ -1,4 +1,4 @@
-import pool from '../../../config/db.js';
+import pool from '../../../../config/db.js';
 
 export const createPreparationHeader = async (data, client = pool) => {
     const { title, test_type, section, summary, status } = data;

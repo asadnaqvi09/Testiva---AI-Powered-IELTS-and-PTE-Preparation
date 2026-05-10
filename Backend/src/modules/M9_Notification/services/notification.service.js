@@ -1,4 +1,4 @@
-import { createNotification, getUnreadNotificationCount } from "../models/notification.model.js";
+import { createNotification, getUnreadNotificationCount, createBulkNotifications } from "../models/notification.model.js";
 import { emitToUser } from "../socketIO/event.engine.js";
 
 export const sendNotification = async ({
@@ -26,9 +26,20 @@ export const sendNotification = async ({
 };
 
 export const sendBulkNotifications = async (params) => {
-  const { recipientIds = [], ...rest } = params;
+  const { io, recipientIds = [], senderId = null, type, title, message, entityId = null, entityType = null } = params;
   if (!recipientIds.length) return [];
-  return Promise.all(
-    recipientIds.map((recipientId) => sendNotification({ recipientId, ...rest }))
-  );
+  
+  // Highly efficient single database connection bulk insert
+  const notifications = await createBulkNotifications({
+    recipientIds, senderId, type, title, message, entityId, entityType
+  });
+
+  // Non-blocking socket emission (omits individual unread count to save 5000+ DB queries)
+  setImmediate(() => {
+    notifications.forEach(notif => {
+      emitToUser(io, notif.user_id, "notification:new", { notification: notif });
+    });
+  });
+
+  return notifications;
 };

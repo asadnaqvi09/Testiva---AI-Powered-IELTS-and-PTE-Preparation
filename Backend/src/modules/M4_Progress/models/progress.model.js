@@ -32,7 +32,7 @@ export const startNewAttempt = async (data, client = pool) => {
 };
 
 export const saveUserResponse = async (data, client = pool) => {
-  const { attempt_id, question_id, user_answer, audio_response_url, client_created_at } = data
+  const { attempt_id, question_id, user_answer, audio_response_url, time_taken_seconds, client_created_at } = data
   const dbClient = client === pool ? await pool.connect() : client
   const normalize = v => {
     if (typeof v === 'string') return v.trim().toLowerCase()
@@ -61,17 +61,18 @@ export const saveUserResponse = async (data, client = pool) => {
       }
     }
     const result = await dbClient.query(
-      `INSERT INTO user_responses (attempt_id, question_id, user_answer, audio_response_url, is_correct, marks_obtained, client_created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO user_responses (attempt_id, question_id, user_answer, audio_response_url, is_correct, marks_obtained, time_taken_seconds, client_created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (attempt_id, question_id)
        DO UPDATE SET
         user_answer = EXCLUDED.user_answer,
         audio_response_url = COALESCE(EXCLUDED.audio_response_url,user_responses.audio_response_url),
         is_correct = EXCLUDED.is_correct,
         marks_obtained = EXCLUDED.marks_obtained,
+        time_taken_seconds = COALESCE(EXCLUDED.time_taken_seconds,user_responses.time_taken_seconds),
         updated_at = NOW()
-       RETURNING id,attempt_id,question_id,is_correct,marks_obtained,updated_at`,
-      [attempt_id,question_id,user_answer,audio_response_url,is_correct,marks_obtained,client_created_at]
+       RETURNING id,attempt_id,question_id,is_correct,marks_obtained,time_taken_seconds,updated_at`,
+      [attempt_id,question_id,user_answer,audio_response_url,is_correct,marks_obtained,time_taken_seconds,client_created_at]
     )
     if (client === pool) await dbClient.query('COMMIT')
     return result.rows[0]

@@ -1,4 +1,4 @@
-import pool from '../../config/db.js';
+import pool from '../../../config/db.js';
 
 export const createTest = async (testData, client = pool) => {
     const { title, exam_type, test_category, total_time_minutes, created_by, difficulty_level, passing_score, is_published = true } = testData;
@@ -21,6 +21,20 @@ export const getAllTests = async (limit, offset, examType = null) => {
     params.push(limit, offset);
     const result = await pool.query(query, params);
     return result.rows;
+};
+
+export const getTestsByFilters = async (examTypes, allowedSections) => {
+    const result = await pool.query(
+        `SELECT id, title, exam_type, test_category, difficulty_level, total_time_minutes, created_at 
+         FROM tests 
+         WHERE exam_type = ANY($1) AND is_published = true
+         ORDER BY created_at DESC`,
+        [examTypes]
+    );
+    return result.rows.map(test => ({
+        ...test,
+        allowed_sections: allowedSections || 'ALL'
+    }));
 };
 
 export const updateTestHeader = async (id, data) => {

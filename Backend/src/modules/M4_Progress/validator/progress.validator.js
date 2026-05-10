@@ -4,6 +4,7 @@ const responseSchema = Joi.object({
     question_id: Joi.string().uuid().required(),
     user_answer: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
     audio_url: Joi.string().uri().allow('', null).optional(),
+    time_taken_seconds: Joi.number().integer().min(0).allow(null).optional(),
     client_created_at: Joi.date().iso().optional()
 });
 

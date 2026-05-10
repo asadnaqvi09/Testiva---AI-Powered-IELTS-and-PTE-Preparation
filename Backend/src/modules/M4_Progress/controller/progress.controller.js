@@ -1,7 +1,7 @@
-import pool from '../../config/db.js';
-import * as progressModel from './progress.model.js';
-import { addSyncJob } from '../M5_Offline/sync.queue.js';
-import { submitTestSchema } from './progress.validator.js';
+import pool from '../../../config/db.js';
+import * as progressModel from '../progress.model.js';
+import { addSyncJob } from '../../M5_Offline/sync.queue.js';
+import { submitTestSchema } from '../validator/progress.validator.js';
 
 export const submitTest = async (req, res) => {
     const userId = req.user.id;
@@ -29,6 +29,7 @@ export const submitTest = async (req, res) => {
                     question_id: resp.question_id,
                     user_answer: resp.user_answer,
                     audio_response_url: resp.audio_url || null,
+                    time_taken_seconds: resp.time_taken_seconds || null,
                     client_created_at: resp.client_created_at || new Date()
                 }, client);
             }

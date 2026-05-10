@@ -35,6 +35,28 @@ export const createNotification = async ({
   return result.rows[0];
 };
 
+export const createBulkNotifications = async ({
+  recipientIds,
+  senderId = null,
+  type,
+  title,
+  message,
+  entityId = null,
+  entityType = null
+}) => {
+  if (!recipientIds || !recipientIds.length) return [];
+  
+  const result = await pool.query(
+    `INSERT INTO notifications (
+      user_id, sender_id, type, title, message, entity_id, entity_type
+    )
+    SELECT unnest($1::uuid[]), $2, $3, $4, $5, $6, $7
+    RETURNING *`,
+    [recipientIds, senderId, type, title, message, entityId, entityType]
+  );
+  return result.rows;
+};
+
 export const getUserNotifications = async (
   userId,
   limit = 20,

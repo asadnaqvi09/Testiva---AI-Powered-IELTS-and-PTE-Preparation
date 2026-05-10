@@ -151,12 +151,12 @@ export const updateUserSubscriptionStatus = async (id, subscription) => {
 };
 
 export const createGoogleUser = async (data) => {
-  const { email, full_name, avatar_url, subscription = "free" } = data;
+  const { email, full_name, avatar_url, subscription = "free", preference = null } = data;
   const result = await pool.query(
-    `INSERT INTO users (email, full_name, avatar_url, auth_provider, subscription, is_email_verified)
-     VALUES ($1, $2, $3, 'google', $4, true)
-     RETURNING id, full_name, email, role, subscription, avatar_url`,
-    [email, full_name, avatar_url, subscription]
+    `INSERT INTO users (email, full_name, avatar_url, auth_provider, subscription, is_email_verified, preference)
+     VALUES ($1, $2, $3, 'google', $4, true, $5)
+     RETURNING ${USER_FIELDS}`,
+    [email, full_name, avatar_url, subscription, preference]
   );
   return result.rows[0];
 };

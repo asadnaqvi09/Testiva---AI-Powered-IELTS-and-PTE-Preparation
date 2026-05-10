@@ -1,5 +1,5 @@
-import pool from '../../../config/db.js'
-import { fetchAllUsers, findUserById, getAdminStats, updateUserSubscriptionStatus } from '../user.model.js'
+import pool from '../../../../config/db.js'
+import { fetchAllUsers, findUserById, getAdminStats, updateUserSubscriptionStatus } from '../../user.model.js'
 import { v4 as uuidv4, validate as validateUUID } from "uuid";
 
 export const getDashboardStats = async (req, res) => {

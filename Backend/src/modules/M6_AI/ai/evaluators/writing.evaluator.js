@@ -3,10 +3,10 @@ import { writingPrompt } from '../prompts/writingEvaluation.prompt.js';
 import * as aiModel from '../../ai.model.js';
 import { processWritingResponse } from '../processors (Input Cleaning)/writing.processor.js';
 
-export const evaluateWriting = async (userId, attemptId, questionText, studentResponse) => {
+export const evaluateWriting = async (userId, attemptId, testType, questionText, studentResponse) => {
     try {
         const { processedText } = processWritingResponse(studentResponse);
-        const prompt = writingPrompt("IELTS Writing", questionText, processedText);
+        const prompt = writingPrompt(`${testType || 'IELTS'} Writing`, questionText, processedText);
         const result = await model.generateContent(prompt);
         const response = await result.response;
         let text = response.text();
