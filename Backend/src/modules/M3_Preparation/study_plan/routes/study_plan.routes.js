@@ -1,7 +1,7 @@
 import express from "express";
 import * as studyController from "./study_plan.controller.js";
-import { authenticate } from "../../../middleware/auth.middleware.js";
-import { requireSubscription } from "../../../middleware/subscription.middleware.js";
+import { authenticate } from "../../../../middleware/auth.middleware.js";
+import { requireSubscription } from "../../../../middleware/subscription.middleware.js";
 
 const router = express.Router();
 

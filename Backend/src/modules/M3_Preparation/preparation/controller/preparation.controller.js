@@ -1,10 +1,10 @@
 import pool from "../../../../config/db.js";
-import * as prepModel from "./preparation.model.js";
+import * as prepModel from "../model/preparation.model.js";
 import {
     createPreparationSchema,
     updatePreparationSchema,
     preparationFilterSchema
-} from "./preparation.validator.js";
+} from "../validator/preparation.validator.js";
 
 const handleServerError = (res, error) => {
     console.error(error);

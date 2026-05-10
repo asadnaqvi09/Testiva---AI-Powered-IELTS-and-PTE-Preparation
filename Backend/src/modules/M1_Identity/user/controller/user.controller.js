@@ -1,5 +1,5 @@
 import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar } from "../../user.model.js";
-import { processAndUploadAvatar } from "./image.service.js";
+import { processAndUploadAvatar } from "../services/image.service.js";
 import * as userValidator from "../validator/user.validator.js";
 
 export const getProfileController = async (req, res) => {

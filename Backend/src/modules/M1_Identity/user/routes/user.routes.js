@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticate } from "../../../../middleware/auth.middleware.js";
 import { authorizeRoles } from "../../../../middleware/role.middleware.js";
-import * as userController from "./user.controller.js";
+import * as userController from "../controller/user.controller.js";
 import { upload } from "../../../../middleware/upload.middleware.js";
 const Router = express.Router();
 

@@ -1,4 +1,4 @@
-import * as aiService from './services/ai.service.js';
+import * as aiService from '../services/ai.service.js';
 
 export const evaluateSubmission = async (req, res) => {
     try {

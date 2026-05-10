@@ -1,5 +1,5 @@
 import { syncQueue } from "./sync.queue.js";
-import * as Progress from '../M4_Progress/progress.model.js';
+import * as Progress from '../M4_Progress/models/progress.model.js';
 import pool from '../../config/db.js';
 
 syncQueue.process(async (job) => {

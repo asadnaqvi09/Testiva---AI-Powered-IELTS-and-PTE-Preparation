@@ -1,5 +1,5 @@
 import express from 'express';
-import * as progressController from './progress.controller.js';
+import * as progressController from '../controller/progress.controller.js';
 import { authenticate } from '../../../middleware/auth.middleware.js'
 
 const router = express.Router();

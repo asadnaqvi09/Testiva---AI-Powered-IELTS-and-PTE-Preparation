@@ -1,4 +1,4 @@
-import { redisClient as redis } from "../../../../config/redis.js";
+import { redisClient as redis } from "../../../config/redis.js";
 const PRESENCE_KEY = "presence:user:";
 const ROOM_KEY = "presence:room:";
 const LAST_SEEN_KEY = "presence:last_seen:";

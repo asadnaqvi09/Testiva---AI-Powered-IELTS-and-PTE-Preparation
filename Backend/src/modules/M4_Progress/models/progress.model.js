@@ -1,4 +1,4 @@
-import pool from '../../config/db.js';
+import pool from '../../../config/db.js';
 
 export const startNewAttempt = async (data, client = pool) => {
     const { user_id, test_id, client_started_at, is_offline = false } = data;

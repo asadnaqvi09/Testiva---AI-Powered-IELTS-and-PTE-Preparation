@@ -1,6 +1,6 @@
-import { model } from '../../../../config/gemini.js';
+import { model } from '../../../config/gemini.js';
 import { writingPrompt } from '../prompts/writingEvaluation.prompt.js';
-import * as aiModel from '../../ai.model.js';
+import * as aiModel from '../model/ai.model.js';
 import { processWritingResponse } from '../processors (Input Cleaning)/writing.processor.js';
 
 export const evaluateWriting = async (userId, attemptId, testType, questionText, studentResponse) => {

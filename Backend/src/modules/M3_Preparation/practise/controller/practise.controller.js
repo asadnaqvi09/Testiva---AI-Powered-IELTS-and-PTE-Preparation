@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js";
+import pool from "../../../../config/db.js";
 import * as practiceModel from "../practise.model.js";
 
 export const startPractice = async (req, res) => {

@@ -1,5 +1,5 @@
 import pool from '../../../config/db.js';
-import * as progressModel from '../progress.model.js';
+import * as progressModel from '../models/progress.model.js';
 import { addSyncJob } from '../../M5_Offline/sync.queue.js';
 import { submitTestSchema } from '../validator/progress.validator.js';
 

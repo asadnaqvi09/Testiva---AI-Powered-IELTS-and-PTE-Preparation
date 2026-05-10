@@ -1,8 +1,8 @@
-import pool from "../../../config/db.js";
+import pool from "../../../../config/db.js";
 import * as studyPlanModel from "../studyPlan.model.js";
-import { generateRecommendations } from "../../../utils/recommendationEngine.js";
-import { generateStudyPlan } from "../../../utils/studyPlan.js";
-import { analyzeWeakness } from "../../../utils/weaknessAnalyzer.js";
+import { generateRecommendations } from "../../../../utils/recommendationEngine.js";
+import { generateStudyPlan } from "../../../../utils/studyPlan.js";
+import { analyzeWeakness } from "../../../../utils/weaknessAnalyzer.js";
 
 export const createStudyPlan = async (req, res) => {
     const client = await pool.connect();

@@ -1,7 +1,7 @@
 import express from "express";
 import * as practiseController from "./practise.controller.js";
-import { authenticate } from "../../../middleware/auth.middleware.js";
-import { requireSubscription } from "../../../middleware/subscription.middleware.js";
+import { authenticate } from "../../../../middleware/auth.middleware.js";
+import { requireSubscription } from "../../../../middleware/subscription.middleware.js";
 
 const router = express.Router();
 router.post("/practice/start", authenticate, requireSubscription("free", "basic", "premium"), practiseController.startPractice);

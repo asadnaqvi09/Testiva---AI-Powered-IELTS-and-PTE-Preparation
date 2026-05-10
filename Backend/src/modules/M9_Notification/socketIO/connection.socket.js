@@ -7,7 +7,7 @@ import {
   refreshPresence,
   getOnlineCount,
   cleanupExpiredUsers
-} from "../../M6_AI/ai/services/presence.service.js";
+} from "../../M6_AI/services/presence.service.js";
 
 const PING_INTERVAL = 20000;
 

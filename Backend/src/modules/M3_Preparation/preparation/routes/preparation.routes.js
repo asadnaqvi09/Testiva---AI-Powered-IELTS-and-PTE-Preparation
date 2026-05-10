@@ -1,9 +1,9 @@
 import express from "express";
-import * as prepController from "./preparation.controller.js";
+import * as prepController from "../controller/preparation.controller.js";
 import { authenticate } from "../../../../middleware/auth.middleware.js";
 import { authorizeRoles } from "../../../../middleware/role.middleware.js";
 import { fileUpload } from '../../../../middleware/upload.middleware.js';
-import { uploadFileController } from './file.service.js';
+import { uploadFileController } from '../services/file.service.js';
 
 const router = express.Router();
 

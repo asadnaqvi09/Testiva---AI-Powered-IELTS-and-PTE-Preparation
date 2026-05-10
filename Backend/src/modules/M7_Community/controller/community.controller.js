@@ -4,7 +4,7 @@ import * as LikeModel from '../models/like.model.js';
 import * as ShareModel from '../models/share.model.js';
 import * as FlagModel from '../models/flag.model.js';
 import {validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts,validateSharePost, validateCreateComment, validateUpdateComment,validateCommentId, validateAdminFlagPost, validateAdminDeletePost} from '../validator/community.validator.js';
-import { getOnlineCount } from '../../M6_AI/ai/services/presence.service.js';
+import { getOnlineCount } from '../../M6_AI/services/presence.service.js';
 import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
 import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
 import {emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser} from '../../M9_Notification/socketIO/event.engine.js';
