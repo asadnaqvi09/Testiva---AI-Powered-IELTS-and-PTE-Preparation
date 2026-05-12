@@ -1,22 +1,7 @@
 import pool from "../../config/db.js";
 import bcrypt from "bcrypt";
 
-const USER_FIELDS = `
-id,
-full_name,
-email,
-bio,
-avatar_url,
-role,
-subscription,
-preference,
-auth_provider,
-is_email_verified,
-token_version,
-last_login_at,
-created_at,
-updated_at
-`;
+const USER_FIELDS = `id,full_name,email,bio,avatar_url,role,subscription,preference,auth_provider,is_email_verified,token_version,last_login_at,created_at,updated_at`;
 
 export const findUserByEmail = async (email) => {
   const result = await pool.query(

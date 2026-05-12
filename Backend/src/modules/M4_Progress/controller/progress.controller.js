@@ -29,13 +29,13 @@ export const submitTest = async (req, res) => {
                     question_id: resp.question_id,
                     user_answer: resp.user_answer,
                     audio_response_url: resp.audio_url || null,
-                    time_taken_seconds: resp.time_taken_seconds || null,
+                    time_taken_seconds: resp.time_taken_seconds || 0,
                     client_created_at: resp.client_created_at || new Date()
                 }, client);
             }
             await progressModel.finalizeAttempt(attemptId, {
-                overall_band_score: null,
-                feedback: null,
+                overall_band_score: null, 
+                feedback: "Evaluating performance...",
                 client_completed_at,
                 status: 'pending_evaluation'
             }, client);
@@ -79,29 +79,35 @@ export const getTestResult = async (req, res) => {
         res.status(200).json({
             success: true,
             data: {
-                main_box: {
+                main_info: {
+                    test_title: attempt.test_title,
+                    test_type: attempt.test_type,
                     band_score: attempt.overall_band_score || "Analyzing",
-                    correct,
-                    incorrect: total - correct,
-                    percentage: total > 0 ? ((correct / total) * 100).toFixed(2) + "%" : "0%"
+                    status: attempt.status
                 },
-                performance_sliders: {
+                stats: {
+                    total_questions: total,
+                    correct_answers: correct,
+                    accuracy: total > 0 ? ((correct / total) * 100).toFixed(1) + "%" : "0%"
+                },
+                scores_breakdown: {
                     reading: attempt.reading_score || 0,
                     listening: attempt.listening_score || 0,
                     writing: attempt.writing_score || 0,
                     speaking: attempt.speaking_score || 0
                 },
-                ai_feedback: {
-                    status: attempt.status,
-                    feedback: attempt.feedback || "AI is evaluating...",
-                    detailed_analysis: attempt.detailed_analysis || null,
-                    improvement_suggestions: attempt.improvement_suggestions || null
+                ai_analysis: {
+                    feedback: attempt.feedback,
+                    detailed_analysis: attempt.detailed_analysis,
+                    improvement_suggestions: attempt.improvement_suggestions
                 },
-                quick_review: responses.map(r => ({
+                review: responses.map(r => ({
                     q_no: r.order_number,
-                    status: r.is_correct ? 'correct' : 'incorrect',
+                    question: r.question_text,
+                    type: r.question_type,
                     your_answer: r.user_answer,
-                    type: r.question_type
+                    is_correct: r.is_correct,
+                    marks: r.marks_obtained
                 }))
             }
         });

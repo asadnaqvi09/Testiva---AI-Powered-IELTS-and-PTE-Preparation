@@ -8,40 +8,39 @@ export const createFullTest = async (req, res) => {
     try {
         const { error, value } = createTestSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
-        const { title, exam_type, test_category, sections, difficulty_level, passing_score } = value;
+        const { title, exam_type, test_category, sections, difficulty_level, passing_score, total_duration, is_premium } = value;
         const adminId = req.user.id;
         await client.query("BEGIN");
-        let totalTime = 0;
         const newTest = await testModel.createTest({
             title,
             exam_type,
             test_category,
-            total_time_minutes: 0,
+            total_duration,
             created_by: adminId,
             difficulty_level,
-            passing_score
+            passing_score,
+            is_premium,
+            is_published: true
         }, client);
         for (const section of sections) {
             const newSection = await testModel.createSection({
                 test_id: newTest.id,
                 section_name: section.section_name,
+                section_type: section.section_type,
                 time_limit_minutes: section.time_limit_minutes,
                 order_number: section.order_number,
                 instructions: section.instructions,
-                question_types_allowed: section.question_types_allowed || [],
-                task_count: section.task_count || 1
+                question_types_allowed: section.question_types_allowed,
+                task_count: section.task_count
             }, client);
             if (section.questions && section.questions.length > 0) {
-                const questionsData = section.questions.map((q, index) => ({
+                const questionsData = section.questions.map((q) => ({
                     ...q,
-                    section_id: newSection.id,
-                    order_number: index + 1
+                    section_id: newSection.id
                 }));
                 await testModel.createQuestionsBatch(questionsData, client);
             }
-            totalTime += section.time_limit_minutes;
         }
-        await testModel.updateTestDuration(newTest.id, totalTime, client);
         await client.query("COMMIT");
         res.status(201).json({ success: true, data: { id: newTest.id, title } });
     } catch (error) {
@@ -93,14 +92,12 @@ export const getTestById = async (req, res) => {
         const testDetails = await testModel.getFullTestDetails(req.params.id);
         if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
         if (req.user.role !== 'admin') {
-            // Subscription check for free users
             if (req.user.subscription === 'free') {
                 const allowedSections = ['Reading', 'Writing'];
-                testDetails.sections = testDetails.sections.filter(section => 
+                testDetails.sections = testDetails.sections.filter(section =>
                     allowedSections.includes(section.section_name)
                 );
             }
-            
             testDetails.sections.forEach(section => {
                 section.questions.forEach(q => {
                     delete q.correct_answer;
@@ -189,7 +186,7 @@ export const deleteTest = async (req, res) => {
                 const folder = parts.slice(parts.indexOf('upload') + 2).join('/');
                 const publicId = folder ? `${folder}/${filename}` : filename;
                 await cloudinary.uploader.destroy(publicId);
-            } catch (e) {}
+            } catch (e) { }
         }
         await testModel.deleteTest(req.params.id);
         res.status(200).json({ success: true, message: "Test deleted successfully" });

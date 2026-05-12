@@ -1,17 +1,28 @@
 import Joi from 'joi';
 
-const responseSchema = Joi.object({
+const singleResponse = {
     question_id: Joi.string().uuid().required(),
-    user_answer: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-    audio_url: Joi.string().uri().allow('', null).optional(),
-    time_taken_seconds: Joi.number().integer().min(0).allow(null).optional(),
-    client_created_at: Joi.date().iso().optional()
+    user_answer: Joi.any().required(),
+    audio_response_url: Joi.string().uri().allow('', null).optional(),
+    time_taken_seconds: Joi.number().integer().min(0).default(0),
+    client_created_at: Joi.date().iso().default(() => new Date())
+};
+
+export const startAttemptSchema = Joi.object({
+    test_id: Joi.string().uuid().required(),
+    client_started_at: Joi.date().iso().required(),
+    is_offline: Joi.boolean().default(false)
 });
 
-export const submitTestSchema = Joi.object({
+export const saveResponseSchema = Joi.object({
+    attempt_id: Joi.string().uuid().required(),
+    ...singleResponse
+});
+
+export const submitFullTestSchema = Joi.object({
     test_id: Joi.string().uuid().required(),
     client_started_at: Joi.date().iso().required(),
     client_completed_at: Joi.date().iso().required(),
     is_offline: Joi.boolean().default(false),
-    responses: Joi.array().items(responseSchema).min(1).required()
+    responses: Joi.array().items(Joi.object(singleResponse)).min(1).required()
 });
