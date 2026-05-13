@@ -9,12 +9,12 @@ class LoginHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Welcome Back! 👋",
+          'Welcome Back! 👋',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
         ),
         const SizedBox(height: 8),
         Text(
-          "Sign in to continue your learning journey",
+          'Sign in to continue your learning journey',
           style: TextStyle(color: Colors.grey[600], fontSize: 14),
         ),
       ],

@@ -34,7 +34,7 @@ class GoogleButton extends StatelessWidget {
             children: [
               Icon(Icons.g_mobiledata, color: Colors.blue, size: 30),
               SizedBox(width: 8),
-              Text("Continue with Google", style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Continue with Google', style: TextStyle(fontWeight: FontWeight.w500)),
             ],
           ),
         ),

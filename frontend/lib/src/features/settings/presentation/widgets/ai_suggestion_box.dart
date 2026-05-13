@@ -23,10 +23,10 @@ class AiSuggestionBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.lightbulb_outline, color: AppColors.primary, size: 18),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 'AI PRE-FILL SUGGESTION',
                 style: TextStyle(
@@ -56,7 +56,7 @@ class AiSuggestionBox extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 15),
               elevation: 0,
             ),
-            child: const Text("Use This Suggestion", style: TextStyle(fontSize: 12)),
+            child: const Text('Use This Suggestion', style: TextStyle(fontSize: 12)),
           )
         ],
       ),

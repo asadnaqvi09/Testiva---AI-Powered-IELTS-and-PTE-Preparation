@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class RatingSection extends StatelessWidget {
   final int currentRating;
   final Function(int) onRatingChanged;
-  final List<String> labels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
+  final List<String> labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
   RatingSection({super.key, required this.currentRating, required this.onRatingChanged});
 
@@ -14,7 +14,7 @@ class RatingSection extends StatelessWidget {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
-          const Text("Overall Rating", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text('Overall Rating', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 15),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

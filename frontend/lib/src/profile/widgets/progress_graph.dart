@@ -15,15 +15,15 @@ class ProgressGraph extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('7-Day Progress',
+              Text('7-Day Progress',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1E293B))),
-              const Row(
+              Row(
                 children: [
                   Icon(Icons.trending_up, color: Colors.green, size: 16),
                   SizedBox(width: 5),

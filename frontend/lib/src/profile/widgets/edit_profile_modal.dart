@@ -24,7 +24,7 @@ class EditProfileModal extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    "Edit Profile",
+                    'Edit Profile',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   IconButton(
@@ -34,13 +34,13 @@ class EditProfileModal extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              _buildTextField("Full Name", "Ahmed Khan"),
+              _buildTextField('Full Name', 'Ahmed Khan'),
               const SizedBox(height: 15),
-              _buildTextField("Email Address", "freeuser@example.com"),
+              _buildTextField('Email Address', 'freeuser@example.com'),
               const SizedBox(height: 15),
-              _buildTextField("Current Password", "*********", isPassword: true),
+              _buildTextField('Current Password', '*********', isPassword: true),
               const SizedBox(height: 15),
-              _buildTextField("New Password", "*********", isPassword: true),
+              _buildTextField('New Password', '*********', isPassword: true),
               const SizedBox(height: 25),
               Row(
                 children: [
@@ -53,7 +53,7 @@ class EditProfileModal extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text("Cancel"),
+                      child: const Text('Cancel'),
                     ),
                   ),
                   const SizedBox(width: 15),
@@ -67,7 +67,7 @@ class EditProfileModal extends StatelessWidget {
                               children: [
                                 Icon(Icons.check_circle, color: Colors.white, size: 20),
                                 SizedBox(width: 10),
-                                Text("Profile updated successfully!"),
+                                Text('Profile updated successfully!'),
                               ],
                             ),
                             backgroundColor: const Color(0xFF28A745),
@@ -88,7 +88,7 @@ class EditProfileModal extends StatelessWidget {
                         ),
                       ),
                       child: const Text(
-                        "Save Changes",
+                        'Save Changes',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),

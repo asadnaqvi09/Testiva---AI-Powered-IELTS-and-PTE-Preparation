@@ -40,18 +40,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text("New Password", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const Text('New Password', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          const Text("Set your new password to login", style: TextStyle(color: Colors.grey)),
+          const Text('Set your new password to login', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 40),
-          _field("New Password", Icons.lock_outline, _pass, true),
+          _field('New Password', Icons.lock_outline, _pass, true),
           const SizedBox(height: 20),
-          _field("Confirm Password", Icons.lock_reset, _confirm, false),
+          _field('Confirm Password', Icons.lock_reset, _confirm, false),
           const Spacer(),
           SizedBox(
               width: double.infinity,
               child: AppButton(
-                text: "Update Password",
+                text: 'Update Password',
                 onPressed: _canUpdate ? () => Navigator.popUntil(context, (r) => r.isFirst) : null,
               )
           ),

@@ -18,14 +18,14 @@ class ProgressCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Overall Progress", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Overall Progress', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const Text("Keep going, you're doing great!", style: TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 15),
               Row(
                 children: [
-                  _tabItem("IELTS", true),
+                  _tabItem('IELTS', true),
                   const SizedBox(width: 10),
-                  _tabItem("PTE", false),
+                  _tabItem('PTE', false),
                 ],
               )
             ],
@@ -42,7 +42,7 @@ class ProgressCard extends StatelessWidget {
                   color: Colors.blue,
                 ),
               ),
-              const Text("65%", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+              const Text('65%', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
             ],
           )
         ],

@@ -13,7 +13,7 @@ class FeedbackProvider extends ChangeNotifier {
     // Yahan Future mein AI API call aayegi
     //await Future.delayed(const Duration(seconds: 2));
 
-    String aiText = "I am really enjoying the IELTS speaking practice modules. The AI feedback is very helpful, but I would love to see more mock tests for the writing section.";
+    String aiText = 'I am really enjoying the IELTS speaking practice modules. The AI feedback is very helpful, but I would love to see more mock tests for the writing section.';
 
     feedbackController.text = aiText;
     _isLoading = false;
