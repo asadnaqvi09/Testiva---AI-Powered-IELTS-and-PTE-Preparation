@@ -2,33 +2,33 @@ import pool from "../../../config/db.js";
 
 export const createNotification = async ({
   user_id,
-  sender_id = null,
+  actor_id = null,
   type,
   title,
   message,
-  entity_id = null,
-  entity_type = null
+  post_id = null,    // Matched with table schema
+  comment_id = null  // Matched with table schema
 }) => {
   const result = await pool.query(
     `INSERT INTO notifications (
       user_id,
-      sender_id,
+      actor_id,
       type,
       title,
       message,
-      entity_id,
-      entity_type
+      post_id,
+      comment_id
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *`,
     [
       user_id,
-      sender_id,
+      actor_id,
       type,
       title,
       message,
-      entity_id,
-      entity_type
+      post_id,
+      comment_id
     ]
   );
 
@@ -41,18 +41,19 @@ export const createBulkNotifications = async ({
   type,
   title,
   message,
-  entityId = null,
-  entityType = null
+  post_id = null,
+  comment_id = null
 }) => {
   if (!recipientIds || !recipientIds.length) return [];
   
+  // Custom loop or dynamic query adjustment for bulk using existing safe columns
   const result = await pool.query(
     `INSERT INTO notifications (
-      user_id, sender_id, type, title, message, entity_id, entity_type
+      user_id, actor_id, type, title, message, post_id, comment_id
     )
     SELECT unnest($1::uuid[]), $2, $3, $4, $5, $6, $7
     RETURNING *`,
-    [recipientIds, senderId, type, title, message, entityId, entityType]
+    [recipientIds, senderId, type, title, message, post_id, comment_id]
   );
   return result.rows;
 };
@@ -68,8 +69,8 @@ export const getUserNotifications = async (
       n.type,
       n.title,
       n.message,
-      n.entity_id,
-      n.entity_type,
+      n.post_id,
+      n.comment_id,
       n.is_read,
       n.created_at,
       json_build_object(
@@ -78,8 +79,7 @@ export const getUserNotifications = async (
         'avatar_url', u.avatar_url
       ) AS sender
     FROM notifications n
-    LEFT JOIN users u
-      ON u.id = n.sender_id
+    LEFT JOIN users u ON u.id = n.actor_id
     WHERE n.user_id = $1
     ORDER BY n.created_at DESC
     LIMIT $2
@@ -97,13 +97,12 @@ export const markNotificationAsRead = async (
   const result = await pool.query(
     `UPDATE notifications
     SET
-      is_read = true,
-      read_at = NOW()
+      is_read = true
     WHERE id = $1
     AND user_id = $2
     RETURNING *`,
     [notificationId, userId]
-  );
+  ); // Removed read_at = NOW() to prevent database crash
 
   return result.rows[0] || null;
 };
@@ -112,12 +111,11 @@ export const markAllNotificationsAsRead = async (userId) => {
   await pool.query(
     `UPDATE notifications
     SET
-      is_read = true,
-      read_at = NOW()
+      is_read = true
     WHERE user_id = $1
     AND is_read = false`,
     [userId]
-  );
+  ); // Removed read_at = NOW() to prevent database crash
 
   return true;
 };

@@ -117,22 +117,16 @@ export const validateGetPosts = (query) =>
   validate(
     Joi.object({
       topic_tag: Joi.string()
-        .uppercase()
-        .valid('ALL', ...VALID_TAGS)
+        .valid('ALL', 'General', 'IELTS', 'PTE')
         .default('ALL')
         .messages({
           'any.only': 'Invalid topic_tag filter',
         }),
       filter: Joi.string()
-        .valid(...VALID_FILTERS)
-        .messages({
-          'any.only': 'Filter must be clean or flagged',
-        }),
+        .valid('clean', 'flagged')
+        .allow('', null),
       search: Joi.string().trim().max(100).allow(''),
-      page: Joi.number().integer().min(1).default(1).messages({
-        'number.base': 'Page must be a number',
-        'number.min': 'Page must be at least 1',
-      }),
+      page: Joi.number().integer().min(1).default(1),
       limit: Joi.number().integer().min(1).max(50).default(10),
     }),
     query

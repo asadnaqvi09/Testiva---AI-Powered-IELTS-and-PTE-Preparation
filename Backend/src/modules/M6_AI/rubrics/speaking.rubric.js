@@ -1,9 +1,31 @@
 export const speakingRubric = {
-    criteria: [
-        "Fluency and Coherence: Ability to speak with continuity and flow.",
-        "Lexical Resource: Ability to use a range of vocabulary effectively.",
-        "Grammatical Range and Accuracy: Range and correct use of grammar structures.",
-        "Pronunciation: Clarity of speech and use of intonation/stress."
+    exam_type: "IELTS/PTE",
+    pillars: {
+        fluency_coherence: {
+            label: "Fluency and Coherence",
+            focus: ["Speech continuity", "Self-correction", "Hesitation frequency", "Logical development"]
+        },
+        lexical_resource: {
+            label: "Lexical Resource",
+            focus: ["Vocabulary flexibility", "Idiomatic usage", "Paraphrasing ability"]
+        },
+        grammar_accuracy: {
+            label: "Grammatical Range and Accuracy",
+            focus: ["Complex structures", "Tense consistency", "Error density"]
+        },
+        pronunciation: {
+            label: "Pronunciation",
+            focus: ["Intonation", "Individual sounds clarity", "Word/Sentence stress", "Ease of being understood"]
+        }
+    },
+    negative_markers: [
+        "Long pauses (5+ seconds)", 
+        "Repetition of same filler words (um, uh, like)", 
+        "Short, undeveloped answers"
     ],
-    scoringNotes: "Focus on hesitation, self-correction, and the ability to develop topics at length."
+    scoring_system: {
+        min: 0,
+        max: 9.0,
+        step: 0.5
+    }
 };

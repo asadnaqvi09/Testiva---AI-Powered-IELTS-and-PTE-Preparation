@@ -5,22 +5,27 @@ import { authorizeRoles } from '../../../middleware/role.middleware.js';
 
 const router = express.Router();
 
-router.get('/meta/online-users',authenticate,authorizeRoles('user', 'admin'),controller.getOnlineUsers);
-router.get('/admin/posts',authenticate,authorizeRoles('admin'),controller.adminGetPosts);
-router.post('/admin/posts/:postId/flag',authenticate,authorizeRoles('admin'),controller.adminFlagPost);
-router.post('/admin/posts/:postId/unflag',authenticate,authorizeRoles('admin'),controller.adminUnflagPost);
-router.delete('/admin/posts/:postId',authenticate,authorizeRoles('admin'),controller.adminDeletePost);
-router.post('/create-post',authenticate,authorizeRoles('user'),controller.createPost);
-router.get('/get-posts',authenticate,authorizeRoles('user', 'admin'),controller.getPosts);
-router.get('/get-post/:postId',authenticate,authorizeRoles('user', 'admin'),controller.getPostDetail);
-router.patch('/update-post/:postId',authenticate,authorizeRoles('user'),controller.updatePost);
-router.delete('/delete-post/:postId',authenticate,authorizeRoles('user'),controller.deletePost);
-router.post('/toggle-post-like/:postId',authenticate,authorizeRoles('user'),controller.togglePostLike);
-router.post('/share-post/:postId',authenticate,authorizeRoles('user'),controller.sharePost);
-router.post('/:postId/comments',authenticate,authorizeRoles('user'),controller.createComment);
-router.get('/:postId/comments',authenticate,authorizeRoles('user', 'admin'),controller.getComments);
-router.patch('/comments/:commentId',authenticate,authorizeRoles('user'),controller.updateComment);
-router.delete('/comments/:commentId',authenticate,authorizeRoles('user'),controller.deleteComment);
-router.post('/comments/:commentId/like',authenticate,authorizeRoles('user'),controller.toggleCommentLike);
+router.use(authenticate);
+
+router.get('/meta/online-users', controller.getOnlineUsers);
+router.post('/create-post', controller.createPost);
+router.get('/get-posts', controller.getPosts);
+
+router.get('/admin/posts', authorizeRoles('admin'), controller.adminGetPosts);
+router.post('/admin/posts/:postId/flag', authorizeRoles('admin'), controller.adminFlagPost);
+router.post('/admin/posts/:postId/unflag', authorizeRoles('admin'), controller.adminUnflagPost);
+router.delete('/admin/posts/:postId', authorizeRoles('admin'), controller.adminDeletePost);
+
+router.get('/get-post/:postId', controller.getPostDetail);
+router.patch('/update-post/:postId', controller.updatePost);
+router.delete('/delete-post/:postId', controller.deletePost);
+router.post('/toggle-post-like/:postId', controller.togglePostLike);
+router.post('/share-post/:postId', controller.sharePost);
+
+router.post('/:postId/comments', controller.createComment);
+router.get('/:postId/comments', controller.getComments);
+router.patch('/comments/:commentId', controller.updateComment);
+router.delete('/comments/:commentId', controller.deleteComment);
+router.post('/comments/:commentId/like', controller.toggleCommentLike);
 
 export default router;

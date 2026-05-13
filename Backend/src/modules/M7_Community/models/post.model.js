@@ -67,7 +67,7 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
   const conditions = ['p.deleted_at IS NULL'];
   const params = [];
   let i = 1;
-  if (topicTag && topicTag !== 'All') {
+  if (topicTag && topicTag !== 'ALL') {
     conditions.push(`p.topic_tag = $${i++}`);
     params.push(topicTag);
   }
@@ -77,23 +77,22 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
     conditions.push('p.is_flagged = FALSE');
   }
   if (search) {
-    conditions.push(`(u.full_name ILIKE $${i} OR p.topic_tag::TEXT ILIKE $${i})`);
+    conditions.push(`(u.full_name ILIKE $${i} OR u.email ILIKE $${i} OR p.topic_tag::TEXT ILIKE $${i})`);
     params.push(`%${search}%`);
     i++;
   }
   const where = conditions.join(' AND ');
+  const likedIdx = i;       
+  const limitIdx = i + 1;   
+  const offsetIdx = i + 2;  
   const dataParams = [...params, userId, limit, offset];
   const countParams = [...params];
-  const likedIdx = i;
-  const limitIdx = i + 1;
-  const offsetIdx = i + 2;
   const [rows, countRow] = await Promise.all([
     pool.query(
       `SELECT p.id, p.user_id, p.topic_tag, p.title, p.content,
               p.is_flagged, p.flagged_by, p.flag_reason,
               p.created_at, p.updated_at,
-              u.full_name, u.avatar_url,
-              s.plan_type AS subscription_type,
+              u.full_name, u.avatar_url, u.email,
               COUNT(DISTINCT pl.user_id)::INT AS like_count,
               COUNT(DISTINCT c.id)::INT        AS comment_count,
               COUNT(DISTINCT ps.id)::INT       AS share_count,
@@ -102,13 +101,12 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
                 WHERE pl2.post_id = p.id AND pl2.user_id = $${likedIdx}
               ) AS liked_by_me
        FROM posts p
-       JOIN users u              ON u.id = p.user_id
-       LEFT JOIN subscriptions s ON s.user_id = p.user_id AND s.status = 'active'
+       JOIN users u ON u.id = p.user_id
        LEFT JOIN post_likes pl   ON pl.post_id = p.id
        LEFT JOIN comments c      ON c.post_id = p.id AND c.deleted_at IS NULL
        LEFT JOIN post_shares ps  ON ps.post_id = p.id
        WHERE ${where}
-       GROUP BY p.id, u.full_name, u.avatar_url, s.plan_type
+       GROUP BY p.id, u.full_name, u.avatar_url, u.email -- FIXED: u.email added here to satisfy Postgres rules
        ORDER BY p.created_at DESC
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       dataParams
@@ -121,7 +119,7 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
       countParams
     ),
   ]);
-  return { posts: rows.rows, total: countRow.rows[0].total };
+  return { posts: rows.rows, total: countRow.rows[0]?.total || 0 };
 };
 
 export const updatePost = async ({ postId, userId, title, content }) => {
@@ -179,13 +177,35 @@ export const unflagPost = async (postId) => {
   return result.rows[0] || null;
 };
 
-export const getAdminPostStats = async () => {
+export const getAdminPostStats = async ({ search, filter, topicTag }) => {
+  const conditions = ['p.deleted_at IS NULL'];
+  const params = [];
+  let i = 1;
+  if (topicTag && topicTag !== 'ALL') {
+    conditions.push(`p.topic_tag = $${i++}`);
+    params.push(topicTag);
+  }
+  if (filter === 'flagged') {
+    conditions.push('p.is_flagged = TRUE');
+  } else if (filter === 'clean') {
+    conditions.push('p.is_flagged = FALSE');
+  }
+  if (search) {
+    conditions.push(`(u.full_name ILIKE $${i} OR u.email ILIKE $${i} OR p.topic_tag::TEXT ILIKE $${i})`);
+    params.push(`%${search}%`);
+    i++;
+  }
+  const whereClause = conditions.join(' AND ');
   const result = await pool.query(
     `SELECT
-       COUNT(*)::INT                                   AS total_posts,
-       COUNT(*) FILTER (WHERE is_flagged = TRUE)::INT AS flagged_posts
-     FROM posts
-     WHERE deleted_at IS NULL`
+       COUNT(DISTINCT p.id)::INT AS total_posts,
+       COUNT(DISTINCT p.id) FILTER (WHERE p.is_flagged = TRUE)::INT AS flagged_posts,
+       COUNT(DISTINCT p.id) FILTER (WHERE p.is_flagged = FALSE)::INT AS clean_posts, -- ADDED: Clean posts counter
+       COUNT(DISTINCT p.id) FILTER (WHERE p.created_at >= CURRENT_DATE)::INT AS today_posts
+     FROM posts p
+     JOIN users u ON u.id = p.user_id
+     WHERE ${whereClause}`,
+    params
   );
-  return result.rows[0];
+  return result.rows[0] || { total_posts: 0, flagged_posts: 0, clean_posts: 0, today_posts: 0 };
 };

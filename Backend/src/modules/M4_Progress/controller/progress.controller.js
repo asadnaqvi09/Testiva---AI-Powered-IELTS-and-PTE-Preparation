@@ -1,13 +1,13 @@
 import pool from '../../../config/db.js';
 import * as progressModel from '../models/progress.model.js';
 import { addSyncJob } from '../../M5_Offline/sync.queue.js';
-import { submitTestSchema } from '../validator/progress.validator.js';
+import { submitFullTestSchema } from '../validator/progress.validator.js';
 
 export const submitTest = async (req, res) => {
     const userId = req.user.id;
     const { test_id, client_started_at, client_completed_at, is_offline, responses } = req.body;
     try {
-        const { error, value } = submitTestSchema.validate(req.body);
+        const { error, value } = submitFullTestSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, message: error.details[0].message });
         if (is_offline) {
             await addSyncJob({ userId, testData: value });

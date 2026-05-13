@@ -3,13 +3,13 @@ import * as CommentModel from '../models/comment.model.js';
 import * as LikeModel from '../models/like.model.js';
 import * as ShareModel from '../models/share.model.js';
 import * as FlagModel from '../models/flag.model.js';
-import {validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts,validateSharePost, validateCreateComment, validateUpdateComment,validateCommentId, validateAdminFlagPost, validateAdminDeletePost} from '../validator/community.validator.js';
+import { validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts, validateSharePost, validateCreateComment, validateUpdateComment, validateCommentId, validateAdminFlagPost, validateAdminDeletePost } from '../validator/community.validator.js';
 import { getOnlineCount } from '../../M6_AI/services/presence.service.js';
 import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
 import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
-import {emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser} from '../../M9_Notification/socketIO/event.engine.js';
-import {handlePostCreatedNotification, handleLikeNotification, handleCommentNotification,handleReplyNotification, handleModerationNotification, handleAdminNewPostNotification} from '../../M9_Notification/engine/notification.engine.js';
-import { sendError,buildPagination } from '../../../utils/helpers.js';
+import { emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser } from '../../M9_Notification/socketIO/event.engine.js';
+import { handlePostCreatedNotification, handleLikeNotification, handleCommentNotification, handleReplyNotification, handleModerationNotification, handleAdminNewPostNotification } from '../../M9_Notification/engine/notification.engine.js';
+import { sendError, buildPagination } from '../../../utils/helpers.js';
 
 const USER_PAGE_LIMIT = 10;
 const ADMIN_PAGE_LIMIT = 8;
@@ -194,21 +194,33 @@ export const adminGetPosts = async (req, res) => {
   try {
     const query = validateGetPosts(req.query);
     const page = Number(query.page || 1);
-    const limit = ADMIN_PAGE_LIMIT;
+    const limit = ADMIN_PAGE_LIMIT || 10;
     const offset = (page - 1) * limit;
     const [stats, postData] = await Promise.all([
-      PostModel.getAdminPostStats(),
+      PostModel.getAdminPostStats({
+        search: query.search,
+        filter: query.filter,
+        topicTag: query.topic_tag
+      }),
       PostModel.getPostsPaginated({
-        topicTag: query.topic_tag || 'All',
-        filter: query.filter, search: query.search,
-        limit, offset, userId: req.user.id,
+        topicTag: query.topic_tag,
+        filter: query.filter,
+        search: query.search,
+        limit,
+        offset,
+        userId: req.user?.id,
       }),
     ]);
     return res.json({
-      success: true, data: postData.posts, stats,
+      success: true,
+      data: postData.posts,
+      stats,
       meta: buildPagination({ page, limit, total: postData.total }),
     });
-  } catch (err) { return sendError(res, err); }
+  } catch (err) {
+    console.log("Error in adminGetPosts controller: ", err);
+    return sendError(res, err);
+  }
 };
 
 export const adminFlagPost = async (req, res) => {
@@ -223,7 +235,10 @@ export const adminFlagPost = async (req, res) => {
     await FlagModel.insertModerationLog({ adminId: req.user.id, targetId: postId, action: 'flag', adminFeedback, emailSent: true });
     await handleModerationNotification(req.io, { postId, postOwnerId: post.user_id, adminFeedback, action: 'flag' });
     return res.json({ success: true, message: 'Post flagged' });
-  } catch (err) { return sendError(res, err); }
+  } catch (err) {
+    console.log("Error in adminFlagPost...", err)
+    return sendError(res, err);
+  }
 };
 
 export const adminUnflagPost = async (req, res) => {
@@ -233,7 +248,10 @@ export const adminUnflagPost = async (req, res) => {
     if (!unflagged) return res.status(404).json({ success: false, message: 'Post not found' });
     await FlagModel.insertModerationLog({ adminId: req.user.id, targetId: postId, action: 'unflag' });
     return res.json({ success: true, data: unflagged });
-  } catch (err) { return sendError(res, err); }
+  } catch (err) {
+    console.log("Error in adminUnFlagPost...", err)
+    return sendError(res, err);
+  }
 };
 
 export const adminDeletePost = async (req, res) => {
