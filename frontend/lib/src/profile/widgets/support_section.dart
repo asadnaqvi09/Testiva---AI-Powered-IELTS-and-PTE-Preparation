@@ -26,7 +26,7 @@ class SupportSection extends StatelessWidget {
           _actionTile(
             context,
             Icons.feedback_outlined,
-            "Feedback & Suggestions",
+            'Feedback & Suggestions',
                 () {
               Navigator.push(
                 context,
@@ -35,9 +35,9 @@ class SupportSection extends StatelessWidget {
             },
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          _actionTile(context, Icons.help_outline, "Help Center & FAQ", () {}),
+          _actionTile(context, Icons.help_outline, 'Help Center & FAQ', () {}),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
-          _actionTile(context, Icons.shield_outlined, "Privacy & Security", () {}),
+          _actionTile(context, Icons.shield_outlined, 'Privacy & Security', () {}),
         ],
       ),
     );

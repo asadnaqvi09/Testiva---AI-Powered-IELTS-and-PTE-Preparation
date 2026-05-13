@@ -27,7 +27,7 @@ class AuthToggle extends StatelessWidget {
                   boxShadow: isLogin ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
                 ),
                 child: Center(
-                  child: Text("Login", style: TextStyle(color: isLogin ? const Color(0xFF007BFF) : Colors.grey, fontWeight: FontWeight.bold)),
+                  child: Text('Login', style: TextStyle(color: isLogin ? const Color(0xFF007BFF) : Colors.grey, fontWeight: FontWeight.bold)),
                 ),
               ),
             ),
@@ -42,7 +42,7 @@ class AuthToggle extends StatelessWidget {
                   boxShadow: !isLogin ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
                 ),
                 child: Center(
-                  child: Text("Sign Up", style: TextStyle(color: !isLogin ? const Color(0xFF007BFF) : Colors.grey, fontWeight: FontWeight.bold)),
+                  child: Text('Sign Up', style: TextStyle(color: !isLogin ? const Color(0xFF007BFF) : Colors.grey, fontWeight: FontWeight.bold)),
                 ),
               ),
             ),

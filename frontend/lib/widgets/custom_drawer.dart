@@ -25,14 +25,14 @@ class CustomDrawer extends StatelessWidget {
                 const CircleAvatar(
                   radius: 30,
                   backgroundColor: Color(0xFF007BFF),
-                  child: Text("AK", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                  child: Text('AK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
                 ),
                 const SizedBox(width: 15),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Ahmed Khan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color)),
-                    const Text("Free Member", style: TextStyle(fontSize: 13, color: Colors.grey)),
+                    Text('Ahmed Khan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color)),
+                    const Text('Free Member', style: TextStyle(fontSize: 13, color: Colors.grey)),
                   ],
                 ),
                 const Spacer(),
@@ -51,7 +51,7 @@ class CustomDrawer extends StatelessWidget {
                 _buildDrawerItem(
                   context,
                   icon: Icons.settings_outlined,
-                  text: "Settings",
+                  text: 'Settings',
                   isSelected: currentRoute == '/settings',
                   onTap: () {
                     if (currentRoute == '/settings') {
@@ -64,7 +64,7 @@ class CustomDrawer extends StatelessWidget {
                 _buildDrawerItem(
                   context,
                   icon: Icons.chat_bubble_outline,
-                  text: "Feedback",
+                  text: 'Feedback',
                   isSelected: currentRoute == '/feedback',
                   onTap: () {
                     if (currentRoute == '/feedback') {
@@ -77,13 +77,13 @@ class CustomDrawer extends StatelessWidget {
                 _buildDrawerItem(
                   context,
                   icon: Icons.notifications_none,
-                  text: "Notifications",
+                  text: 'Notifications',
                   onTap: () => Navigator.pop(context),
                 ),
                 _buildDrawerItem(
                   context,
                   icon: Icons.star_border,
-                  text: "Rate App",
+                  text: 'Rate App',
                   onTap: () => Navigator.pop(context),
                 ),
               ],
@@ -99,7 +99,7 @@ class CustomDrawer extends StatelessWidget {
               ),
               child: ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text("Logout", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                title: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.pop(context);
                   showDialog(

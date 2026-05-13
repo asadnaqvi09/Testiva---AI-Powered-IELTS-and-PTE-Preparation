@@ -11,32 +11,32 @@ class DailyTipsList extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Daily Tips", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Daily Tips', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextButton(
                 onPressed: () {},
-                child: const Text("See all", style: TextStyle(color: Color(0xFF007BFF)))
+                child: const Text('See all', style: TextStyle(color: Color(0xFF007BFF)))
             ),
           ],
         ),
         const SizedBox(height: 10),
         _tipCard(
-            "Reading Tip",
-            "Practice skimming passages in under 2 minutes to improve reading speed and comprehension.",
+            'Reading Tip',
+            'Practice skimming passages in under 2 minutes to improve reading speed and comprehension.',
             Icons.menu_book,
             const Color(0xFFE3F2FD),
             const Color(0xFF007BFF)
         ),
         const SizedBox(height: 15),
         _tipCard(
-            "Listening Strategy",
-            "Listen to BBC World Service daily to improve accent recognition for IELTS Listening.",
+            'Listening Strategy',
+            'Listen to BBC World Service daily to improve accent recognition for IELTS Listening.',
             Icons.headphones,
             const Color(0xFFFFF8E1),
             const Color(0xFFFFA000)
         ),
         const SizedBox(height: 15),
         _tipCard(
-            "Writing Boost",
+            'Writing Boost',
             "Use linking phrases like 'furthermore', 'however' and 'in contrast' to improve cohesion score.",
             Icons.edit_note,
             const Color(0xFFE8F5E9),
@@ -44,8 +44,8 @@ class DailyTipsList extends StatelessWidget {
         ),
         const SizedBox(height: 15),
         _tipCard(
-            "Speaking Practice",
-            "Record yourself speaking for 2 minutes on random topics. Review for fluency and vocabulary.",
+            'Speaking Practice',
+            'Record yourself speaking for 2 minutes on random topics. Review for fluency and vocabulary.',
             Icons.interpreter_mode,
             const Color(0xFFF3E5F5),
             const Color(0xFF8E24AA)

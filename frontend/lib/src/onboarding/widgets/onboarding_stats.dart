@@ -13,9 +13,9 @@ class OnboardingStats extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStat("50K+", "Students"),
-          _buildStat("200+", "Mocks"),
-          _buildStat("7.5", "Avg Band"),
+          _buildStat('50K+', 'Students'),
+          _buildStat('200+', 'Mocks'),
+          _buildStat('7.5', 'Avg Band'),
         ],
       ),
     );

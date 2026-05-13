@@ -6,15 +6,15 @@ class StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
+      children: [
         // Individual boxes ki jagah global widget call kiya
         Expanded(
           child: GlobalStatsCard(
             isDarkMode: false,
-            value: "3",
-            label: "Day Streak",
+            value: '3',
+            label: 'Day Streak',
             icon: Icons.local_fire_department,
             iconColor: Colors.orange,
           ),
@@ -23,8 +23,8 @@ class StatsRow extends StatelessWidget {
         Expanded(
           child: GlobalStatsCard(
             isDarkMode: false,
-            value: "6.5",
-            label: "Est. Band",
+            value: '6.5',
+            label: 'Est. Band',
             icon: Icons.workspace_premium_outlined,
             iconColor: Colors.green,
           ),
@@ -33,8 +33,8 @@ class StatsRow extends StatelessWidget {
         Expanded(
           child: GlobalStatsCard(
             isDarkMode: false,
-            value: "5",
-            label: "Tests Done",
+            value: '5',
+            label: 'Tests Done',
             icon: Icons.trending_up,
             iconColor: Colors.blue,
           ),

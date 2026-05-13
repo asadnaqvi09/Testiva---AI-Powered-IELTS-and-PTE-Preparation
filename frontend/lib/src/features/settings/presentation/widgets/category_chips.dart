@@ -8,7 +8,7 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ["Overall Experience", "Mock Tests", "Prep Content", "Community", "UI/Design", "Performance"];
+    final categories = ['Overall Experience', 'Mock Tests', 'Prep Content', 'Community', 'UI/Design', 'Performance'];
 
     return Container(
       width: double.infinity,
@@ -17,7 +17,7 @@ class CategoryChips extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Feedback Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text('Feedback Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 15),
           Wrap(
             spacing: 10,

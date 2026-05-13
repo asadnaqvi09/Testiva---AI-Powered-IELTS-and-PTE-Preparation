@@ -8,7 +8,13 @@ import 'widgets/daily_tips_list.dart';
 
 class HomePage extends StatelessWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
-  const HomePage({super.key, required this.scaffoldKey});
+  final Function(int) onActionTap;
+
+  const HomePage({
+    super.key,
+    required this.scaffoldKey,
+    required this.onActionTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +42,7 @@ class HomePage extends StatelessWidget {
                 )
             ),
             const SizedBox(height: 15),
-            const QuickActionsGrid(),
+            QuickActionsGrid(onActionTap: onActionTap),
             const SizedBox(height: 25),
             const AIRecommendationCard(),
             const SizedBox(height: 25),

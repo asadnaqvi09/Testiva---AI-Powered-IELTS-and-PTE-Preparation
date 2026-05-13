@@ -24,8 +24,11 @@ class _OTPScreenState extends State<OTPScreen> {
 
   void _startT() {
     _t = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_sec > 0) setState(() => _sec--);
-      else _t?.cancel();
+      if (_sec > 0) {
+        setState(() => _sec--);
+      } else {
+        _t?.cancel();
+      }
     });
   }
 
@@ -38,7 +41,9 @@ class _OTPScreenState extends State<OTPScreen> {
   @override
   void dispose() {
     _t?.cancel();
-    for (var c in _ctrls) c.dispose();
+    for (var c in _ctrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -50,19 +55,19 @@ class _OTPScreenState extends State<OTPScreen> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text("Verification Code", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const Text('Verification Code', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          Text("Sent to ${widget.email}", style: const TextStyle(color: Colors.grey)),
+          Text('Sent to ${widget.email}', style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 40),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: List.generate(4, (i) => _box(i))),
           const SizedBox(height: 30),
           Center(child: Text("00:${_sec.toString().padLeft(2, '0')}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF007BFF)))),
-          Center(child: TextButton(onPressed: _sec == 0 ? () { setState(() => _sec = 60); _startT(); } : null, child: Text("Resend Code", style: TextStyle(color: _sec == 0 ? const Color(0xFF007BFF) : Colors.grey)))),
+          Center(child: TextButton(onPressed: _sec == 0 ? () { setState(() => _sec = 60); _startT(); } : null, child: Text('Resend Code', style: TextStyle(color: _sec == 0 ? const Color(0xFF007BFF) : Colors.grey)))),
           const Spacer(),
           SizedBox(
               width: double.infinity,
               child: AppButton(
-                text: "Verify",
+                text: 'Verify',
                 onPressed: _isComplete ? () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const ResetPasswordScreen()));
                 } : null,
@@ -83,7 +88,7 @@ class _OTPScreenState extends State<OTPScreen> {
       maxLength: 1,
       autofocus: i == 0,
       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-      decoration: InputDecoration(counterText: "", filled: true, fillColor: const Color(0xFFF8F9FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF007BFF), width: 2))),
+      decoration: InputDecoration(counterText: '', filled: true, fillColor: const Color(0xFFF8F9FA), border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF007BFF), width: 2))),
       onChanged: (v) {
         if (v.isNotEmpty && i < 3) FocusScope.of(context).nextFocus();
         if (v.isEmpty && i > 0) FocusScope.of(context).previousFocus();

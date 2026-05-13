@@ -9,11 +9,11 @@ class OnboardingHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
+        const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
-              "Testiva",
+              'Testiva',
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -22,7 +22,7 @@ class OnboardingHeader extends StatelessWidget {
             ),
             SizedBox(height: 4),
             Text(
-              "AI-Powered IELTS\nand PTE Preparation",
+              'AI-Powered IELTS\nand PTE Preparation',
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF94A3B8),
@@ -37,12 +37,12 @@ class OnboardingHeader extends StatelessWidget {
             color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
-            children: const [
+          child: const Row(
+            children: [
               Icon(Icons.star, color: Color(0xFF007BFF), size: 16),
               SizedBox(width: 5),
               Text(
-                "4.9 Rating",
+                '4.9 Rating',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

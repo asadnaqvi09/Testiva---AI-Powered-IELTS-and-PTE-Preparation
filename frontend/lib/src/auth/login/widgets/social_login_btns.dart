@@ -11,7 +11,7 @@ class SocialLoginBtns extends StatelessWidget {
         Expanded(
           child: GoogleButton(
             onTap: () {
-              print("Google Login Tapped!");
+              print('Google Login Tapped!');
             },
           ),
         ),
