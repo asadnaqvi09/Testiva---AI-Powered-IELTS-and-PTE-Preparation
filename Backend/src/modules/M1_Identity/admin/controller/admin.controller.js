@@ -26,18 +26,41 @@ export const getAllUsers = async (req, res) => {
         const offset = (page - 1) * limit
         const search = req.query.search || ""
         const subscription = req.query.subscription || ""
+        const preference = req.query.preference || ""
         if (page < 1 || limit > 10 || limit < 1) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid page or limit"
             })
         }
-        const users = await fetchAllUsers(limit, offset, search, subscription)
+        const users = await fetchAllUsers(limit, offset, search, subscription,preference)
+        let countQuery = "SELECT COUNT(*) FROM users WHERE 1=1";
+        const countParams = [];
+        let pIndex = 1;
+        if (search) {
+            countQuery += ` AND (full_name ILIKE $${pIndex} OR email ILIKE $${pIndex})`;
+            countParams.push(`%${search}%`);
+            pIndex++;
+        }
+        if (subscription && subscription.toLowerCase() !== "all" && subscription.trim() !== "") {
+            countQuery += ` AND subscription = $${pIndex}`;
+            countParams.push(subscription.toLowerCase());
+            pIndex++;
+        }
+        if (preference && preference.toLowerCase() !== "all" && preference.trim() !== "") {
+            countQuery += ` AND preference = $${pIndex}`;
+            countParams.push(preference.toUpperCase());
+            pIndex++;
+        }
+        const totalCountRes = await pool.query(countQuery, countParams);
+        const totalUsers = parseInt(totalCountRes.rows[0].count);
         return res.status(200).json({
             success: true,
             message: "All Users Fetched Successfully",
             count: users.length,
+            totalUsers,
             page,
+            totalPage: Math.ceil(totalUsers/limit),
             data: users
         })
     } catch (error) {

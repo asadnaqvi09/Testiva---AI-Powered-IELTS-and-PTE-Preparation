@@ -94,7 +94,7 @@ export const updateUserPassword = async (id, data) => {
       data.current_password,
       user.rows[0].password_hash
     );
-    if (!valid) throw new Error("Invalid password");
+    if (!valid) throw new Error("Current password is incorrect");
     const hash = await bcrypt.hash(
       data.new_password,
       Number(12)
@@ -159,8 +159,14 @@ export const getAdminStats = async () => {
   return result.rows[0];
 };
 
-export const fetchAllUsers = async (limit, offset, search = "", subscription = "") => {
-  let query = `SELECT id,full_name,email,role,subscription,created_at FROM users WHERE 1=1`;
+export const fetchAllUsers = async (limit, offset, search = "", subscription = "", preference = "") => {
+  let query = `
+    SELECT 
+      'USR-' || LPAD(ROW_NUMBER() OVER(ORDER BY created_at ASC)::text, 3, '0') AS dynamic_id,
+      id, full_name, email, role, subscription, preference, last_login_at, created_at 
+    FROM users 
+    WHERE 1=1
+  `;
   const params = [];
   let paramIndex = 1;
   if (search) {
@@ -168,14 +174,19 @@ export const fetchAllUsers = async (limit, offset, search = "", subscription = "
     params.push(`%${search}%`);
     paramIndex++;
   }
-  if (subscription) {
-    query += `AND subscription= $${paramIndex}`;
-    params.push(subscription);
+  if (subscription && subscription.toLowerCase() !== "all") {
+    query += ` AND subscription = $${paramIndex}`;
+    params.push(subscription.toLowerCase());
     paramIndex++;
   }
-  query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  if (preference && preference.toLowerCase() !== "all") {
+    query += ` AND preference = $${paramIndex}`;
+    params.push(preference.toUpperCase());
+    paramIndex++;
+  }
+  let mainQuery = `SELECT * FROM (${query}) AS sub_query ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
   params.push(limit, offset);
-  const result = await pool.query(query, params);
+  const result = await pool.query(mainQuery, params);
   return result.rows;
 };
 

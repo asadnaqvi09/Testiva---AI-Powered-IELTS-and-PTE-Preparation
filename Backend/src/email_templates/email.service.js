@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { registerOtpTemplate } from './templates/registerOtp.js';
 import { resetOtpTemplate } from './templates/resetOtp.js';
 import { postFlaggedTemplate } from './templates/postFlagged.js';
+import { preferenceChangeRequestTemplate } from './templates/preferenceChangeRequest.js';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -24,6 +25,10 @@ const emailTemplates = {
     subject: 'Community Post Moderation Notice',
     template: postFlaggedTemplate,
   },
+  preferenceChange: {
+    subject: '🚨 Testiva: Preference Change Request Received',
+    template: preferenceChangeRequestTemplate,
+  }
 };
 
 const sendEmail = async ({ to, subject, html }) => {
@@ -54,6 +59,16 @@ export const sendPostFlaggedEmail = async ({ email, userName, postTitle, adminFe
   await sendEmail({
     to: email,
     subject: emailConfig.subject,
+    html,
+  });
+};
+
+export const sendPreferenceChangeEmail = async ({ adminEmail, userName, userEmail, currentPreference, targetPreference, feedback }) => {
+  const emailConfig = emailTemplates.preferenceChange;
+  const html = emailConfig.template({ userName, userEmail, currentPreference, targetPreference, feedback });
+  await sendEmail({
+    to: adminEmail,
+    subject: `${emailConfig.subject} - ${userName}`,
     html,
   });
 };

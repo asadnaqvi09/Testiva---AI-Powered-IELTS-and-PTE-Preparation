@@ -1,5 +1,8 @@
+import pool from "../../../../config/db.js";
 import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken } from "../../user.model.js";
 import { processAndUploadAvatar } from "../services/image.service.js";
+import { createNotification } from "../../../M9_Notification/models/notification.model.js";
+import { sendPreferenceChangeEmail } from "../../../../email_templates/email.service.js";
 import * as userValidator from "../validator/user.validator.js";
 
 export const getProfileController = async (req, res) => {
@@ -19,6 +22,7 @@ export const updateProfileController = async (req, res) => {
   try {
     const { error, value } = userValidator.updateProfileSchema.validate(req.body);
     if (error) {
+      console.log("Validation Schema Error Details:", error.details[0]);
       return res.status(400).json({ success: false, message: error.details[0].message });
     }
     const userId = req.user.id;
@@ -28,6 +32,7 @@ export const updateProfileController = async (req, res) => {
     if (err.message === "User not found") {
       return res.status(404).json({ success: false, message: err.message });
     }
+    console.log("Error in Profile Controller : ", err.message);
     res.status(500).json({ success: false, message: "Profile update failed" });
   }
 };
@@ -77,5 +82,62 @@ export const updateFcmTokenController = async (req, res) => {
       return res.status(404).json({ success: false, message: error.message });
     }
     res.status(500).json({ success: false, message: "Failed to update FCM token" });
+  }
+};
+
+export const requestPreferenceChangeController = async (req,res)=> {
+  try {
+    const userID = req.user.id;
+    const { feedback, targetPreference} = req.body;
+    if (!feedback || feedback.trim().length < 10) return res.status(400).json({
+      success: false,
+      message: 'Please Provide a valid feedback'
+    })
+    if (!targetPreference || !["IELTS", "PTE"].includes(targetPreference)) return res.status(400).json({
+      success: false,
+      message: 'Please Provide a Valid Target Preference'  
+    })
+    const user = await findUserById(userID);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User profile record missing." });
+    }
+    if (user.preference === targetPreference) {
+      return res.status(400).json({ success: false, message: `Your preference profile status is already explicitly mapped to ${targetPreference}` });
+    }
+    const adminQuery = await pool.query("SELECT id, email FROM users WHERE role = 'admin' LIMIT 1");
+    const adminUser = adminQuery.rows[0];
+    const adminEmailAddress = adminUser ? adminUser.email : process.env.EMAIL_USER;
+    await sendPreferenceChangeEmail({
+      adminEmail: adminEmailAddress,
+      userName: user.full_name,
+      userEmail: user.email,
+      currentPreference: user.preference,
+      targetPreference,
+      feedback
+    });
+    if (adminUser) {
+      await createNotification({
+        user_id: adminUser.id,
+        actor_id: user.id,
+        type: 'PREFERENCE_CHANGE_REQUEST',
+        title: 'Preference Change Request',
+        message: `User ${user.email} send you an email regarding preferences.`
+      });
+      if (req.io) {
+        req.io.to(`user_${adminUser.id}`).emit("new_notification", {
+          type: "PREFERENCE_CHANGE_REQUEST",
+          message: `User ${user.email} send you an email regarding preferences.`
+        });
+      }
+    } 
+    res.status(200).json({
+      success: true,
+      message: 'Your preference change request has been sent to Admin.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal Server Error'
+    });
   }
 };

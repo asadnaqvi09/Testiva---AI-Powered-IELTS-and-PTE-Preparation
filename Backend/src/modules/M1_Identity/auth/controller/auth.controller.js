@@ -24,6 +24,7 @@ import {
   hashOTP,
 } from "../../../../utils/helpers.js";
 import bcrypt from "bcrypt";
+
 const hashOtpValue = async (otp) => hashOTP(String(otp));
 
 const buildToken = (user) => ({
@@ -209,24 +210,49 @@ export const verifyOTP = async (req, res) => {
 
 export const setUserPreference = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { preference } = req.body;
+    const loggedInUser = req.user;
+    const { preference, targetUserId } = req.body;
     if (!preference || !["IELTS", "PTE"].includes(preference)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid preference",
+        message: "Invalid preference track validation failed.",
       });
     }
-    const user = await updateUserPreference(userId, preference);
+    const isAdminMode = loggedInUser && (loggedInUser.role === 'super_admin' || loggedInUser.role === 'institute_admin' || loggedInUser.role === 'admin');
+    const userIdToUpdate = (isAdminMode && targetUserId) ? targetUserId : loggedInUser.id;
+    const userCheck = await findUserById(userIdToUpdate);
+    if (!userCheck) {
+      return res.status(400).json({
+        success: false,
+        message: "Target user record not found in system pool.",
+      });
+    }
+    if (!isAdminMode && userCheck.preference !== null) {
+      return res.status(403).json({
+        success: false,
+        message: "Preference already locked. Please submit a change request to Admin from profile settings.",
+        requiresAdminApproval: true
+      });
+    }
+    const user = await updateUserPreference(userIdToUpdate, preference);
     return res.status(200).json({
       success: true,
-      message: "Preference updated successfully",
-      user,
+      message: isAdminMode 
+        ? `User preference forcefully updated to ${preference} via Admin Override.` 
+        : "Preference locked successfully.",
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+        preference: user.preference,
+      }
     });
   } catch (error) {
+    console.error("Error in setUserPreference Controller:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Failed to set preference",
+      message: "Failed to set preference infrastructure mapping.",
     });
   }
 };
