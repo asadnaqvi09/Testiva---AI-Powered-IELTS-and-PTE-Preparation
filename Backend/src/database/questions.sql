@@ -13,7 +13,13 @@ CREATE TABLE public.questions (
     difficulty public.difficulty_enum DEFAULT 'medium'::public.difficulty_enum,
     tags jsonb DEFAULT '[]'::jsonb,
     image_url text,
-    content jsonb DEFAULT '{}'::jsonb
+    content jsonb DEFAULT '{}'::jsonb,
+    sub_question_type character varying(50),
+    prep_time_seconds integer DEFAULT 0,
+    record_time_seconds integer DEFAULT 0,
+    min_words integer DEFAULT 0,
+    max_words integer DEFAULT 0,
+    word_limit_instruction text
 );
 CREATE INDEX idx_questions_difficulty ON public.questions USING btree (difficulty);
 CREATE INDEX idx_questions_section_id ON public.questions USING btree (section_id);

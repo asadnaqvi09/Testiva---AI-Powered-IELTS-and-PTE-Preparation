@@ -31,9 +31,23 @@ export const otpLimiter = rateLimit({
 
 export const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 3,
+  max: 40,
   message: {
     success: false,
     message:"Hourly limit reached for AI feedback,Try Again later"
   }
 })
+
+export const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 400,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
