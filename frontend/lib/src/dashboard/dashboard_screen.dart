@@ -26,7 +26,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
-      HomePage(scaffoldKey: _scaffoldKey, onActionTap: _onTabChanged),
+      HomePage(
+        scaffoldKey: _scaffoldKey,
+        onActionTap: _onTabChanged,
+        onNavigateToPrep: () => _onTabChanged(2),
+      ),
       const MocksScreen(),
       const PrepScreen(),
       const CommunityScreen(),
