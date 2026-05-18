@@ -1,5 +1,7 @@
 import Joi from "joi";
 
+const AI_EVALUATED_SECTION_TYPES = ["writing", "speaking"];
+
 const questionSchema = Joi.object({
   id: Joi.string().uuid().optional(),
   question_type: Joi.string().max(50).required(),
@@ -8,7 +10,15 @@ const questionSchema = Joi.object({
   question_text: Joi.string().required(),
   word_limit_instruction: Joi.string().allow(null, ""),
   options: Joi.alternatives().try(Joi.array(), Joi.object()).default([]),
-  correct_answer: Joi.alternatives().try(Joi.object(), Joi.array(), Joi.string(), Joi.number()).default({}),
+  correct_answer: Joi.when("question_type", {
+    is: Joi.string().valid(...AI_EVALUATED_SECTION_TYPES).insensitive(),
+    then: Joi.alternatives().try(Joi.object(), Joi.array(), Joi.string(), Joi.number()).optional().allow(null, ""),
+    otherwise: Joi.when("sub_question_type", {
+      is: Joi.string().valid(...AI_EVALUATED_SECTION_TYPES).insensitive(),
+      then: Joi.alternatives().try(Joi.object(), Joi.array(), Joi.string(), Joi.number()).optional().allow(null, ""),
+      otherwise: Joi.alternatives().try(Joi.object(), Joi.array(), Joi.string(), Joi.number()).default({}),
+    }),
+  }),
   content: Joi.object().default({}),
   audio_url: Joi.string().uri().allow(null, ""),
   image_url: Joi.string().uri().allow(null, ""),
@@ -38,7 +48,7 @@ const sectionSchema = Joi.object({
 export const createTestSchema = Joi.object({
   title: Joi.string().min(3).max(255).trim().required(),
   exam_type: Joi.string().valid("IELTS", "PTE").required(),
-  test_category: Joi.string().valid("full_mock", "single_module").required(),
+  test_category: Joi.string().valid("full_mock", "singular_module").required(),
   difficulty_level: Joi.string().valid("easy", "medium", "hard").default("medium"),
   passing_score: Joi.number().precision(1).min(0).max(90).default(6.5),
   min_required_band: Joi.number().precision(1).min(0).max(90).default(6.0),
@@ -52,7 +62,7 @@ export const nestedTestUpsertSchema = Joi.object({
   test: Joi.object({
     title: Joi.string().min(3).max(255),
     exam_type: Joi.string().valid("IELTS", "PTE"),
-    test_category: Joi.string().valid("full_mock", "single_module"),
+    test_category: Joi.string().valid("full_mock", "singular_module"),
     total_duration: Joi.number().integer().min(30),
     difficulty_level: Joi.string().valid("easy", "medium", "hard"),
     passing_score: Joi.number().precision(1).min(0).max(90),
@@ -68,7 +78,7 @@ export const nestedTestUpsertSchema = Joi.object({
 export const updateHeaderSchema = Joi.object({
   title: Joi.string().min(3).max(255).optional(),
   exam_type: Joi.string().valid("IELTS", "PTE").optional(),
-  test_category: Joi.string().valid("full_mock", "single_module").optional(),
+  test_category: Joi.string().valid("full_mock", "singular_module").optional(),
   is_published: Joi.boolean().optional(),
   difficulty_level: Joi.string().valid("easy", "medium", "hard").optional(),
   passing_score: Joi.number().precision(1).min(0).max(90).optional(),
@@ -84,7 +94,7 @@ export const updateQuestionSchema = Joi.object({
   passage_text: Joi.string().allow(null, "").optional(),
   word_limit_instruction: Joi.string().allow(null, "").optional(),
   options: Joi.alternatives().try(Joi.array(), Joi.object()).optional(),
-  correct_answer: Joi.alternatives().try(Joi.object(), Joi.array(), Joi.string(), Joi.number()).optional(),
+  correct_answer: Joi.alternatives().try(Joi.object(), Joi.array(), Joi.string(), Joi.number()).optional().allow(null, ""),
   content: Joi.object().optional(),
   audio_url: Joi.string().uri().allow(null, "").optional(),
   image_url: Joi.string().uri().allow(null, "").optional(),
