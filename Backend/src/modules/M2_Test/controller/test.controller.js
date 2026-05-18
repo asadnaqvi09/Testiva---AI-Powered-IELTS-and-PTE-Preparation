@@ -19,7 +19,6 @@ function extractCloudinaryPublicId(url) {
   try {
     const matches = url.match(/\/v\d+\/(testiva\/tests\/[^.]+)/);
     if (matches && matches[1]) return matches[1];
-    
     const parts = url.split("/");
     const filename = parts.pop().split(".")[0];
     const uploadIdx = parts.indexOf("upload");
@@ -32,6 +31,17 @@ function extractCloudinaryPublicId(url) {
     console.error("Error parsing Cloudinary URL:", e);
     return null;
   }
+}
+
+function sanitizeQuestionPayload(q) {
+  const aiTypes = ["writing", "speaking"];
+  const isAi =
+    aiTypes.includes((q.question_type || "").toLowerCase()) ||
+    aiTypes.includes((q.sub_question_type || "").toLowerCase());
+  if (isAi) {
+    return { ...q, correct_answer: null };
+  }
+  return q;
 }
 
 async function bustTestCache(id) {
@@ -177,10 +187,11 @@ export const createFullTest = async (req, res) => {
   try {
     const { error, value } = createTestSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+    console.log("Error : ", error);
     if (pteSingleGuard(value.exam_type, value.test_category)) {
       return res.status(400).json({ success: false, message: "PTE must use full_mock" });
     }
-    if (value.test_category === "singular_module" && value.sections.length !== 1) {
+    if (value.test_category === "singular_module" && value.sections.length === 0) {
       return res.status(400).json({ success: false, message: "singular_module requires exactly one section" });
     }
     if (value.test_category === "full_mock") {
@@ -232,7 +243,7 @@ export const createFullTest = async (req, res) => {
         client,
       );
       for (const q of section.questions || []) {
-        await testModel.createSingleQuestion({ ...q, section_id: newSection.id }, client);
+        await testModel.createSingleQuestion({ ...sanitizeQuestionPayload(q), section_id: newSection.id }, client);
       }
     }
     await client.query("COMMIT");
@@ -260,7 +271,7 @@ export const upsertTestNested = async (req, res) => {
     if (pteSingleGuard(mergedExam, mergedCat)) {
       return res.status(400).json({ success: false, message: "PTE must use full_mock" });
     }
-    if (mergedCat === "singular_module" && value.sections.length !== 1) {
+    if (mergedCat === "singular_module" && value.sections.length === 0) {
       return res.status(400).json({ success: false, message: "singular_module requires exactly one section" });
     }
     if (mergedCat === "full_mock") {
@@ -318,7 +329,6 @@ export const upsertTestNested = async (req, res) => {
         sid = row.id;
       }
       sectionKeep.push(sid);
-      
       const qKeep = [];
       for (const q of s.questions || []) {
         const { id: qid, ...rest } = q;
@@ -326,20 +336,20 @@ export const upsertTestNested = async (req, res) => {
           await testModel.updateQuestion(qid, rest, client);
           qKeep.push(qid);
         } else {
-          const row = await testModel.createSingleQuestion({ ...rest, section_id: sid }, client);
+          const row = await testModel.createSingleQuestion({ ...sanitizeQuestionPayload(rest), section_id: sid }, client);
           qKeep.push(row.id);
         }
       }
       await testModel.deleteQuestionsNotIn(sid, qKeep, client);
     }
     await testModel.deleteSectionsNotIn(testId, sectionKeep, client);
-    
     await client.query("COMMIT");
     await bustTestCache(testId);
     const full = await testModel.getFullTestDetails(testId);
     res.status(200).json({ success: true, data: full });
   } catch (e) {
     await client.query("ROLLBACK");
+    console.log("Error in Update Nested Test : ", e.message);
     res.status(500).json({ success: false, message: e.message });
   } finally {
     client.release();
