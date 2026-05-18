@@ -29,11 +29,19 @@ export const startNewAttempt = async (data, client = pool) => {
   }
 };
 
+const AI_EVALUATED_TYPES = ["writing", "speaking"];
+
+const isAiEvaluated = (question) => {
+  const qType = (question.question_type || "").toLowerCase();
+  const sub = (question.sub_question_type || "").toLowerCase();
+  return AI_EVALUATED_TYPES.includes(qType) || AI_EVALUATED_TYPES.includes(sub);
+};
+
 const normalize = (v) => {
   if (v === null || v === undefined) return "";
   if (typeof v === "string") return v.trim().toLowerCase();
-  if (typeof v === "object") return JSON.stringify(v);
   if (Array.isArray(v)) return v.map((x) => String(x).toLowerCase().trim()).sort().join(",");
+  if (typeof v === "object") return JSON.stringify(v);
   return String(v).toLowerCase().trim();
 };
 
@@ -57,9 +65,7 @@ const scoreObjective = (question, user_answer) => {
     const raw = question.correct_answer;
     const acceptable = Array.isArray(raw)
       ? raw.map((a) => normalize(a))
-      : String(raw)
-          .split(/[|/]/)
-          .map((a) => normalize(a));
+      : String(raw).split(/[|/]/).map((a) => normalize(a));
     if (acceptable.includes(normalize(user_answer))) {
       is_correct = true;
       marks_obtained = Number(question.marks) || 0;
@@ -87,7 +93,10 @@ export const saveUserResponse = async (data, client = pool) => {
     );
     if (qResult.rows.length === 0) throw new Error("Question not found");
     const question = qResult.rows[0];
-    const { is_correct, marks_obtained } = scoreObjective(question, user_answer);
+    const aiQuestion = isAiEvaluated(question);
+    const { is_correct, marks_obtained } = aiQuestion
+      ? { is_correct: null, marks_obtained: null }
+      : scoreObjective(question, user_answer);
     await dbClient.query(`DELETE FROM user_responses WHERE attempt_id = $1::uuid AND question_id = $2::uuid`, [
       attempt_id,
       question_id,
