@@ -7,6 +7,7 @@ const Router = express.Router();
 
 Router.get("/profile", authenticate, authorizeRoles("user", "admin"), userController.getProfileController);
 Router.put("/profile", authenticate, authorizeRoles("user", "admin"), userController.updateProfileController);
+Router.get("/results", authenticate, authorizeRoles("user"), userController.getAllResults);
 Router.put("/password", authenticate, authorizeRoles("user", "admin"), userController.changePasswordController);
 Router.post("/avatar", authenticate, authorizeRoles("user", "admin"), upload.single("avatar"), userController.uploadAvatarController);
 Router.put("/fcm-token", authenticate, authorizeRoles("user", "admin"), userController.updateFcmTokenController);
