@@ -239,3 +239,22 @@ export const updateUserFcmToken = async (id, fcm_token) => {
   if (result.rowCount === 0) throw new Error("User not found");
   return result.rows[0];
 };
+
+export const getUserHistoricalResults = async (userId) => {
+  const result = await pool.query(
+    `SELECT ta.id AS attempt_id, ta.test_id, t.title AS test_title, t.exam_type,
+            ta.overall_band_score, ta.reading_score, ta.listening_score, 
+            ta.writing_score, ta.speaking_score, ta.feedback, ta.status, 
+            ta.created_at, ta.client_completed_at,
+            af.task_response_score, af.coherence_cohesion_score, 
+            af.lexical_resource_score, af.grammatical_range_score,
+            af.detailed_analysis, af.improvement_suggestions
+     FROM test_attempts ta
+     JOIN tests t ON ta.test_id = t.id
+     LEFT JOIN ai_feedback af ON ta.id = af.attempt_id
+     WHERE ta.user_id = $1::uuid
+     ORDER BY ta.created_at DESC`,
+    [userId]
+  );
+  return result.rows;
+};
