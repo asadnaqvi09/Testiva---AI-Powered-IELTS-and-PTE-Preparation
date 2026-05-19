@@ -1,5 +1,5 @@
 import pool from "../../../../config/db.js";
-import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken } from "../../user.model.js";
+import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken, getUserHistoricalResults } from "../../user.model.js";
 import { processAndUploadAvatar } from "../services/image.service.js";
 import { createNotification } from "../../../M9_Notification/models/notification.model.js";
 import { sendPreferenceChangeEmail } from "../../../../email_templates/email.service.js";
@@ -15,6 +15,16 @@ export const getProfileController = async (req, res) => {
     res.status(200).json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch profile" });
+  }
+};
+
+export const getAllResults = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const results = await getUserHistoricalResults(userId);
+    res.status(200).json({ success: true, data: results });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch historical results" });
   }
 };
 
