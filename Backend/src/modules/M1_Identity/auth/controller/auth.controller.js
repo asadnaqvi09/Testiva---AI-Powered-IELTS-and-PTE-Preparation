@@ -123,11 +123,13 @@ export const loginUser = async (req, res) => {
 export const verifyOTP = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { email, otp, type } = req.body;
-    if (!email || !otp || !type)
+    const { error, value } = authValidator.otpSchema.validate(req.body);
+    if (error) {
       return res
         .status(400)
-        .json({ success: false, message: "All fields required" });
+        .json({ success: false, message: error.details[0].message });
+    }
+    const { email, otp, type } = value;
     await client.query("BEGIN");
     const { rows } = await client.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
@@ -198,7 +200,8 @@ export const verifyOTP = async (req, res) => {
       return res.json({ success: true, message: "OTP verified" });
     }
     await client.query("ROLLBACK");
-  } catch {
+  } catch (err) {
+    console.error("DEBUG verifyOTP error:", err);
     await client.query("ROLLBACK");
     return res
       .status(500)
@@ -218,7 +221,7 @@ export const setUserPreference = async (req, res) => {
         message: "Invalid preference track validation failed.",
       });
     }
-    const isAdminMode = loggedInUser && (loggedInUser.role === 'super_admin' || loggedInUser.role === 'institute_admin' || loggedInUser.role === 'admin');
+    const isAdminMode = loggedInUser && (loggedInUser.role === 'admin');
     const userIdToUpdate = (isAdminMode && targetUserId) ? targetUserId : loggedInUser.id;
     const userCheck = await findUserById(userIdToUpdate);
     if (!userCheck) {
@@ -308,11 +311,13 @@ export const refreshAccessToken = async (req, res) => {
 
 export const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email)
+    const { error, value } = authValidator.forgotPasswordSchema.validate(req.body);
+    if (error) {
       return res
         .status(400)
-        .json({ success: false, message: "Email required" });
+        .json({ success: false, message: error.details[0].message });
+    }
+    const { email } = value;
     const user = await findUserByEmail(email);
     if (!user)
       return res
@@ -338,17 +343,13 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { email, new_password, confirm_password } = req.body;
-    if (!email || !new_password || !confirm_password) {
+    const { error, value } = authValidator.resetPasswordSchema.validate(req.body);
+    if (error) {
       return res
         .status(400)
-        .json({ success: false, message: "All fields required" });
+        .json({ success: false, message: error.details[0].message });
     }
-    if (new_password !== confirm_password) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Passwords do not match" });
-    }
+    const { email, new_password } = value;
     await client.query("BEGIN");
     const { rows } = await client.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type='reset' AND is_verified=true FOR UPDATE`,
@@ -394,11 +395,13 @@ export const resetPassword = async (req, res) => {
 
 export const resendOTP = async (req, res) => {
   try {
-    const { email, type } = req.body;
-    if (!email || !type)
+    const { error, value } = authValidator.resendOtpSchema.validate(req.body);
+    if (error) {
       return res
         .status(400)
-        .json({ success: false, message: "Required fields missing" });
+        .json({ success: false, message: error.details[0].message });
+    }
+    const { email, type } = value;
     const { rows } = await pool.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type=$2`,
       [email, type],
