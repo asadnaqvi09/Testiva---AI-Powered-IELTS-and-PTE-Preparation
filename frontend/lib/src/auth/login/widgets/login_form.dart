@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/utils/validators.dart';
+import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
 import 'package:frontend/src/dashboard/dashboard_screen.dart';
@@ -9,6 +11,7 @@ import 'social_login_btns.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
+
   @override
   State<LoginForm> createState() => _LoginFormState();
 }
@@ -18,11 +21,49 @@ class _LoginFormState extends State<LoginForm> {
   final _email = TextEditingController();
   final _pass = TextEditingController();
   bool _showDemo = false;
+  bool _isLoading = false;
 
   void _fill(String e, String p) => setState(() {
     _email.text = e;
     _pass.text = p;
   });
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await ApiService.post("/auth/login", {
+        "email": _email.text.trim(),
+        "password": _pass.text,
+      });
+
+      if (mounted) {
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (c) => const DashboardScreen()),
+          );
+        } else {
+          final errorData = jsonDecode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorData['message'] ?? 'Login failed')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Connection error: Unable to connect to server')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -68,16 +109,11 @@ class _LoginFormState extends State<LoginForm> {
             ),
           ),
         ),
-        AppButton(
+        _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : AppButton(
           text: 'Login',
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (c) => const DashboardScreen()),
-              );
-            }
-          },
+          onPressed: _handleLogin,
         ),
         const SizedBox(height: 20),
         const SocialLoginBtns(),
@@ -102,13 +138,13 @@ class _LoginFormState extends State<LoginForm> {
       border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
     ),
     child: Column(children: [
-      _demoTile('Free User', 'freeuser@example.com', Icons.person_outline, AppColors.primary),
+      _demoTile('Free User', 's23-0385@student.uoh.pk', Icons.person_outline, AppColors.primary),
       _demoTile('Premium', 'premiumuser@example.com', Icons.star_outline, Colors.orange),
     ]),
   );
 
   Widget _demoTile(String l, String e, IconData i, Color c) => GestureDetector(
-    onTap: () => _fill(e, 'password123'),
+    onTap: () => _fill(e, 'aksa12345@sk'),
     child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(children: [

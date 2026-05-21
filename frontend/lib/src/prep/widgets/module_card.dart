@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/prep_module_model.dart';
 import '../reading/reading_details_screen.dart';
+import '../writing/writing_details_screen.dart';
 
 class ModuleCard extends StatelessWidget {
   final PrepModule module;
@@ -15,6 +16,13 @@ class ModuleCard extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (context) => const ReadingDetailsScreen(),
+            ),
+          );
+        } else if (module.title == 'Writing') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const WritingDetailsScreen(),
             ),
           );
         }

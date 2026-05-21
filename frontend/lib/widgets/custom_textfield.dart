@@ -6,19 +6,21 @@ class AppTextField extends StatelessWidget {
   final String label;
   final String hint;
   final IconData prefixIcon;
+  final Widget? suffixIcon;
   final bool isPassword;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
 
   const AppTextField({
-    super.key,
     required this.controller,
     required this.label,
     required this.hint,
     required this.prefixIcon,
+    this.suffixIcon, // Constructor mein include kar diya
     this.isPassword = false,
     this.validator,
     this.keyboardType = TextInputType.text,
+    super.key,
   });
 
   @override
@@ -35,6 +37,7 @@ class AppTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(prefixIcon, color: AppColors.primary),
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[100],
         border: OutlineInputBorder(
