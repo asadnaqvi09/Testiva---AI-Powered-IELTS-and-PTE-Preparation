@@ -16,7 +16,7 @@ class AppTextField extends StatelessWidget {
     required this.label,
     required this.hint,
     required this.prefixIcon,
-    this.suffixIcon, // Constructor mein include kar diya
+    this.suffixIcon,
     this.isPassword = false,
     this.validator,
     this.keyboardType = TextInputType.text,

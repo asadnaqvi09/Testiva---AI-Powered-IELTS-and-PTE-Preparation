@@ -34,9 +34,10 @@ class _LoginFormState extends State<LoginForm> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.post("/auth/login", {
-        "email": _email.text.trim(),
-        "password": _pass.text,
+      // FIX: End-point single quotes mein kiya aur email ko strictly lowercase kiya backend validator ke mutabiq
+      final response = await ApiService.post('/auth/login', {
+        'email': _email.text.trim().toLowerCase(), // .toLowerCase() add kar diya
+        'password': _pass.text,
       });
 
       if (mounted) {
@@ -55,7 +56,7 @@ class _LoginFormState extends State<LoginForm> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connection error: Unable to connect to server')),
+          const SnackBar(content: Text('Connection error: Unable to connect to server')),
         );
       }
     } finally {
@@ -121,7 +122,7 @@ class _LoginFormState extends State<LoginForm> {
           child: TextButton.icon(
             onPressed: () => setState(() => _showDemo = !_showDemo),
             icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility, size: 18, color: AppColors.textGrey),
-            label: Text("${_showDemo ? 'Hide' : 'Show'} Demo Credentials", style: const TextStyle(color: AppColors.textGrey)),
+            label: Text('${_showDemo ? 'Hide' : 'Show'} Demo Credentials', style: const TextStyle(color: AppColors.textGrey)),
           ),
         ),
         if (_showDemo) _demoBox(),

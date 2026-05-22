@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
-import 'package:frontend/data/models/mock_test_model.dart';
+import '../../../../data/models/mock_test_model.dart'; // Fixed relative model import path
 
 class MockTestCard extends StatelessWidget {
   final MockTest test;
@@ -9,18 +9,24 @@ class MockTestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode ? Colors.grey[800]! : Colors.grey.shade100,
+        ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          if (!isDarkMode)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Column(
@@ -36,7 +42,14 @@ class MockTestCard extends StatelessWidget {
                   children: [
                     _buildBadges(),
                     const SizedBox(height: 5),
-                    Text(test.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      test.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 5),
                     _buildDetailsRow(),
                   ],
@@ -45,9 +58,9 @@ class MockTestCard extends StatelessWidget {
               if (test.isLocked) const Icon(Icons.lock_outline, color: Colors.grey, size: 20),
             ],
           ),
-          if (test.progress != null) _buildProgressBar(),
+          if (test.progress != null && test.progress! > 0) _buildProgressBar(),
           const SizedBox(height: 15),
-          _buildActionButton(),
+          _buildActionButton(context),
         ],
       ),
     );
@@ -92,7 +105,7 @@ class MockTestCard extends StatelessWidget {
         const Text('•', style: TextStyle(color: Colors.grey)),
         const SizedBox(width: 10),
         Text('${test.questions} questions', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        if (test.band != null) ...[
+        if (test.band != null && test.band!.isNotEmpty) ...[
           const Spacer(),
           const Icon(Icons.bar_chart, size: 14, color: Colors.green),
           Text(test.band!, style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -126,13 +139,22 @@ class MockTestCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton() {
+  Widget _buildActionButton(BuildContext context) {
     bool isPremium = test.isLocked;
     return SizedBox(
       width: double.infinity,
       height: 45,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: () {
+          if (isPremium) {
+            // Trigger custom execution panel mapping logic later
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please subscribe to Premium to unlock this mock exam!')),
+            );
+          } else {
+            debugPrint("Launching Engine for: ${test.title}");
+          }
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: isPremium ? Colors.grey.shade100 : AppColors.primary,
           foregroundColor: isPremium ? Colors.grey : Colors.white,

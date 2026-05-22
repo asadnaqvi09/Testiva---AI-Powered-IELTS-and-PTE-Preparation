@@ -6,6 +6,7 @@ import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
 import 'package:frontend/src/auth/login/widgets/google_button.dart';
+import '../otp_screen.dart';
 
 class SignupForm extends StatefulWidget {
   const SignupForm({super.key});
@@ -31,23 +32,33 @@ class _SignupFormState extends State<SignupForm> {
     setState(() => _isLoading = true);
 
     try {
-      // Backend ko 'confirm_password' bhej diya taake validation error na aaye
       final response = await ApiService.post('/auth/register', {
         'full_name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
+        'email': _emailController.text.trim().toLowerCase(),
         'password': _passController.text,
-        'confirm_password': _confirmPassController.text, // Yeh field missing thi!
+        'confirm_password': _confirmPassController.text,
       });
 
       if (mounted) {
         if (response.statusCode == 200 || response.statusCode == 201) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration Successful! Please login.')),
+            const SnackBar(content: Text('Registration Successful! Code sent.')),
           );
+
+          // Clear text fields before moving
+          final enteredEmail = _emailController.text.trim().toLowerCase();
           _nameController.clear();
           _emailController.clear();
           _passController.clear();
           _confirmPassController.clear();
+
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (c) => OtpScreen(email: enteredEmail),
+            ),
+          );
         } else {
           final errorData = jsonDecode(response.body);
           ScaffoldMessenger.of(context).showSnackBar(

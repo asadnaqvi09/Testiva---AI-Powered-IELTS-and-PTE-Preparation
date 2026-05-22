@@ -1,8 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/api_service.dart'; // ApiService ka sahi path check kar lein
 import '../../../widgets/app_button.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+  final String email; // FIX: Pichli screen ka error khatam karne ke liye field add kar di
+
+  const ResetPasswordScreen({super.key, required this.email});
+
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
@@ -11,6 +16,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _pass = TextEditingController();
   final _confirm = TextEditingController();
   bool _canUpdate = false;
+  bool _isLoading = false; // Senior Touch: Loader control variable
 
   @override
   void initState() {
@@ -25,6 +31,54 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
   }
 
+  // Live Backend API Call Function
+  Future<void> _updatePassword() async {
+    if (!_canUpdate) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Backend router mapping ke mutabiq payload bhej rahe hain
+      final response = await ApiService.post('/auth/reset-password', {
+        'email': widget.email,
+        'newPassword': _pass.text.trim(),
+      });
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Password reset successfully! Please login.'),
+              backgroundColor: Colors.green
+          ),
+        );
+
+        // Sahi tarika: Password badal gaya, ab user ko seedha login page par wapas phenk dein
+        Navigator.popUntil(context, (r) => r.isFirst);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(responseData['message'] ?? 'Failed to reset password'),
+              backgroundColor: Colors.red
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Connection error: ${e.toString()}'),
+            backgroundColor: Colors.red
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   void dispose() {
     _pass.dispose();
@@ -36,7 +90,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white, elevation: 0, iconTheme: const IconThemeData(color: Colors.black)),
+      appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.black)
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -50,9 +108,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const Spacer(),
           SizedBox(
               width: double.infinity,
-              child: AppButton(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
+                  : AppButton(
                 text: 'Update Password',
-                onPressed: _canUpdate ? () => Navigator.popUntil(context, (r) => r.isFirst) : null,
+                // Button disable logic barkarar hai aur click par API function map kar diya
+                onPressed: _canUpdate ? _updatePassword : null,
               )
           ),
           const SizedBox(height: 40),

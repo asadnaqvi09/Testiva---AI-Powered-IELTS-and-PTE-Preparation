@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/api_service.dart'; // ApiService ka path verify kar lein
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
 import '../../../widgets/app_button.dart';
@@ -14,11 +16,54 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false; // Senior Touch: Loading state management
 
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  // API Call Function
+  Future<void> _handleForgotPassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    final userEmail = _emailController.text.trim();
+
+    try {
+      final response = await ApiService.post('/auth/forgot-password', {
+        'email': userEmail,
+      });
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OTP sent successfully to your email!'), backgroundColor: Colors.green),
+        );
+        // Successful response par OTP Screen par email pass kar ke navigation
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OTPScreen(email: userEmail),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData['message'] ?? 'Failed to send OTP'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: ${e.toString()}'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -59,18 +104,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const Spacer(),
-              AppButton(
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
+                  : AppButton(
                 text: 'Send Reset Link',
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => OTPScreen(email: _emailController.text),
-                      ),
-                    );
-                  }
-                },
+                onPressed: _handleForgotPassword,
               ),
               const SizedBox(height: 40),
             ],

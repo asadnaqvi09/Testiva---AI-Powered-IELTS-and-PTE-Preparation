@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/api_service.dart';
 import '../../../widgets/app_button.dart';
 import 'reset_password_screen.dart';
 
@@ -15,6 +17,7 @@ class _OTPScreenState extends State<OTPScreen> {
   Timer? _t;
   final _ctrls = List.generate(4, (_) => TextEditingController());
   bool _isComplete = false;
+  bool _isLoading = false; // Senior Touch: Loading overlay
 
   @override
   void initState() {
@@ -36,6 +39,83 @@ class _OTPScreenState extends State<OTPScreen> {
     setState(() {
       _isComplete = _ctrls.every((c) => c.text.isNotEmpty);
     });
+  }
+
+  // OTP Verification API Call
+  Future<void> _verifyOTP() async {
+    if (!_isComplete) return;
+
+    setState(() => _isLoading = true);
+
+    // Charon boxes se 4-digit code single string mein assemble karna
+    String otpCode = _ctrls.map((c) => c.text).join();
+
+    try {
+      final response = await ApiService.post('/auth/verify-reset-otp', {
+        'email': widget.email,
+        'otp': otpCode,
+      });
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OTP Verified Successfully!'), backgroundColor: Colors.green),
+        );
+
+        // Navigation to Reset Password Screen (Passing email for the next step)
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ResetPasswordScreen(email: widget.email)
+            )
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData['message'] ?? 'Invalid OTP code'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verification failed: ${e.toString()}'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Resend OTP API Call
+  Future<void> _resendOTP() async {
+    try {
+      final response = await ApiService.post('/auth/forgot-password', {
+        'email': widget.email,
+      });
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A new OTP has been sent to your email.'), backgroundColor: Colors.green),
+        );
+        setState(() {
+          _sec = 60;
+        });
+        _startT();
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData['message'] ?? 'Failed to resend OTP'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection error: ${e.toString()}'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
@@ -62,15 +142,20 @@ class _OTPScreenState extends State<OTPScreen> {
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: List.generate(4, (i) => _box(i))),
           const SizedBox(height: 30),
           Center(child: Text("00:${_sec.toString().padLeft(2, '0')}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF007BFF)))),
-          Center(child: TextButton(onPressed: _sec == 0 ? () { setState(() => _sec = 60); _startT(); } : null, child: Text('Resend Code', style: TextStyle(color: _sec == 0 ? const Color(0xFF007BFF) : Colors.grey)))),
+          Center(
+              child: TextButton(
+                  onPressed: _sec == 0 ? _resendOTP : null,
+                  child: Text('Resend Code', style: TextStyle(color: _sec == 0 ? const Color(0xFF007BFF) : Colors.grey))
+              )
+          ),
           const Spacer(),
           SizedBox(
               width: double.infinity,
-              child: AppButton(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
+                  : AppButton(
                 text: 'Verify',
-                onPressed: _isComplete ? () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ResetPasswordScreen()));
-                } : null,
+                onPressed: _isComplete ? _verifyOTP : null,
               )
           ),
           const SizedBox(height: 40),

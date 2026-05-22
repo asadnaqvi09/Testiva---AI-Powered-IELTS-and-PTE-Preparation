@@ -1,5 +1,5 @@
 name: frontend
-description: "A new Flutter project."
+description: "A-Powered IELTS and PTE Preparation Frontend Application."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -14,6 +14,8 @@ dependencies:
   fl_chart: ^0.70.2
   provider: ^6.1.1
   share_plus: ^13.1.0
+  http: ^1.2.0
+  shared_preferences: ^2.5.5 # Cleaned and structured correctly here
 
 dev_dependencies:
   flutter_test:

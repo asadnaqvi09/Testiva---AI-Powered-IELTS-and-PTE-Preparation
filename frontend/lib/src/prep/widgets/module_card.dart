@@ -9,20 +9,36 @@ class ModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () {
-        if (module.title == 'Reading') {
+        // Dynamic string matching for routes mapping execution
+        final String titleLower = module.title.toLowerCase();
+
+        if (titleLower.contains('read')) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const ReadingDetailsScreen(),
             ),
           );
-        } else if (module.title == 'Writing') {
+        } else if (titleLower.contains('writ')) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const WritingDetailsScreen(),
+            ),
+          );
+        } else {
+          // Fallback user alert overlays for Listening and Speaking modules activation
+          ScaffoldMessenger.of(context).clearSnackBars(); // Instantly clear previous stacks
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${module.title} simulation engine module is coming soon! 🚀'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: isDarkMode ? const Color(0xFF1E293B) : const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
@@ -30,15 +46,18 @@ class ModuleCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(
+            color: isDarkMode ? Colors.grey[800]! : Colors.grey.shade100,
+          ),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+            if (!isDarkMode)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
           ],
         ),
         child: Column(
@@ -47,10 +66,11 @@ class ModuleCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Icon Context Wrap Container Box
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: module.color.withValues(alpha: 0.1),
+                    color: module.color.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(module.icon, color: module.color, size: 24),
@@ -62,8 +82,15 @@ class ModuleCard extends StatelessWidget {
             const Spacer(),
             Text(
               module.title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+              ),
             ),
+            const SizedBox(height: 2),
             Text(
               '${module.lessonsCount} lessons',
               style: const TextStyle(color: Colors.grey, fontSize: 12),
