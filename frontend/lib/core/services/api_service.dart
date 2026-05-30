@@ -47,4 +47,14 @@ class ApiService {
       headers: headers,
     ).timeout(const Duration(seconds: 10));
   }
-}
+
+  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    final headers = await _getHeaders();
+    return await http.put(
+      url,
+      headers: headers,
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 10));
+  }
+}

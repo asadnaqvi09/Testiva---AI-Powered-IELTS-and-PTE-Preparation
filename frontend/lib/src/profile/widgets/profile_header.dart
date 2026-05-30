@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class ProfileHeader extends StatelessWidget {
   final bool isDarkMode;
   final Map<String, dynamic> userData;
+  final VoidCallback? onEditPressed;
 
   const ProfileHeader({
     super.key,
     required this.isDarkMode,
     required this.userData,
+    this.onEditPressed,
   });
 
   @override
@@ -73,8 +75,8 @@ class ProfileHeader extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: isPremium
-                          ? const Color(0xFFF59E0B).withOpacity(0.15)
-                          : Colors.grey.withOpacity(0.15),
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                          : Colors.grey.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -89,14 +91,36 @@ class ProfileHeader extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
-                email,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 13,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  if (onEditPressed != null)
+                    GestureDetector(
+                      onTap: onEditPressed,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007BFF).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          size: 16,
+                          color: Color(0xFF007BFF),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),

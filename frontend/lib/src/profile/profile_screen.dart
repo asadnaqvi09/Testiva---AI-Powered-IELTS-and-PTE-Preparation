@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/user_notifier.dart';
 import 'widgets/profile_header.dart';
+import 'widgets/edit_profile_modal.dart';
 import '../dashboard/home/widgets/stats_row.dart';
 import 'widgets/progress_graph.dart';
 import 'widgets/preference_tiles.dart';
@@ -23,8 +25,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 
   Map<String, dynamic> _userData = {
-    'name': 'Ali Khan',
-    'email': 'ali.khan@example.com',
+    'name': 'User',
+    'email': '',
     'isPremium': false,
   };
 
@@ -40,14 +42,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['user'] != null) {
+          final newUserData = {
+            'name': data['user']['full_name'] ?? data['user']['name'] ?? 'User Name',
+            'email': data['user']['email'] ?? 'user@email.com',
+            'isPremium': (data['user']['subscription'] ?? '').toString().toLowerCase() == 'premium',
+          };
           setState(() {
-            _userData = {
-              'name': data['user']['full_name'] ?? data['user']['name'] ?? 'User Name',
-              'email': data['user']['email'] ?? 'user@email.com',
-              'isPremium': (data['user']['subscription'] ?? '').toString().toLowerCase() == 'premium',
-            };
+            _userData = newUserData;
             _isLoading = false;
           });
+          // Update global notifier for other widgets (e.g., HeaderSection)
+          UserNotifier.notifier.value = newUserData;
           return;
         }
       }
@@ -67,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: const CustomDrawer(),
+      drawer: CustomDrawer(),
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: false,
@@ -94,7 +99,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 ProfileHeader(
                     isDarkMode: isDarkMode,
-                    userData: _userData
+                    userData: _userData,
+                    onEditPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => EditProfileModal(
+                          currentName: _userData['name'] ?? '',
+                          currentEmail: _userData['email'] ?? '',
+                          onProfileUpdated: _fetchUserProfileData,
+                        ),
+                      );
+                    },
                 ),
                 const SizedBox(height: 25),
                 const StatsRow(),

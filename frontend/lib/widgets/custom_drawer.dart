@@ -11,9 +11,9 @@ class CustomDrawer extends StatefulWidget {
 }
 
 class _CustomDrawerState extends State<CustomDrawer> {
-  String _userName = 'Ahmed Khan';
+  String _userName = 'User';
   String _userTier = 'Free Member';
-  String _initials = 'AK';
+  String _initials = 'U';
   bool _isLoadingHeader = true;
 
   @override
@@ -25,12 +25,13 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
   Future<void> _loadDrawerProfileCache() async {
     try {
-      final response = await ApiService.get('/auth/profile');
+      final response = await ApiService.get('/user/profile');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['user'] != null) {
-          final String name = data['user']['name'] ?? 'Ahmed Khan';
-          final bool isPremium = data['user']['isPremium'] ?? data['user']['is_premium'] ?? false;
+          final String name = data['user']['full_name'] ?? data['user']['name'] ?? 'User';
+          final bool isPremium = data['user']['isPremium'] == true ||
+              (data['user']['subscription'] ?? '').toString().toLowerCase() == 'premium';
 
           String calculatedInitials = 'U';
           List<String> parts = name.trim().split(' ');
