@@ -19,6 +19,37 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   int _currentRating = 0;
   String _selectedCategory = 'Overall Experience';
   bool _isSending = false; // Form dynamic submission state controller
+  String _aiSuggestion = 'Loading suggestion...';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAiSuggestion();
+  }
+
+  Future<void> _fetchAiSuggestion() async {
+    try {
+      final response = await ApiService.get('/ai/feedback-suggestion');
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true && body['suggestion'] != null) {
+          if (mounted) {
+            setState(() {
+              _aiSuggestion = body['suggestion'];
+            });
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching AI suggestion: $e");
+    }
+    if (mounted) {
+      setState(() {
+        _aiSuggestion = 'The IELTS preparation content is very helpful. I would appreciate more mock tests...';
+      });
+    }
+  }
 
   // 🚀 Live Database Submission Route Executor
   Future<void> _submitFeedback(FeedbackProvider provider) async {
@@ -127,10 +158,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 const SizedBox(height: 20),
 
                 AiSuggestionBox(
-                  suggestionText: 'The IELTS preparation content is very helpful. I would appreciate more mock tests...',
+                  suggestionText: _aiSuggestion,
                   onUseSuggestion: () {
-                    feedbackProvider.feedbackController.text =
-                    'The IELTS preparation content is very helpful. I would appreciate more mock tests...';
+                    feedbackProvider.feedbackController.text = _aiSuggestion;
                   },
                 ),
                 const SizedBox(height: 20),

@@ -23,6 +23,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  void _handleStartTestFlow() {
+    setState(() {
+      _selectedIndex = 1;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
@@ -31,7 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onActionTap: _onTabChanged,
         onNavigateToPrep: () => _onTabChanged(2),
       ),
-      const MocksScreen(),
+      MocksScreen(onStartTestRequested: _handleStartTestFlow),
       const PrepScreen(),
       const CommunityScreen(),
       const ProfileScreen(),

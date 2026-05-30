@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService ka path verify kar lein
+import 'package:frontend/core/services/api_service.dart';
 import '../../../../providers/theme_provider.dart';
 
 class PreferenceTiles extends StatefulWidget {
@@ -13,7 +13,7 @@ class PreferenceTiles extends StatefulWidget {
 }
 
 class _PreferenceTilesState extends State<PreferenceTiles> {
-  bool _pushNotifications = true; // Default fallback state
+  bool _pushNotifications = true;
   bool _isUpdating = false;
 
   @override
@@ -22,7 +22,7 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
     _fetchUserPreferences();
   }
 
-  // 🚀 Server se user ki preferences settings fetch karna
+
   Future<void> _fetchUserPreferences() async {
     try {
       final response = await ApiService.get('/user/preferences');
@@ -39,7 +39,7 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
     }
   }
 
-  // 🔄 Notification preferences change hone par backend hit karna
+
   Future<void> _toggleNotification(bool value) async {
     setState(() {
       _pushNotifications = value;
@@ -53,7 +53,7 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
 
       final data = jsonDecode(response.body);
       if (response.statusCode != 200 || data['success'] != true) {
-        // Agar fail ho jaye to UI wapas purani state par revert kar dein
+
         setState(() {
           _pushNotifications = !value;
         });
@@ -97,7 +97,7 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
             Icons.notifications_none,
             'Push Notifications',
             _pushNotifications,
-            _isUpdating ? null : _toggleNotification, // Switch disable ho jayega loading ke dauran
+            _isUpdating ? null : _toggleNotification,
           ),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           _buildSwitchTile(

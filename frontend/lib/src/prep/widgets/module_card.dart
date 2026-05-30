@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../data/models/prep_module_model.dart';
 import '../reading/reading_details_screen.dart';
 import '../writing/writing_details_screen.dart';
+import '../listening/listening_details_screen.dart';
+import '../speaking/speaking_details_screen.dart';
 
 class ModuleCard extends StatelessWidget {
   final PrepModule module;
@@ -13,7 +15,7 @@ class ModuleCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        // Dynamic string matching for routes mapping execution
+
         final String titleLower = module.title.toLowerCase();
 
         if (titleLower.contains('read')) {
@@ -30,9 +32,23 @@ class ModuleCard extends StatelessWidget {
               builder: (context) => const WritingDetailsScreen(),
             ),
           );
+        } else if (titleLower.contains('listen')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ListeningDetailsScreen(),
+            ),
+          );
+        } else if (titleLower.contains('speak')) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SpeakingDetailsScreen(),
+            ),
+          );
         } else {
-          // Fallback user alert overlays for Listening and Speaking modules activation
-          ScaffoldMessenger.of(context).clearSnackBars(); // Instantly clear previous stacks
+
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${module.title} simulation engine module is coming soon! 🚀'),
@@ -66,7 +82,7 @@ class ModuleCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Icon Context Wrap Container Box
+
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(

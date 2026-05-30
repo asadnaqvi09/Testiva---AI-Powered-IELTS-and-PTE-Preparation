@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService ka path check kar lein
+import 'package:frontend/core/services/api_service.dart';
 
 class ProgressGraph extends StatefulWidget {
   const ProgressGraph({super.key});
@@ -12,7 +12,7 @@ class ProgressGraph extends StatefulWidget {
 
 class _ProgressGraphState extends State<ProgressGraph> {
   bool _isLoading = true;
-  String _weeklyImprovement = '+13%'; // Fallback default text
+  String _weeklyImprovement = '+13%';
 
   // Dynamic spots matrix mapping
   List<FlSpot> _graphSpots = [];
@@ -24,7 +24,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
     _fetchLiveGraphData();
   }
 
-  // 🚀 Live Backend API Call to load weekly tracking graph
+
   Future<void> _fetchLiveGraphData() async {
     try {
       final response = await ApiService.get('/progress');
@@ -33,7 +33,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
         if (data['success'] == true && data['data'] != null) {
           final stats = data['data'];
 
-          // Agar server se specific trend text aaye (e.g. "+15% this week")
+
           if (stats['weeklyTrend'] != null || stats['weekly_trend'] != null) {
             _weeklyImprovement = stats['weeklyTrend'] ?? stats['weekly_trend'];
           }
@@ -43,7 +43,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
             List<FlSpot> fetchedSpots = [];
 
             for (int i = 0; i < dynamicList.length; i++) {
-              if (i >= 7) break; // Maximum 7 days target
+              if (i >= 7) break;
               double score = (dynamicList[i]['score'] ?? 0.0).toDouble();
               fetchedSpots.add(FlSpot(i.toDouble(), score));
             }
@@ -65,7 +65,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
     }
   }
 
-  // Fallback function using your absolute original spots parameters
+
   void _loadOriginalFallbackSpots() {
     if (mounted) {
       setState(() {
@@ -177,7 +177,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 2, // Fixed spacing interval clean dikhne ke liye
+                      interval: 2,
                       reservedSize: 30,
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}',
@@ -212,7 +212,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
                 minX: 0,
                 maxX: 6,
                 minY: 0,
-                maxY: 9, // IELTS Max Dynamic Score Limit
+                maxY: 9,
                 lineBarsData: [
                   LineChartBarData(
                     spots: _graphSpots,

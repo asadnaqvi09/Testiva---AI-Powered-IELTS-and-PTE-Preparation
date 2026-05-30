@@ -1,38 +1,115 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../../core/services/api_service.dart';
+import '../../../../../data/models/community_post_model.dart';
 import 'comments_bottom_sheet.dart';
 
 class CommunityPostCard extends StatefulWidget {
-  const CommunityPostCard({super.key});
+  final CommunityPostModel post;
+  final VoidCallback onLikeToggled;
+
+  const CommunityPostCard({
+    super.key,
+    required this.post,
+    required this.onLikeToggled,
+  });
 
   @override
   State<CommunityPostCard> createState() => _CommunityPostCardState();
 }
 
 class _CommunityPostCardState extends State<CommunityPostCard> {
-  bool isLiked = false;
+  late bool isLiked;
+  late int likeCount;
   bool isBookmarked = false;
 
-  final String postTitle = 'How to improve IELTS Speaking from Band 6 to 7?';
-  final String postContent = "I've been stuck at Band 6 for Speaking for 3 attempts. My fluency is okay but examiner said vocabulary is limited...";
+  @override
+  void initState() {
+    super.initState();
+    isLiked = widget.post.likedByMe;
+    likeCount = widget.post.likes;
+  }
+
+  @override
+  void didUpdateWidget(covariant CommunityPostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.likedByMe != widget.post.likedByMe ||
+        oldWidget.post.likes != widget.post.likes) {
+      setState(() {
+        isLiked = widget.post.likedByMe;
+        likeCount = widget.post.likes;
+      });
+    }
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
+  Future<void> _toggleLike() async {
+    setState(() {
+      if (isLiked) {
+        isLiked = false;
+        likeCount--;
+      } else {
+        isLiked = true;
+        likeCount++;
+      }
+    });
+
+    try {
+      final response = await ApiService.post('/community/toggle-post-like/${widget.post.id}', {});
+      if (response.statusCode != 200) {
+        _revertLike();
+      } else {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true) {
+          widget.onLikeToggled();
+        } else {
+          _revertLike();
+        }
+      }
+    } catch (_) {
+      _revertLike();
+    }
+  }
+
+  void _revertLike() {
+    setState(() {
+      if (isLiked) {
+        isLiked = false;
+        likeCount--;
+      } else {
+        isLiked = true;
+        likeCount++;
+      }
+    });
+  }
+
+  void _onShare() async {
+    final String shareText = '${widget.post.title}\n\n${widget.post.content}\n\nShared from Testiva';
+    await Share.share(
+      shareText,
+      subject: 'Testiva Post',
+    );
+    try {
+      await ApiService.post('/community/share-post/${widget.post.id}', {'platform': 'copy_link'});
+    } catch (_) {}
+  }
 
   void _showComments() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const CommentsBottomSheet(),
-    );
-  }
-
-  void _onShare() async {
-    final String shareText = '$postTitle\n\n$postContent\n\nShared from Testiva';
-
-    // Latest share_plus syntax jo har version pe kaam karega
-    await Share.share(
-      shareText,
-      subject: 'IELTS Preparation Tip',
-    );
+      builder: (context) => CommentsBottomSheet(postId: widget.post.id, postTitle: widget.post.title),
+    ).then((_) => widget.onLikeToggled());
   }
 
   @override
@@ -56,17 +133,20 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 18,
-                backgroundColor: Color(0xFF007BFF),
-                child: Text('AK', style: TextStyle(color: Colors.white, fontSize: 12)),
+                backgroundColor: const Color(0xFF007BFF),
+                backgroundImage: widget.post.authorAvatar != null ? NetworkImage(widget.post.authorAvatar!) : null,
+                child: widget.post.authorAvatar == null
+                    ? Text(_getInitials(widget.post.authorName), style: const TextStyle(color: Colors.white, fontSize: 12))
+                    : null,
               ),
               const SizedBox(width: 12),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ahmed Khan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text('2h ago', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text(widget.post.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(widget.post.timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
                 ],
               ),
               const SizedBox(width: 8),
@@ -76,9 +156,9 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
                   color: const Color(0xFFE0F2FE),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  'IELTS Speaking',
-                  style: TextStyle(color: Color(0xFF0369A1), fontSize: 10, fontWeight: FontWeight.bold),
+                child: Text(
+                  widget.post.tag,
+                  style: const TextStyle(color: Color(0xFF0369A1), fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
               const Spacer(),
@@ -87,46 +167,50 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
           ),
           const SizedBox(height: 16),
           Text(
-            postTitle,
+            widget.post.title,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.3),
           ),
           const SizedBox(height: 8),
           Text(
-            postContent,
+            widget.post.content,
             style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.5),
           ),
-          GestureDetector(
-            onTap: () {},
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: Text('Read more', style: TextStyle(color: Color(0xFF007BFF), fontWeight: FontWeight.bold, fontSize: 13)),
-            ),
-          ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              SizedBox(
-                width: 65,
-                height: 24,
-                child: Stack(
-                  children: List.generate(4, (index) {
-                    return Positioned(
-                      left: index * 14.0,
-                      child: CircleAvatar(
-                        radius: 12,
-                        backgroundColor: Colors.white,
+          if (widget.post.comments > 0) ...[
+            Row(
+              children: [
+                SizedBox(
+                  width: (widget.post.comments > 4 ? 4 : widget.post.comments) * 14.0 + 10,
+                  height: 24,
+                  child: Stack(
+                    children: List.generate(widget.post.comments > 4 ? 4 : widget.post.comments, (index) {
+                      return Positioned(
+                        left: index * 14.0,
                         child: CircleAvatar(
-                          radius: 10,
-                          backgroundColor: Colors.primaries[(index + 5) % Colors.primaries.length],
+                          radius: 12,
+                          backgroundColor: Colors.white,
+                          child: CircleAvatar(
+                            radius: 10,
+                            backgroundColor: Colors.primaries[(index + 5) % Colors.primaries.length],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
+                  ),
                 ),
-              ),
-              const Text('5 comments', style: TextStyle(color: Colors.grey, fontSize: 12)),
-            ],
-          ),
+                const SizedBox(width: 8),
+                Text('${widget.post.comments} comments', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ] else ...[
+            const Row(
+              children: [
+                Icon(Icons.chat_bubble_outline, size: 14, color: Colors.grey),
+                SizedBox(width: 6),
+                Text('No comments yet', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Divider(color: Color(0xFFF1F5F9), height: 1),
@@ -136,13 +220,13 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
             children: [
               _action(
                 isLiked ? Icons.favorite : Icons.favorite_border,
-                '24',
+                '$likeCount',
                 isLiked ? Colors.red : Colors.grey,
-                    () => setState(() => isLiked = !isLiked),
+                _toggleLike,
               ),
               _action(
                 Icons.chat_bubble_outline,
-                '5',
+                '${widget.post.comments}',
                 Colors.grey,
                 _showComments,
               ),

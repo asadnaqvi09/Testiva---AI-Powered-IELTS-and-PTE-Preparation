@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // Core ApiService mapping helper
+import 'package:frontend/core/services/api_service.dart';
 import 'widgets/profile_header.dart';
 import '../dashboard/home/widgets/stats_row.dart';
 import 'widgets/progress_graph.dart';
@@ -21,7 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoading = true;
 
-  // Real-time user profile data states storage matrices
+
   Map<String, dynamic> _userData = {
     'name': 'Ali Khan',
     'email': 'ali.khan@example.com',
@@ -34,29 +34,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _fetchUserProfileData();
   }
 
-  // 🚀 Fetch Profile data metrics from database endpoint
   Future<void> _fetchUserProfileData() async {
     try {
-      final response = await ApiService.get('/auth/profile');
-
+      final response = await ApiService.get('/user/profile');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['user'] != null) {
           setState(() {
             _userData = {
-              'name': data['user']['name'] ?? 'User Name',
+              'name': data['user']['full_name'] ?? data['user']['name'] ?? 'User Name',
               'email': data['user']['email'] ?? 'user@email.com',
-              'isPremium': data['user']['isPremium'] ?? data['user']['is_premium'] ?? false,
+              'isPremium': (data['user']['subscription'] ?? '').toString().toLowerCase() == 'premium',
             };
             _isLoading = false;
           });
           return;
         }
       }
-      // If endpoint response gives errors, silently adapt with standard parameters fallback
       setState(() => _isLoading = false);
     } catch (e) {
-      debugPrint("Profile state fetching exception caught: ${e.toString()}");
+      debugPrint(e.toString());
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -94,7 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Forwarding live user variables to child layout parameters wrapper
+
                 ProfileHeader(
                     isDarkMode: isDarkMode,
                     userData: _userData

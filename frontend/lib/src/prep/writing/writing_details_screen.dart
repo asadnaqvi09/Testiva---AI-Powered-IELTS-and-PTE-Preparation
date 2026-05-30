@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService helper path
+import 'package:frontend/core/services/api_service.dart';
 import 'widgets/writing_header.dart';
 import 'widgets/writing_ai_card.dart';
 import 'widgets/collapsible_lesson_tile.dart';
@@ -17,7 +17,7 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoading = true;
 
-  // Tabs separation state matrices
+
   Map<String, List<LessonItem>> _fundamentalsSections = {};
   Map<String, List<LessonItem>> _essaySections = {};
 
@@ -27,72 +27,98 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
     _fetchWritingLessons();
   }
 
-  // 🚀 Live Backend API Call logic for Writing tasks separation structure
+
   Future<void> _fetchWritingLessons() async {
     try {
-      final response = await ApiService.get('/lessons?module=writing');
+      final listResponse = await ApiService.get('/content/preparations?test_type=IELTS&section=Writing');
+      if (listResponse.statusCode == 200) {
+        final listData = jsonDecode(listResponse.body);
+        if (listData['success'] == true && listData['data'] != null && listData['data'].isNotEmpty) {
+          final prepId = listData['data'][0]['id'];
+          final detailResponse = await ApiService.get('/content/preparations/lesson/$prepId');
+          if (detailResponse.statusCode == 200) {
+            final detailData = jsonDecode(detailResponse.body);
+            if (detailData['success'] == true && detailData['data'] != null) {
+              final List dynamicList = detailData['data']['parts'] ?? [];
+              Map<String, List<LessonItem>> tempFundamentals = {};
+              Map<String, List<LessonItem>> tempEssay = {};
+              RegExp emojiReg = RegExp(r'([📚💡🎯🎨📜📝⏱️🔥🧠])');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final List dynamicList = data['data'];
+              for (var part in dynamicList) {
+                String partName = part['part_title'] ?? 'Part 1: Writing Fundamentals';
+                String rawText = part['part_content'] ?? '';
+                List<String> segments = rawText.split(emojiReg);
+                List<RegExpMatch> matches = emojiReg.allMatches(rawText).toList();
 
-          Map<String, List<LessonItem>> tempFundamentals = {};
-          Map<String, List<LessonItem>> tempEssay = {};
+                if (segments.isNotEmpty && segments[0].trim().isEmpty) {
+                  segments.removeAt(0);
+                }
 
-          for (var item in dynamicList) {
-            String partName = item['part_title'] ?? item['partTitle'] ?? 'Part 1: Writing Track';
-            // Backend variable configuration routing determination logic
-            String tabCategory = (item['category'] ?? item['tab'] ?? 'fundamentals').toString().toLowerCase();
+                List<LessonItem> parsedItems = [];
+                for (int i = 0; i < segments.length; i++) {
+                  String emoji = (i < matches.length) ? matches[i].group(0) ?? '📚' : '📚';
+                  String segment = segments[i].trim();
+                  if (segment.isEmpty) continue;
 
-            String itemTag = (item['tag'] ?? 'LESSON').toString().toUpperCase();
-            IconData itemIcon = Icons.layers;
-            Color baseColor = Colors.blue;
-            Color textTagColor = Colors.blue;
+                  List<String> lines = segment.split('\n');
+                  String title = lines[0].trim();
+                  String subtitle = lines.sublist(1).join('\n').trim();
 
-            if (itemTag == 'TIP') {
-              itemIcon = Icons.lightbulb_outline;
-              baseColor = Colors.amber;
-              textTagColor = Colors.green;
-            } else if (itemTag == 'QUIZ') {
-              itemIcon = Icons.track_changes;
-              baseColor = Colors.red;
-              textTagColor = Colors.orange;
-            }
+                  String tag = 'LESSON';
+                  IconData icon = Icons.layers;
+                  Color baseColor = Colors.blue;
+                  Color textTagColor = Colors.blue;
 
-            LessonItem parsedItem = LessonItem(
-              title: item['title'] ?? 'Untitled Lesson',
-              subtitle: item['subtitle'] ?? '',
-              tag: itemTag,
-              icon: itemIcon,
-              bgColor: baseColor.withOpacity(0.12),
-              iconColor: baseColor,
-              tagColor: textTagColor,
-            );
+                  if (emoji == '💡' || emoji == '🔥') {
+                    tag = 'TIP';
+                    icon = Icons.lightbulb_outline;
+                    baseColor = Colors.amber;
+                    textTagColor = Colors.green;
+                  } else if (emoji == '🎯' || emoji == '🧠') {
+                    tag = 'QUIZ';
+                    icon = Icons.track_changes;
+                    baseColor = Colors.red;
+                    textTagColor = Colors.orange;
+                  } else if (emoji == '⏱️') {
+                    icon = Icons.timer_outlined;
+                  }
 
-            // Tab routing filtration allocation
-            if (tabCategory.contains('essay')) {
-              if (!tempEssay.containsKey(partName)) tempEssay[partName] = [];
-              tempEssay[partName]!.add(parsedItem);
-            } else {
-              if (!tempFundamentals.containsKey(partName)) tempFundamentals[partName] = [];
-              tempFundamentals[partName]!.add(parsedItem);
+                  parsedItems.add(LessonItem(
+                    title: title,
+                    subtitle: subtitle,
+                    tag: tag,
+                    icon: icon,
+                    bgColor: baseColor.withOpacity(0.12),
+                    iconColor: baseColor,
+                    tagColor: textTagColor,
+                  ));
+                }
+
+                if (parsedItems.isNotEmpty) {
+                  String nameLower = partName.toLowerCase();
+                  if (nameLower.contains('essay') || nameLower.contains('part 2') || nameLower.contains('part2')) {
+                    tempEssay[partName] = parsedItems;
+                  } else {
+                    tempFundamentals[partName] = parsedItems;
+                  }
+                }
+              }
+
+              if (mounted) {
+                setState(() {
+                  _fundamentalsSections = tempFundamentals;
+                  _essaySections = tempEssay;
+                  _isLoading = false;
+                });
+                return;
+              }
             }
           }
-
-          if (mounted) {
-            setState(() {
-              _fundamentalsSections = tempFundamentals;
-              _essaySections = tempEssay;
-              _isLoading = false;
-            });
-          }
-          return;
         }
       }
       _loadAbsoluteStaticBackup();
     } catch (e) {
-      debugPrint("Writing modules sync runtime failure: ${e.toString()}");
+      debugPrint(e.toString());
       _loadAbsoluteStaticBackup();
     }
   }
@@ -100,7 +126,7 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
   void _loadAbsoluteStaticBackup() {
     if (mounted) {
       setState(() {
-        // Fallback structures maintaining original data parameters precisely
+
         _fundamentalsSections = {
           'Part 1: Writing Fundamentals': [
             LessonItem(title: 'Task 1 vs Task 2', subtitle: 'Task 1 (20 min, 150 words): Describe a graph, chart, or diagram. Task 2 (40 min, 250 words): Write an essay responding to a point of view or argument.', tag: 'LESSON', icon: Icons.layers, bgColor: Colors.blue.withOpacity(0.1), iconColor: Colors.blue, tagColor: Colors.blue),
@@ -136,7 +162,7 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              // Top Bar Header
+
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
@@ -189,7 +215,7 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Custom TabBar Container Layout Spacing
+
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
@@ -213,13 +239,13 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
                 ),
               ),
 
-              // Body Tabs views loading state conditions switcher
+
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
                     : TabBarView(
                   children: [
-                    // Tab 1 UI Renderer
+
                     RefreshIndicator(
                       onRefresh: _fetchWritingLessons,
                       color: const Color(0xFF007BFF),

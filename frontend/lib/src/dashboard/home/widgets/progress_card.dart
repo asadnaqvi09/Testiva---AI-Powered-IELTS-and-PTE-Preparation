@@ -20,32 +20,26 @@ class _ProgressCardState extends State<ProgressCard> {
     _fetchLiveProgress();
   }
 
-  // 🚀 Live Backend API Integration for Dashboard Progress
   Future<void> _fetchLiveProgress() async {
     try {
-      // Backend ke app.use("/api/v1/progress", progressRoutes) par GET hit marega
-      final response = await ApiService.get('/progress');
-
+      final response = await ApiService.get('/progress/my-stats');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data['success'] == true && data['data'] != null) {
+          final stats = data['data'];
           setState(() {
-            // Backend agar progress out of 100 bhej raha hai (e.g. 75), toh usay double fractional (0.75) banayenge
-            double backendProgress = (data['data']['overallProgress'] ?? data['data']['overall_progress'] ?? 0).toDouble();
-
-            _overallProgress = backendProgress > 1 ? backendProgress / 100 : backendProgress;
-            _activeTrack = data['data']['studyTrack'] ?? data['data']['track'] ?? 'IELTS';
+            double totalTaken = (stats['total_tests_taken'] ?? 0).toDouble();
+            double bandScore = double.tryParse((stats['average_band_score'] ?? 0.0).toString()) ?? 0.0;
+            _overallProgress = totalTaken > 0 ? (bandScore / 9.0).clamp(0.0, 1.0) : 0.0;
+            _activeTrack = 'IELTS';
             _isLoading = false;
           });
           return;
         }
       }
-
-      // Fallback agar backend issue kare to screen blank na ho
       _loadFallbackData();
     } catch (e) {
-      debugPrint("Error fetching dashboard progress: ${e.toString()}");
+      debugPrint(e.toString());
       _loadFallbackData();
     }
   }
@@ -53,7 +47,7 @@ class _ProgressCardState extends State<ProgressCard> {
   void _loadFallbackData() {
     if (mounted) {
       setState(() {
-        _overallProgress = 0.65; // Safe Fallback to 65% design matching
+        _overallProgress = 0.65;
         _isLoading = false;
       });
     }

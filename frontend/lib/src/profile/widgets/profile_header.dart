@@ -12,12 +12,12 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Extract values with safe defaults to prevent runtime null pointer crashes
+
     final String name = userData['name'] ?? 'User Name';
     final String email = userData['email'] ?? 'user@email.com';
     final bool isPremium = userData['isPremium'] ?? false;
 
-    // Generate Initials for the Avatar (e.g., "Ali Khan" -> "AK")
+
     String initials = 'U';
     try {
       List<String> parts = name.trim().split(' ');
@@ -32,7 +32,7 @@ class ProfileHeader extends StatelessWidget {
 
     return Row(
       children: [
-        // Dynamic Initials Avatar Circle
+
         CircleAvatar(
           radius: 35,
           backgroundColor: const Color(0xFF007BFF),
@@ -47,7 +47,7 @@ class ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(width: 15),
 
-        // User Text Meta Information Fields
+
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +68,7 @@ class ProfileHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
 
-                  // Premium Tier Badge Indicator Status Switcher
+
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
