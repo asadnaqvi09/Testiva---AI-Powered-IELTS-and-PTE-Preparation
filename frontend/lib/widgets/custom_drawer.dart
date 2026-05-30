@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService helper matching core modules
+import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/logout_dialog.dart';
 
 class CustomDrawer extends StatefulWidget {
@@ -22,7 +22,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     _loadDrawerProfileCache();
   }
 
-  // 🚀 Fetch quick sync data for the sidebar navigation module header panel
+
   Future<void> _loadDrawerProfileCache() async {
     try {
       final response = await ApiService.get('/auth/profile');
@@ -120,12 +120,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
           const Divider(height: 1, indent: 20, endIndent: 20),
           const SizedBox(height: 10),
 
-          // Main Router Application Sections Checklist
+
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               children: [
-                // Core Navigation Core Module Stack
+
                 _buildDrawerItem(
                   context,
                   icon: Icons.dashboard_outlined,
@@ -160,7 +160,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   child: Divider(),
                 ),
 
-                // Secondary Standard App Preferences Actions
+
                 _buildDrawerItem(
                   context,
                   icon: Icons.settings_outlined,
@@ -185,7 +185,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             ),
           ),
 
-          // Bottom Dangerous Actions - Logout Control
+
           Padding(
             padding: const EdgeInsets.all(20),
             child: Container(
@@ -213,9 +213,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
     );
   }
 
-  // Centralized Route State Transition Executor
+
   void _navigateToRoute(BuildContext context, String? current, String target) {
-    Navigator.pop(context); // Close drawer drawer overlay panel execution
+    Navigator.pop(context);
     if (current != target) {
       Navigator.pushNamedAndRemoveUntil(context, target, (route) => route.isFirst);
     }

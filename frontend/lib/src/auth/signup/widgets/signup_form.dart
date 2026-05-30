@@ -6,6 +6,7 @@ import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
 import 'package:frontend/src/auth/login/widgets/google_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../otp_screen.dart';
 
 class SignupForm extends StatefulWidget {
@@ -22,6 +23,7 @@ class _SignupFormState extends State<SignupForm> {
   final _passController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
+  bool _autoSaveCredentials = true;
 
   bool _obscurePass = true;
   bool _obscureConfirmPass = true;
@@ -32,26 +34,32 @@ class _SignupFormState extends State<SignupForm> {
     setState(() => _isLoading = true);
 
     try {
+      final enteredEmail = _emailController.text.trim().toLowerCase();
+      final enteredPassword = _passController.text;
+
       final response = await ApiService.post('/auth/register', {
         'full_name': _nameController.text.trim(),
-        'email': _emailController.text.trim().toLowerCase(),
-        'password': _passController.text,
+        'email': enteredEmail,
+        'password': enteredPassword,
         'confirm_password': _confirmPassController.text,
       });
 
       if (mounted) {
         if (response.statusCode == 200 || response.statusCode == 201) {
+          if (_autoSaveCredentials) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('saved_email', enteredEmail);
+            await prefs.setString('saved_password', enteredPassword);
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Registration Successful! Code sent.')),
           );
 
-          // Clear text fields before moving
-          final enteredEmail = _emailController.text.trim().toLowerCase();
           _nameController.clear();
           _emailController.clear();
           _passController.clear();
           _confirmPassController.clear();
-
 
           Navigator.push(
             context,
@@ -153,7 +161,28 @@ class _SignupFormState extends State<SignupForm> {
               return null;
             },
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: _autoSaveCredentials,
+                  activeColor: AppColors.primary,
+                  onChanged: (val) => setState(() => _autoSaveCredentials = val ?? false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Auto-save credentials for fast login',
+                  style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           _isLoading
               ? const Center(child: CircularProgressIndicator())
               : AppButton(

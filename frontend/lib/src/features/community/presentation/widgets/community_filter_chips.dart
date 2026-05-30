@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 
-
 class CommunityFilterChips extends StatelessWidget {
-  const CommunityFilterChips({super.key});
+  final String selectedFilter;
+  final ValueChanged<String> onFilterSelected;
+
+  const CommunityFilterChips({
+    super.key,
+    required this.selectedFilter,
+    required this.onFilterSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final filters = ['All', 'Popular', 'Recent', 'IELTS', 'PTE'];
+    final filters = ['All', 'General', 'IELTS', 'PTE'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: filters.map((filter) {
-          bool isSelected = filter == 'All';
+          final isSelected = filter == selectedFilter;
           return GestureDetector(
-            onTap: () {},
+            onTap: () => onFilterSelected(filter),
             child: Container(
               margin: const EdgeInsets.only(right: 10),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),

@@ -1,19 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
-import 'widgets/reading_header.dart';
-import 'widgets/reading_ai_card.dart';
-import 'widgets/collapsible_lesson_tile.dart';
+import '../reading/widgets/collapsible_lesson_tile.dart';
 import '../../../../widgets/custom_drawer.dart';
 
-class ReadingDetailsScreen extends StatefulWidget {
-  const ReadingDetailsScreen({super.key});
+class ListeningDetailsScreen extends StatefulWidget {
+  const ListeningDetailsScreen({super.key});
 
   @override
-  State<ReadingDetailsScreen> createState() => _ReadingDetailsScreenState();
+  State<ListeningDetailsScreen> createState() => _ListeningDetailsScreenState();
 }
 
-class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
+class _ListeningDetailsScreenState extends State<ListeningDetailsScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoading = true;
   Map<String, List<LessonItem>> _liveSections = {};
@@ -21,13 +19,12 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchReadingLessons();
+    _fetchListeningLessons();
   }
 
-
-  Future<void> _fetchReadingLessons() async {
+  Future<void> _fetchListeningLessons() async {
     try {
-      final listResponse = await ApiService.get('/content/preparations?test_type=IELTS&section=Reading');
+      final listResponse = await ApiService.get('/content/preparations?test_type=IELTS&section=Listening');
       if (listResponse.statusCode == 200) {
         final listData = jsonDecode(listResponse.body);
         if (listData['success'] == true && listData['data'] != null && listData['data'].isNotEmpty) {
@@ -117,15 +114,49 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
     if (mounted) {
       setState(() {
         _liveSections = {
-          'Part 1: Introduction to Reading': [
-            LessonItem(title: 'Types of Reading Questions', subtitle: 'IELTS Reading includes MCQ, True/False/Not Given, Matching Headings, Summary Completion, and Short Answer questions.', tag: 'LESSON', icon: Icons.layers, bgColor: Colors.blue.withOpacity(0.1), iconColor: Colors.blue, tagColor: Colors.blue),
-            LessonItem(title: 'Skimming and Scanning', subtitle: 'Skimming means reading quickly for the main idea. Scanning means looking for specific information.', tag: 'TIP', icon: Icons.lightbulb_outline, bgColor: Colors.amber.withOpacity(0.1), iconColor: Colors.amber, tagColor: Colors.green),
-            LessonItem(title: 'Time Management', subtitle: 'You have 60 minutes for 40 questions. Allocate about 20 minutes per passage.', tag: 'LESSON', icon: Icons.timer_outlined, bgColor: Colors.blue.withOpacity(0.1), iconColor: Colors.blue, tagColor: Colors.blue),
-            LessonItem(title: 'Quick Quiz: Question Types', subtitle: 'Q: What should you do first? Answer: Skim first to understand the topic.', tag: 'QUIZ', icon: Icons.track_changes, bgColor: Colors.red.withOpacity(0.1), iconColor: Colors.red, tagColor: Colors.orange),
+          'Part 1: Listening Basics': [
+            LessonItem(
+                title: 'Format of the Test',
+                subtitle: 'IELTS Listening takes 30 minutes, with 4 sections and 40 questions. You hear monologues and conversations.',
+                tag: 'LESSON',
+                icon: Icons.layers,
+                bgColor: Colors.blue.withOpacity(0.1),
+                iconColor: Colors.blue,
+                tagColor: Colors.blue),
+            LessonItem(
+                title: 'Active Listening & Prediction',
+                subtitle: 'Before the recording starts, read the questions. Predict the type of word needed (e.g. noun, number, date).',
+                tag: 'TIP',
+                icon: Icons.lightbulb_outline,
+                bgColor: Colors.amber.withOpacity(0.1),
+                iconColor: Colors.amber,
+                tagColor: Colors.green),
+            LessonItem(
+                title: 'Spelling Rules',
+                subtitle: 'Spelling must be 100% correct. Watch out for double letters (e.g., accommodation, success).',
+                tag: 'LESSON',
+                icon: Icons.timer_outlined,
+                bgColor: Colors.blue.withOpacity(0.1),
+                iconColor: Colors.blue,
+                tagColor: Colors.blue),
           ],
-          'Part 2: Advanced Strategies': [
-            LessonItem(title: 'True/False/Not Given Mastery', subtitle: '"Not Given" means the passage neither confirms nor contradicts. Never assume – use evidence.', tag: 'LESSON', icon: Icons.assignment_turned_in_outlined, bgColor: Colors.blue.withOpacity(0.1), iconColor: Colors.blue, tagColor: Colors.blue),
-            LessonItem(title: 'Matching Headings Strategy', subtitle: 'Read the first and last sentence of each paragraph. Match that to a heading first.', tag: 'TIP', icon: Icons.lightbulb_outline, bgColor: Colors.amber.withOpacity(0.1), iconColor: Colors.amber, tagColor: Colors.green),
+          'Part 2: Academic Lectures': [
+            LessonItem(
+                title: 'Identifying Key Information',
+                subtitle: 'Speakers use signpost words (like "firstly", "in contrast", "another reason is") to transition. Use these to follow the lecture.',
+                tag: 'TIP',
+                icon: Icons.lightbulb_outline,
+                bgColor: Colors.amber.withOpacity(0.1),
+                iconColor: Colors.amber,
+                tagColor: Colors.green),
+            LessonItem(
+                title: 'Quick Practice Quiz',
+                subtitle: 'Listen for distractors: "We will meet at 6:00. Oh wait, let\'s make it 6:30 instead." (Correct Answer: 6:30)',
+                tag: 'QUIZ',
+                icon: Icons.track_changes,
+                bgColor: Colors.red.withOpacity(0.1),
+                iconColor: Colors.red,
+                tagColor: Colors.orange),
           ]
         };
         _isLoading = false;
@@ -144,7 +175,6 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
@@ -164,10 +194,10 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                   ),
                   Row(
                     children: [
-                      const Icon(Icons.book, color: Color(0xFF007BFF), size: 24),
+                      const Icon(Icons.headphones, color: Color(0xFFFFC107), size: 24),
                       const SizedBox(width: 8),
                       Text(
-                        'Testiva AI',
+                        'Listening Prep',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -178,7 +208,7 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                   ),
                   const CircleAvatar(
                     radius: 18,
-                    backgroundColor: Color(0xFF007BFF),
+                    backgroundColor: Color(0xFFFFC107),
                     child: Text(
                       'AK',
                       style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
@@ -187,38 +217,63 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                 ],
               ),
             ),
-
-
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFC107)))
                   : RefreshIndicator(
-                onRefresh: _fetchReadingLessons,
-                color: const Color(0xFF007BFF),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 15),
-                      const ReadingHeader(),
-                      const SizedBox(height: 20),
-                      const ReadingAICard(),
-                      const SizedBox(height: 25),
-
-
-                      ..._liveSections.entries.map((entry) {
-                        return CollapsibleLessonTile(
-                          title: entry.key,
-                          items: entry.value,
-                        );
-                      }),
-
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
+                      onRefresh: _fetchListeningLessons,
+                      color: const Color(0xFFFFC107),
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 15),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFFD54F), Color(0xFFFFC107)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.headphones_outlined, size: 48, color: Colors.white),
+                                  SizedBox(width: 20),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Listening Section',
+                                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Master auditory comprehension and details prediction.',
+                                          style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            ..._liveSections.entries.map((entry) {
+                              return CollapsibleLessonTile(
+                                title: entry.key,
+                                items: entry.value,
+                              );
+                            }),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),

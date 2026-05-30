@@ -24,28 +24,25 @@ class _StatsRowState extends State<StatsRow> {
     _fetchLiveDashboardStats();
   }
 
-  // 🚀 Live Backend progress endpoint data wiring
   Future<void> _fetchLiveDashboardStats() async {
     try {
-      final response = await ApiService.get('/progress');
-
+      final response = await ApiService.get('/progress/my-stats');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
           final stats = data['data'];
           setState(() {
-            // Backend responses se values pick ho rahi hain (with proper casting string fallback)
             _dayStreak = (stats['dayStreak'] ?? stats['streak_days'] ?? '3').toString();
-            _estBand = (stats['estBand'] ?? stats['average_score'] ?? '6.5').toString();
-            _testsDone = (stats['testsDone'] ?? stats['total_tests'] ?? '5').toString();
+            _estBand = (stats['average_band_score'] ?? '0.0').toString();
+            _testsDone = (stats['total_tests_taken'] ?? '0').toString();
             _isLoading = false;
           });
           return;
         }
       }
-      setState(() => _isLoading = false); // Fallback variables already initialized hain
+      setState(() => _isLoading = false);
     } catch (e) {
-      debugPrint("Error loading stats row server data: ${e.toString()}");
+      debugPrint(e.toString());
       setState(() => _isLoading = false);
     }
   }

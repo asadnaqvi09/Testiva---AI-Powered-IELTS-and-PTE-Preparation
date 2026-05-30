@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Direct token flushing injection
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LogoutDialog extends StatelessWidget {
   const LogoutDialog({super.key});
 
-  // 🚀 Centralized execution session cleanup pipeline
+
   Future<void> _handleSecureLogout(BuildContext context) async {
     try {
-      // 1. Directly flush secure tokens and authentication keys from local cache memory
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('token'); // Removes raw bearer token string securely
-      await prefs.remove('user_data'); // Removes metadata dictionary string if saved
 
-      // Agar aap pure cache ko wipeout karna chahte hain toh single execution bhee run kar sakte hain:
-      // await prefs.clear();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      await prefs.remove('user_data');
+
     } catch (e) {
       debugPrint("Local cache tracking flush error: ${e.toString()}");
     } finally {
-      // 2. Clear routing histories stack and push context back down cleanly to root route '/'
+
       if (context.mounted) {
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/', // Safely remapped to root matching your main.dart paths setup
+          '/',
               (route) => false,
         );
       }
@@ -57,7 +55,7 @@ class LogoutDialog extends StatelessWidget {
       ),
       actionsPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
       actions: [
-        // Cancel Operation Interaction Button
+
         TextButton(
           onPressed: () => Navigator.pop(context),
           style: TextButton.styleFrom(
@@ -66,12 +64,12 @@ class LogoutDialog extends StatelessWidget {
           child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
         ),
 
-        // Destructive Action Logout Processing Button
+
         ElevatedButton(
           onPressed: () {
-            // Close active overlay dialog modal interface
+
             Navigator.pop(context);
-            // Run state-machine pipeline logic engine
+
             _handleSecureLogout(context);
           },
           style: ElevatedButton.styleFrom(

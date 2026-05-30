@@ -22,7 +22,7 @@ class GlobalStatsCard extends StatelessWidget {
       width: 105,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        // Dark mode k liye color toggle
+
         color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
