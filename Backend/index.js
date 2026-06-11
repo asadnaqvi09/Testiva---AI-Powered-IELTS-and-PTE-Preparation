@@ -47,7 +47,7 @@ app.use((req, _res, next) => {
 initSocketIO(io);
 
 app.get("/", (req, res) => {
-  res.status(200).json({ message: "Testiva Backend Running" });
+  res.status(200).json({ message: "Testiva Backend Running Ho raha" });
 });
 const API_V1 = "/api/v1";
 app.use(`${API_V1}/auth`, authRoutes);
