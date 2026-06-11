@@ -1,2 +1,0 @@
-export const DEFAULT_MODERATION_REASON =
-    'Your post has been removed because it violates our Community Guidelines. Please ensure all content is respectful, relevant, and appropriate for an academic learning environment.';
