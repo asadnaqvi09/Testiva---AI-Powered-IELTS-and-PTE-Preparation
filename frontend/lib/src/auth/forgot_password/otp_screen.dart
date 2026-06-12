@@ -51,9 +51,10 @@ class _OTPScreenState extends State<OTPScreen> {
     String otpCode = _ctrls.map((c) => c.text).join();
 
     try {
-      final response = await ApiService.post('/auth/verify-reset-otp', {
+      final response = await ApiService.post('/auth/verify-otp', {
         'email': widget.email,
         'otp': otpCode,
+        'type': 'reset',
       });
 
       final responseData = jsonDecode(response.body);

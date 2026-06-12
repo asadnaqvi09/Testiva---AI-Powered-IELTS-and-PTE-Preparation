@@ -71,6 +71,7 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       final response = await ApiService.post('/auth/resend-otp', {
         'email': widget.email,
+        'type': 'register',
       });
 
       final responseData = jsonDecode(response.body);
@@ -113,9 +114,10 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _isLoading = true);
     try {
       // FIX: Gateway route map kiya backend engine ke mutabiq
-      final response = await ApiService.post('/auth/verify-email', {
+      final response = await ApiService.post('/auth/verify-otp', {
         'email': widget.email,
         'otp': otpCode,
+        'type': 'register',
       });
 
       if (mounted) {

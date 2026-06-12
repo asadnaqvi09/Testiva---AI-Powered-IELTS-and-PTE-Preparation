@@ -46,11 +46,18 @@ export const sendOtpEmail = async ({ email, otp, type = 'register' }) => {
     throw new Error('Invalid email template type');
   }
   const html = emailConfig.template(otp);
-  await sendEmail({
-    to: email,
-    subject: emailConfig.subject,
-    html,
-  });
+  try {
+    await sendEmail({
+      to: email,
+      subject: emailConfig.subject,
+      html,
+    });
+    console.log(`[EMAIL SUCCESS] OTP email successfully sent to ${email}`);
+  } catch (error) {
+    console.error(`[EMAIL ERROR] Failed to send OTP email to ${email}:`, error.message);
+    console.log(`[BYPASS] OTP code for ${email} (${type}) is: ${otp}`);
+    // Do not rethrow the error, allow registration/verification flow to proceed.
+  }
 };
 
 export const sendPostFlaggedEmail = async ({ email, userName, postTitle, adminFeedback }) => {

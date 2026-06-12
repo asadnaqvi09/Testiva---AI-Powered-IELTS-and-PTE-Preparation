@@ -62,7 +62,7 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
       _isLoading = true;
     });
     try {
-      final response = await ApiService.get('/test/${widget.testId}/runtime');
+      final response = await ApiService.get('/content/test/${widget.testId}/runtime');
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         if (body['success'] == true) {
