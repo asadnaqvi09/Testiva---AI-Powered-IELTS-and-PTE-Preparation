@@ -16,3 +16,9 @@ developer_handbook.md
 /src/config/firebase-adminsdk.json
 /src/content
 /docs
+check_db.js
+seed_db.js
+test-otp.js
+test-query.js
+test-auth.js
+test-schema.js
