@@ -26,12 +26,12 @@ import {
 import bcrypt from "bcrypt";
 
 const hashOtpValue = async (otp) => hashOTP(String(otp));
-
 const buildToken = (user) => ({
   id: user.id,
   role: user.role,
   subscription: resolveSubscription(user),
   tokenVersion: user.token_version,
+  preference: user.preference, 
 });
 
 export const registerUser = async (req, res) => {
@@ -238,11 +238,14 @@ export const setUserPreference = async (req, res) => {
       });
     }
     const user = await updateUserPreference(userIdToUpdate, preference);
+    const updatedToken = generateAccessToken(buildToken(user));
+
     return res.status(200).json({
       success: true,
       message: isAdminMode 
         ? `User preference forcefully updated to ${preference} via Admin Override.` 
         : "Preference locked successfully.",
+      accessToken: updatedToken,
       user: {
         id: user.id,
         full_name: user.full_name,
@@ -429,6 +432,12 @@ export const googleAuth = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Token required" });
     const googleUser = await verifyGoogleToken(idToken);
+    if (googleUser.email_verified !== true) {
+      return res.status(400).json({
+        success: false,
+        message: "Google OAuth rejected: This email address is unverified at the provider level."
+      });
+    }
     let user = await findUserByEmail(googleUser.email);
     if (!user) {
       user = await createGoogleUser({

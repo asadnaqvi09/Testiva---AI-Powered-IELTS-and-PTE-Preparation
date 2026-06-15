@@ -116,8 +116,27 @@ export const getPrepLessons = async (req, res) => {
                 message: error.details[0].message
             });
         }
+        const subscription = req.user.subscription || "free";
+        const userPreference = req.user.preference;
+        const role = req.user.role;
+        let activeTestType = value.test_type;
+        if (role !== "admin" && subscription !== "premium") {
+            if (!userPreference) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: "Please select your learning preference to continue" 
+                });
+            }
+            if (activeTestType && activeTestType.trim().toUpperCase() !== userPreference.trim().toUpperCase()) {
+                return res.status(403).json({
+                    success: false,
+                    message: `Access denied. Your active track is locked to ${userPreference.toUpperCase()}.`
+                });
+            }
+            activeTestType = userPreference;
+        }
         const preparations = await prepModel.getAllPreparations(
-            value.test_type,
+            activeTestType,
             value.section,
             value.search
         );
@@ -139,6 +158,21 @@ export const getPrepDetails = async (req, res) => {
                 success: false,
                 message: "Preparation not found"
             });
+        }
+        if (req.user.role !== "admin" && req.user.subscription !== "premium") {
+            const userPref = (req.user.preference || "").trim().toUpperCase();
+            const lessonType = (fullPrep.test_type || "").trim().toUpperCase();
+
+            if (!userPref) {
+                return res.status(403).json({ success: false, message: "Please set your track preference first." });
+            }
+
+            if (lessonType !== userPref) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: "Access denied. Target content is locked to your tracking preference." 
+                });
+            }
         }
         return res.status(200).json({
             success: true,

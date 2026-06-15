@@ -17,6 +17,12 @@ export const submitTest = async (req, res) => {
       await addSyncJob({ userId, testData: value });
       return res.status(202).json({ success: true, message: "Offline data queued for sync" });
     }
+    const hasSubjectiveSection = value.responses.some(resp => 
+      resp.audio_response_url || 
+      resp.audio_url || 
+      (resp.user_answer && resp.user_answer.trim().split(/\s+/).length > 15)
+    );
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -44,28 +50,55 @@ export const submitTest = async (req, res) => {
           client,
         );
       }
+      let finalStatus = "completed";
+      let finalSyncStatus = "synced";
+      let writingScore = value.writing_score ?? 0;
+      let speakingScore = value.speaking_score ?? 0;
+      let globalFeedback = value.feedback ?? "Evaluation completed.";
+      if (hasSubjectiveSection) {
+        finalStatus = "pending";
+        finalSyncStatus = "pending";
+        writingScore = 0;
+        speakingScore = 0;
+        globalFeedback = "Your subjective answers are being evaluated by Testiva AI Engine.";
+      }
+
       await progressModel.finalizeAttempt(
         attemptId,
         {
-          overall_band_score: value.overall_band_score ?? 0,
+          overall_band_score: hasSubjectiveSection ? 0 : (value.overall_band_score ?? 0),
           reading_score: value.reading_score ?? 0,
           listening_score: value.listening_score ?? 0,
-          writing_score: value.writing_score ?? 0,
-          speaking_score: value.speaking_score ?? 0,
-          feedback: value.feedback ?? "Evaluation pending.",
+          writing_score: writingScore,
+          speaking_score: speakingScore,
+          feedback: globalFeedback,
           client_completed_at: value.client_completed_at,
-          status: "completed",
-          sync_status: "synced",
+          status: finalStatus,
+          sync_status: finalSyncStatus,
         },
         client,
       );
       await client.query("COMMIT");
       await bustUserTestCaches(userId);
-      res.status(201).json({
+      if (hasSubjectiveSection) {
+        await addSyncJob({ 
+          userId, 
+          attemptId,
+          testData: value,
+          isOnlineAsyncHook: true 
+        });
+        return res.status(202).json({
+          success: true,
+          message: "Test content captured. Writing/Speaking evaluation has been delegated to background AI pipelines.",
+          data: { attemptId, status: "pending" }
+        });
+      }
+      return res.status(201).json({
         success: true,
         message: "Test submitted successfully.",
         data: { attemptId, status: "completed" },
       });
+
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -73,7 +106,7 @@ export const submitTest = async (req, res) => {
       client.release();
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message || "Submission failed" });
+    return res.status(500).json({ success: false, message: error.message || "Submission failed" });
   }
 };
 
