@@ -22,3 +22,6 @@ test-otp.js
 test-query.js
 test-auth.js
 test-schema.js
+
+# Ignore module-level documentation files created for personal knowledge
+src/modules/**/README.md
