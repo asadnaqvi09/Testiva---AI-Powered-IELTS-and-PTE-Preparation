@@ -98,6 +98,7 @@ class _LoginFormState extends State<LoginForm> {
         }
       }
     } catch (e) {
+      print('Login Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connection error: Unable to connect to server')),

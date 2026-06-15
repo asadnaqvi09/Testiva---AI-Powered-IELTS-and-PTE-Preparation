@@ -48,6 +48,24 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
     });
   }
 
+  double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading && _resultData == null) {
@@ -78,18 +96,18 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
     final aiAnalysis = _resultData!['ai_analysis'] as Map<String, dynamic>? ?? {};
     final reviewList = _resultData!['review'] as List? ?? [];
 
-    final double bandScore = (mainInfo['band_score'] as num? ?? 0.0).toDouble();
-    final int correctCount = stats['correct_answers'] as int? ?? 0;
-    final int totalQuestions = stats['total_questions'] as int? ?? 0;
+    final double bandScore = _parseDouble(mainInfo['band_score']);
+    final int correctCount = _parseInt(stats['correct_answers']);
+    final int totalQuestions = _parseInt(stats['total_questions']);
     final int incorrectCount = totalQuestions - correctCount;
-    final String accuracyString = stats['accuracy'] as String? ?? '0%';
+    final String accuracyString = stats['accuracy']?.toString() ?? '0%';
     final double accuracyValue = totalQuestions > 0 ? correctCount / totalQuestions : 0.0;
 
     // Module Scores Null-Safety Parsing
-    final double rScore = (scoresBreakdown['reading'] as num? ?? 0.0).toDouble();
-    final double lScore = (scoresBreakdown['listening'] as num? ?? 0.0).toDouble();
-    final double wScore = (scoresBreakdown['writing'] as num? ?? 0.0).toDouble();
-    final double sScore = (scoresBreakdown['speaking'] as num? ?? 0.0).toDouble();
+    final double rScore = _parseDouble(scoresBreakdown['reading']);
+    final double lScore = _parseDouble(scoresBreakdown['listening']);
+    final double wScore = _parseDouble(scoresBreakdown['writing']);
+    final double sScore = _parseDouble(scoresBreakdown['speaking']);
 
     // AI Feedback Text Setup
     String dynamicAiFeedback = aiAnalysis['feedback'] as String? ?? '';

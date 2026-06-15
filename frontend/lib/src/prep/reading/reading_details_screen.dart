@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/user_notifier.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'widgets/reading_header.dart';
 import 'widgets/reading_ai_card.dart';
 import 'widgets/collapsible_lesson_tile.dart';
@@ -17,6 +19,7 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoading = true;
   Map<String, List<LessonItem>> _liveSections = {};
+  List<dynamic> _mediaItems = [];
 
   @override
   void initState() {
@@ -24,10 +27,10 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
     _fetchReadingLessons();
   }
 
-
   Future<void> _fetchReadingLessons() async {
     try {
-      final listResponse = await ApiService.get('/content/preparations?test_type=IELTS&section=Reading');
+      final pref = UserNotifier.notifier.value['preference'] ?? 'IELTS';
+      final listResponse = await ApiService.get('/content/preparations?test_type=$pref&section=Reading');
       if (listResponse.statusCode == 200) {
         final listData = jsonDecode(listResponse.body);
         if (listData['success'] == true && listData['data'] != null && listData['data'].isNotEmpty) {
@@ -37,6 +40,7 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
             final detailData = jsonDecode(detailResponse.body);
             if (detailData['success'] == true && detailData['data'] != null) {
               final List dynamicList = detailData['data']['parts'] ?? [];
+              final List mediaList = detailData['data']['media'] ?? [];
               Map<String, List<LessonItem>> tempSections = {};
               RegExp emojiReg = RegExp(r'([📚💡🎯🎨📜📝⏱️🔥🧠])');
 
@@ -97,6 +101,7 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
 
               if (tempSections.isNotEmpty && mounted) {
                 setState(() {
+                  _mediaItems = mediaList;
                   _liveSections = tempSections;
                   _isLoading = false;
                 });
@@ -176,13 +181,56 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                       ),
                     ],
                   ),
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Color(0xFF007BFF),
-                    child: Text(
-                      'AK',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
+                  Row(
+                    children: [
+                      if (_mediaItems.isNotEmpty) ...[
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.attachment_rounded, color: Color(0xFF007BFF)),
+                          tooltip: 'Lesson Resources',
+                          onSelected: (String url) async {
+                            try {
+                              final uri = Uri.parse(url);
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Could not open resource: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                          itemBuilder: (BuildContext context) {
+                            return _mediaItems.map((media) {
+                              return PopupMenuItem<String>(
+                                value: media['file_url'],
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.insert_drive_file, color: Colors.blue, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        media['file_name'] ?? 'Resource File',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Color(0xFF007BFF),
+                        child: Text(
+                          'AK',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

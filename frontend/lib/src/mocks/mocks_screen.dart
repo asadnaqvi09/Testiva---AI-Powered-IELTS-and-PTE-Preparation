@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/user_notifier.dart';
 import '../../data/models/mock_test_model.dart';
 import 'test_overview_screen.dart';
 
@@ -25,7 +26,26 @@ class _MocksScreenState extends State<MocksScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchMocks();
+    UserNotifier.notifier.addListener(_onUserChanged);
+    if (UserNotifier.notifier.value['preference'] != null) {
+      _fetchMocks();
+    } else {
+      _isLoading = true; // Wait for preference to be set
+    }
+  }
+
+  void _onUserChanged() {
+    if (mounted && UserNotifier.notifier.value['preference'] != null) {
+      if (_mocks.isEmpty && _errorMessage.isNotEmpty || _isLoading) {
+        _fetchMocks();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    UserNotifier.notifier.removeListener(_onUserChanged);
+    super.dispose();
   }
 
   Future<void> _fetchMocks() async {
@@ -34,7 +54,8 @@ class _MocksScreenState extends State<MocksScreen> {
       _errorMessage = '';
     });
     try {
-      final response = await ApiService.get('/content/test/mobile/dashboard?exam_type=IELTS');
+      final examType = UserNotifier.notifier.value['preference'] ?? 'IELTS';
+      final response = await ApiService.get('/content/test/mobile/dashboard?exam_type=$examType');
 
       if (kDebugMode) {
         debugPrint('Status Code: ${response.statusCode}');
@@ -81,9 +102,9 @@ class _MocksScreenState extends State<MocksScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'IELTS Mock Tests',
-          style: TextStyle(
+        title: Text(
+          '${UserNotifier.notifier.value['preference'] ?? 'IELTS'} Mock Tests',
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 20,

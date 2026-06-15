@@ -46,6 +46,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'name': data['user']['full_name'] ?? data['user']['name'] ?? 'User Name',
             'email': data['user']['email'] ?? 'user@email.com',
             'isPremium': (data['user']['subscription'] ?? '').toString().toLowerCase() == 'premium',
+            'preference': data['user']['preference'],
+            'role': data['user']['role'] ?? 'user',
+            'subscription': data['user']['subscription'] ?? 'free',
           };
           setState(() {
             _userData = newUserData;
