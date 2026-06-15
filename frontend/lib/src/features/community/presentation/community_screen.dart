@@ -193,6 +193,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _createPost(String title, String content, String tag) async {
+    setState(() => _isLoading = true);
     try {
       final response = await ApiService.post('/community/create-post', {
         'title': title,
@@ -200,9 +201,39 @@ class _CommunityScreenState extends State<CommunityScreen> {
         'topic_tag': tag,
       });
       if (response.statusCode == 201) {
-        _fetchPosts();
+        final body = jsonDecode(response.body);
+        if (body['success'] == true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Post created successfully!')),
+            );
+          }
+          _fetchPosts();
+        }
+      } else {
+        final body = jsonDecode(response.body);
+        String errMsg = body['message'] ?? 'Failed to create post';
+        if (body['errors'] != null && body['errors'] is List) {
+          errMsg = (body['errors'] as List).join(', ');
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errMsg), backgroundColor: Colors.red),
+          );
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Error creating post: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connection error: Failed to reach server'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override

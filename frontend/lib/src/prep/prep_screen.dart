@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/src/prep/widgets/prep_header.dart';
 import 'package:frontend/src/prep/widgets/module_card.dart';
 import 'package:frontend/widgets/custom_drawer.dart';
@@ -34,7 +35,32 @@ class _PrepScreenState extends State<PrepScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchLiveModules();
+    UserNotifier.notifier.addListener(_onUserChanged);
+    final userPref = UserNotifier.notifier.value['preference'];
+    if (userPref != null) {
+      selectedType = userPref.toUpperCase();
+      _fetchLiveModules();
+    } else {
+      _isLoading = true; // Wait for preference
+    }
+  }
+
+  void _onUserChanged() {
+    if (mounted) {
+      final userPref = UserNotifier.notifier.value['preference'];
+      if (userPref != null && _isLoading && _liveModules.isEmpty) {
+        setState(() {
+          selectedType = userPref.toUpperCase();
+        });
+        _fetchLiveModules();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    UserNotifier.notifier.removeListener(_onUserChanged);
+    super.dispose();
   }
 
   Future<void> _refreshAIRecommendation() async {
@@ -141,9 +167,21 @@ class _PrepScreenState extends State<PrepScreen> {
               Text('Preparation', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
               const SizedBox(height: 25),
               Row(children: [
-                _buildExamTab('GB', 'IELTS', selectedType == 'IELTS', isDarkMode),
+                _buildExamTab(
+                  'GB',
+                  'IELTS',
+                  selectedType == 'IELTS',
+                  isDarkMode,
+                  isLocked: _isTabLocked('IELTS'),
+                ),
                 const SizedBox(width: 15),
-                _buildExamTab('🌐', 'PTE', selectedType == 'PTE', isDarkMode, isLocked: true),
+                _buildExamTab(
+                  '🌐',
+                  'PTE',
+                  selectedType == 'PTE',
+                  isDarkMode,
+                  isLocked: _isTabLocked('PTE'),
+                ),
               ]),
               const SizedBox(height: 25),
               _buildAIRecommendation(isDarkMode),
@@ -165,6 +203,15 @@ class _PrepScreenState extends State<PrepScreen> {
     );
   }
 
+  bool _isTabLocked(String track) {
+    final user = UserNotifier.notifier.value;
+    final bool isPremium = user['isPremium'] == true || user['subscription'] == 'premium';
+    final bool isAdmin = user['role'] == 'admin';
+    final String userPref = user['preference'] ?? 'IELTS';
+
+    if (isPremium || isAdmin) return false;
+    return userPref.toUpperCase() != track.toUpperCase();
+  }
 
   Widget _buildAIRecommendation(bool isDarkMode) {
     return GestureDetector(
@@ -196,7 +243,57 @@ class _PrepScreenState extends State<PrepScreen> {
   }
 
   Widget _buildExamTab(String code, String name, bool isSelected, bool isDarkMode, {bool isLocked = false}) {
-
-    return Expanded(child: GestureDetector(onTap: isLocked ? null : () { setState(() => selectedType = name); _fetchLiveModules(); }, child: Container(height: 100, decoration: BoxDecoration(color: isSelected ? AppColors.primary : (isDarkMode ? const Color(0xFF1E1E1E) : Colors.white), borderRadius: BorderRadius.circular(16)), child: Center(child: Text(name, style: TextStyle(color: isSelected ? Colors.white : Colors.black))))));
+    return Expanded(
+      child: GestureDetector(
+        onTap: isLocked 
+            ? () {
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Access denied. Your active track is locked to ${UserNotifier.notifier.value['preference'] ?? 'IELTS'}.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } 
+            : () {
+                setState(() => selectedType = name);
+                _fetchLiveModules();
+              },
+        child: Container(
+          height: 100,
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? AppColors.primary 
+                : (isDarkMode ? const Color(0xFF1E1E1E) : Colors.white),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected 
+                  ? Colors.transparent 
+                  : (isDarkMode ? Colors.grey[800]! : Colors.grey[200]!),
+            ),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              if (isLocked)
+                const Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Icon(Icons.lock, size: 16, color: Colors.grey),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

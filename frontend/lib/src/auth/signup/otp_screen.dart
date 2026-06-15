@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/widgets/app_button.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
+  final String? preference;
 
-  const OtpScreen({required this.email, super.key});
+  const OtpScreen({required this.email, this.preference, super.key});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -71,6 +73,7 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       final response = await ApiService.post('/auth/resend-otp', {
         'email': widget.email,
+        'type': 'register',
       });
 
       final responseData = jsonDecode(response.body);
@@ -113,10 +116,17 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _isLoading = true);
     try {
       // FIX: Gateway route map kiya backend engine ke mutabiq
-      final response = await ApiService.post('/auth/verify-email', {
+      final Map<String, dynamic> requestBody = {
         'email': widget.email,
         'otp': otpCode,
-      });
+        'type': 'register',
+      };
+      
+      if (widget.preference != null) {
+        requestBody['preference'] = widget.preference;
+      }
+
+      final response = await ApiService.post('/auth/verify-otp', requestBody);
 
       if (mounted) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -125,6 +135,10 @@ class _OtpScreenState extends State<OtpScreen> {
           // Senior Touch: Token received ho gaya, isay globally state mein inject kar dein
           if (responseData['accessToken'] != null) {
             ApiService.setToken(responseData['accessToken']);
+          }
+          
+          if (responseData['user'] != null) {
+            UserNotifier.notifier.value = responseData['user'];
           }
 
           ScaffoldMessenger.of(context).showSnackBar(

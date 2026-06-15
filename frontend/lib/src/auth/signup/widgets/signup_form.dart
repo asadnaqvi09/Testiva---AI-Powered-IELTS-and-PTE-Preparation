@@ -24,6 +24,7 @@ class _SignupFormState extends State<SignupForm> {
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
   bool _autoSaveCredentials = true;
+  String _selectedPreference = 'IELTS';
 
   bool _obscurePass = true;
   bool _obscureConfirmPass = true;
@@ -64,7 +65,7 @@ class _SignupFormState extends State<SignupForm> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (c) => OtpScreen(email: enteredEmail),
+              builder: (c) => OtpScreen(email: enteredEmail, preference: _selectedPreference),
             ),
           );
         } else {
@@ -159,6 +160,30 @@ class _SignupFormState extends State<SignupForm> {
             validator: (val) {
               if (val != _passController.text) return 'Passwords do not match';
               return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _selectedPreference,
+            decoration: InputDecoration(
+              labelText: 'Exam Preference',
+              prefixIcon: const Icon(Icons.school_outlined, color: AppColors.textGrey),
+              filled: true,
+              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C) : Colors.grey[100],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 18),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'IELTS', child: Text('IELTS')),
+              DropdownMenuItem(value: 'PTE', child: Text('PTE')),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _selectedPreference = val);
+              }
             },
           ),
           const SizedBox(height: 12),

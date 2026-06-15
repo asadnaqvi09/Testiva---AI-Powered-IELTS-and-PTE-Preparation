@@ -62,7 +62,7 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
       _isLoading = true;
     });
     try {
-      final response = await ApiService.get('/test/${widget.testId}/runtime');
+      final response = await ApiService.get('/content/test/${widget.testId}/runtime');
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         if (body['success'] == true) {
@@ -273,9 +273,15 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-        children: [
-          if (_isPassageExpanded)
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        children: [
+                          if (_isPassageExpanded)
             Expanded(
               flex: 4,
               child: Container(
@@ -384,8 +390,13 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
               ),
             ),
           ),
-        ],
-      ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 
