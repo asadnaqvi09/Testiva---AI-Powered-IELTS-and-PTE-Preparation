@@ -57,5 +57,9 @@ class NotificationModel {
     );
   }
 
-  bool get isCommunityRelated => postId != null && postId!.isNotEmpty;
+  bool get isCommunityRelated => postId != null && postId!.isNotEmpty && !isTestResultSynced;
+
+  bool get isTestResultSynced => type == 'test_result_synced';
+
+  String? get attemptId => isTestResultSynced ? postId : null;
 }

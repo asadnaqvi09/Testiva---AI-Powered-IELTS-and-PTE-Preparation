@@ -10,6 +10,8 @@ class NotificationProvider extends ChangeNotifier {
   bool _initialized = false;
   int? pendingDashboardTab;
   String? pendingPostId;
+  bool pendingOpenAllTests = false;
+  String? pendingAttemptId;
 
   final Set<String> _seenIds = {};
 
@@ -168,9 +170,18 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void requestAllTestsNavigation({String? attemptId}) {
+    pendingDashboardTab = 4;
+    pendingOpenAllTests = true;
+    pendingAttemptId = attemptId;
+    notifyListeners();
+  }
+
   void clearPendingNavigation() {
     pendingDashboardTab = null;
     pendingPostId = null;
+    pendingOpenAllTests = false;
+    pendingAttemptId = null;
   }
 
   void reset() {

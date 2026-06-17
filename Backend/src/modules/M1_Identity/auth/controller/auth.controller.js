@@ -76,7 +76,17 @@ export const loginUser = async (req, res) => {
         .json({ success: false, message: error.details[0].message });
     const { email, password } = value;
     const user = await findUserByEmail(email);
-    if (!user?.password_hash)
+    if (!user)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
+    if (user.auth_provider === "google" && !user.password_hash)
+      return res.status(409).json({
+        success: false,
+        message:
+          "This account uses Google Sign-In. Please continue with Google.",
+      });
+    if (!user.password_hash)
       return res
         .status(400)
         .json({ success: false, message: "Invalid credentials" });
@@ -466,7 +476,17 @@ export const googleAuth = async (req, res) => {
       });
     }
     let user = await findUserByEmail(googleUser.email);
-    if (!user) {
+    if (user) {
+      const isEmailPasswordAccount =
+        user.auth_provider === "email" || Boolean(user.password_hash);
+      if (isEmailPasswordAccount) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "This email is already registered with a password. Please log in with your email and password.",
+        });
+      }
+    } else {
       user = await createGoogleUser({
         email: googleUser.email,
         full_name: googleUser.full_name,
@@ -480,6 +500,9 @@ export const googleAuth = async (req, res) => {
         console.error(e);
       }
     }
+    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [
+      user.id,
+    ]);
     const accessToken = generateAccessToken(buildToken(user));
     const refreshToken = generateRefreshToken(user.id);
     await pool.query(

@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import '../../core/database/local_db.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/connectivity_service.dart';
 import '../../core/services/user_notifier.dart';
 import '../../data/models/mock_test_model.dart';
 import '../../widgets/app_header.dart';
@@ -58,38 +60,73 @@ class _MocksScreenState extends State<MocksScreen> {
       _errorMessage = '';
     });
     try {
-      final examType = _examQuery;
-      final response = await ApiService.get('/content/test/mobile/dashboard?exam_type=$examType');
+      final examType = _examQuery ?? 'IELTS';
+      final online = await ConnectivityService.instance.checkOnline();
 
-      if (kDebugMode) {
-        debugPrint('Mocks dashboard: ${response.statusCode}');
-      }
+      if (online) {
+        try {
+          final response = await ApiService.get(
+            '/content/test/mobile/dashboard?exam_type=$examType',
+          );
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true) {
-          final List list = body['data'] as List;
-          var items = list.map<MockTest>((item) => MockTest.fromJson(item as Map<String, dynamic>)).toList();
-          if (_filter == 'IELTS') {
-            items = items.where((m) => m.examType == 'IELTS').toList();
-          } else if (_filter == 'PTE') {
-            items = items.where((m) => m.examType == 'PTE').toList();
+          if (kDebugMode) {
+            debugPrint('Mocks dashboard: ${response.statusCode}');
           }
-          setState(() => _mocks = items);
-          if (_mocks.isEmpty) {
-            _errorMessage = 'No published mock tests yet. Create one in the Admin panel.';
+
+          if (response.statusCode == 200) {
+            final body = jsonDecode(response.body);
+            if (body['success'] == true) {
+              final List list = body['data'] as List;
+              await LocalDb.instance.cacheMockDashboard(
+                examType: examType,
+                items: list,
+              );
+              _applyMockList(list);
+              return;
+            }
+            _errorMessage = 'Could not load mock tests.';
+            return;
           }
-        } else {
-          _errorMessage = 'Could not load mock tests.';
+          _errorMessage = 'Server error (${response.statusCode})';
+        } catch (e) {
+          final loaded = await _loadCachedMocks(examType);
+          if (loaded) return;
+          _errorMessage = 'Connection error: $e';
         }
       } else {
-        _errorMessage = 'Server error (${response.statusCode})';
+        final loaded = await _loadCachedMocks(examType);
+        if (!loaded) {
+          _errorMessage =
+              'You are offline. Open mock tests once while online to cache them.';
+        }
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _applyMockList(List list) {
+    var items = list
+        .map<MockTest>((item) => MockTest.fromJson(item as Map<String, dynamic>))
+        .toList();
+    if (_filter == 'IELTS') {
+      items = items.where((m) => m.examType == 'IELTS').toList();
+    } else if (_filter == 'PTE') {
+      items = items.where((m) => m.examType == 'PTE').toList();
+    }
+    setState(() => _mocks = items);
+    if (_mocks.isEmpty) {
+      _errorMessage = 'No published mock tests yet. Create one in the Admin panel.';
+    }
+  }
+
+  Future<bool> _loadCachedMocks(String examType) async {
+    final cached = await LocalDb.instance.getCachedMockDashboard(examType);
+    if (cached == null || cached.isEmpty) return false;
+    _applyMockList(cached);
+    return true;
   }
 
   void _openMock(MockTest mock) {

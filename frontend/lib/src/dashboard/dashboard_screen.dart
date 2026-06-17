@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'home/home_page.dart';
 import '../../widgets/custom_drawer.dart';
+import '../profile/all_tests_screen.dart';
 import '../profile/profile_screen.dart';
 import '../mocks/mocks_screen.dart';
 import '../prep/prep_screen.dart';
 import '../features/community/presentation/community_screen.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/notification_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -30,6 +32,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<NotificationProvider>().initialize();
+        OfflineSyncService.instance.onSyncComplete = () {
+          if (mounted) {
+            context.read<NotificationProvider>().refresh();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Offline test uploaded. You will be notified when evaluation completes.',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        };
       }
     });
   }
@@ -50,8 +65,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _handlePendingNavigation() {
     final tab = _notificationProvider?.pendingDashboardTab;
-    if (tab == null || !mounted) return;
-    setState(() => _selectedIndex = tab);
+    final openAllTests = _notificationProvider?.pendingOpenAllTests ?? false;
+    final attemptId = _notificationProvider?.pendingAttemptId;
+
+    if (tab != null && mounted) {
+      setState(() => _selectedIndex = tab);
+    }
+
+    if (openAllTests && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AllTestsScreen(initialAttemptId: attemptId),
+          ),
+        );
+      });
+    }
+
     _notificationProvider?.clearPendingNavigation();
   }
 

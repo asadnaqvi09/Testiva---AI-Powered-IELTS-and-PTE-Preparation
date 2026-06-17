@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/auth_navigation_helper.dart';
 import '../../../core/services/user_notifier.dart';
 import '../../../widgets/app_theme.dart';
 
@@ -38,25 +39,20 @@ class _PreferenceSelectionScreenState extends State<PreferenceSelectionScreen> {
             await ApiService.setToken(responseData['accessToken']);
           }
 
-          if (responseData['user'] != null) {
-            final userObj = responseData['user'];
-            final currentData = Map<String, dynamic>.from(UserNotifier.notifier.value);
-            currentData['preference'] = userObj['preference'];
-            currentData['name'] = userObj['full_name'] ?? userObj['name'] ?? currentData['name'];
-            currentData['email'] = userObj['email'] ?? currentData['email'];
-            currentData['role'] = userObj['role'] ?? currentData['role'];
-            UserNotifier.notifier.value = currentData;
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Welcome to Testiva! Selected $_selectedPreference track.'),
-              backgroundColor: Colors.green,
-            ),
+          final user = Map<String, dynamic>.from(
+            (responseData['user'] as Map<String, dynamic>?) ??
+                UserNotifier.notifier.value,
           );
+          user['preference'] = _selectedPreference;
 
-          // Head straight to the dashboard now
-          Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+          if (!mounted) return;
+
+          await AuthNavigationHelper.navigateAfterAuth(
+            context,
+            user: user,
+            successMessage:
+                'Welcome to Testiva! Selected $_selectedPreference track.',
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

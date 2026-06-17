@@ -7,6 +7,8 @@ import 'models/runtime_question.dart';
 class TestResultsScreen extends StatefulWidget {
   final String attemptId;
   final bool initialPending;
+  final bool isOfflineSaved;
+  final String? testTitle;
   final VoidCallback onRetake;
   final VoidCallback onAllTestsPressed;
 
@@ -14,6 +16,8 @@ class TestResultsScreen extends StatefulWidget {
     super.key,
     required this.attemptId,
     this.initialPending = false,
+    this.isOfflineSaved = false,
+    this.testTitle,
     required this.onRetake,
     required this.onAllTestsPressed,
   });
@@ -33,8 +37,10 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
   void initState() {
     super.initState();
     _isPending = widget.initialPending;
-    _fetchResults();
-    if (_isPending) _startPolling();
+    if (!widget.isOfflineSaved) {
+      _fetchResults();
+      if (_isPending) _startPolling();
+    }
   }
 
   void _startPolling() {
@@ -102,6 +108,75 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isOfflineSaved) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Test Saved Offline')),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cloud_off, size: 64, color: Colors.orange.shade400),
+              const SizedBox(height: 20),
+              Text(
+                widget.testTitle ?? 'Mock Test',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Your answers are saved on this device. They will upload automatically when your connection is stable.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You will receive a notification once your result is processed.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: widget.onRetake,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Back'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: widget.onAllTestsPressed,
+                      icon: const Icon(Icons.grid_view, color: Colors.white),
+                      label: const Text(
+                        'All Tests',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0066F5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isLoading && _resultData == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }

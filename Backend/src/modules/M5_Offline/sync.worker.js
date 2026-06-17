@@ -5,6 +5,8 @@ import { cacheDelByPrefix } from "../../utils/redisCache.js";
 import { computeAttemptBandScores } from "../../utils/bandScore.js";
 import * as writingEvaluation from "../M6_AI/evaluators/writing.evaluator.js";
 import * as speakingEvaluation from "../M6_AI/evaluators/speaking.evaluator.js";
+import { getSocketServer } from "../../config/socket.js";
+import { handleTestResultSyncedNotification } from "../M9_Notification/engine/notification.engine.js";
 
 syncQueue.process(async (job) => {
   const userId = job.data.userId || job.data.userID;
@@ -141,6 +143,21 @@ syncQueue.process(async (job) => {
     finalClient.release();
     await Progress.updateUserStats(userId);
     await cacheDelByPrefix(`test:mobile:${userId}:`);
+
+    const titleRow = await pool.query(
+      `SELECT t.title FROM test_attempts ta JOIN tests t ON ta.test_id = t.id WHERE ta.id = $1::uuid`,
+      [attemptId],
+    );
+    const testTitle = titleRow.rows[0]?.title || "Mock Test";
+    try {
+      await handleTestResultSyncedNotification(getSocketServer(), {
+        userId,
+        attemptId,
+        testTitle,
+      });
+    } catch (notifyErr) {
+      console.error("[SYNC NOTIFY ERROR]:", notifyErr.message);
+    }
 
     return { success: true, attemptId };
 

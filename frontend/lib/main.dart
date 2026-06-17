@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/database/local_db.dart';
+import 'package:frontend/core/services/connectivity_service.dart';
+import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/theme_provider.dart';
 import 'package:frontend/providers/feedback_provider.dart';
 import 'package:frontend/providers/notification_provider.dart';
 import 'package:frontend/src/onboarding/onboarding_screen.dart';
 import 'package:frontend/src/dashboard/dashboard_screen.dart';
 import 'package:frontend/src/profile/profile_screen.dart';
+import 'package:frontend/src/profile/all_tests_screen.dart';
 import 'package:frontend/src/features/settings/presentation/feedback_screen.dart';
 import 'package:frontend/src/prep/prep_screen.dart';
 import 'package:frontend/src/mocks/mocks_screen.dart';
@@ -14,8 +18,11 @@ import 'package:frontend/src/auth/signup/email_verified_screen.dart';
 import 'package:frontend/src/auth/signup/preference_selection_screen.dart';
 import 'package:frontend/src/features/notifications/presentation/notifications_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ConnectivityService.instance.initialize();
+  await LocalDb.instance.database;
+  await OfflineSyncService.instance.initialize();
   runApp(
     MultiProvider(
       providers: [
@@ -72,6 +79,11 @@ class TestivaApp extends StatelessWidget {
             '/prep': (context) => const PrepScreen(),
             '/mocks': (context) => MocksScreen(onStartTestRequested: () {}),
             '/profile': (context) => const ProfileScreen(),
+            '/all-tests': (context) {
+              final attemptId =
+                  ModalRoute.of(context)?.settings.arguments as String?;
+              return AllTestsScreen(initialAttemptId: attemptId);
+            },
             '/settings': (context) => const ProfileScreen(),
             '/feedback': (context) => const FeedbackScreen(),
             '/notifications': (context) => const NotificationsScreen(),

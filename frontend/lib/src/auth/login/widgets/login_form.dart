@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
-import 'package:frontend/src/dashboard/dashboard_screen.dart';
 import 'package:frontend/src/auth/forgot_password/forgot_password_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'social_login_btns.dart';
@@ -86,14 +86,28 @@ class _LoginFormState extends State<LoginForm> {
             await prefs.remove('saved_password');
           }
 
-          Navigator.pushReplacement(
+          final user = Map<String, dynamic>.from(
+            (resData['user'] as Map<String, dynamic>?) ?? {},
+          );
+          if (user.isEmpty) {
+            user['email'] = emailStr;
+          }
+
+          if (!mounted) return;
+
+          await AuthNavigationHelper.navigateAfterAuth(
             context,
-            MaterialPageRoute(builder: (c) => const DashboardScreen()),
+            user: user,
+            successMessage: 'Welcome back!',
           );
         } else {
           final errorData = jsonDecode(response.body);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorData['message'] ?? 'Login failed')),
+            SnackBar(
+              content: Text(errorData['message'] ?? 'Login failed'),
+              backgroundColor:
+                  response.statusCode == 409 ? Colors.orange : null,
+            ),
           );
         }
       }

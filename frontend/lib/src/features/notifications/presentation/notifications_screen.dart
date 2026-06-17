@@ -27,6 +27,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (!mounted) return;
 
+    if (notification.isTestResultSynced) {
+      provider.requestAllTestsNavigation(attemptId: notification.attemptId);
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      Navigator.pushNamed(
+        context,
+        '/all-tests',
+        arguments: notification.attemptId,
+      );
+      return;
+    }
+
     if (notification.isCommunityRelated) {
       provider.requestCommunityNavigation(postId: notification.postId);
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
@@ -104,7 +117,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const SizedBox(height: 8),
                       Center(
                         child: Text(
-                          'Likes, comments, and community updates will appear here',
+                          'Likes, comments, test results, and community updates will appear here',
                           style: TextStyle(
                             color: AppTheme.secondaryText(context),
                             fontSize: 13,

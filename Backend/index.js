@@ -15,6 +15,7 @@ import communityRoutes from './src/modules/M7_Community/routes/community.routes.
 import notificationRoutes from './src/modules/M9_Notification/routes/notification.routes.js';
 import aiRoutes from './src/modules/M6_AI/routes/ai.routes.js';
 import { initSocketIO } from './src/modules/M9_Notification/socketIO/index.js';
+import { setSocketServer } from './src/config/socket.js';
 import './src/modules/M5_Offline/sync.worker.js';
 import { errorHandler } from './src/middleware/error.middleware.js';
 
@@ -45,6 +46,7 @@ app.use((req, _res, next) => {
   next();
 });
 initSocketIO(io);
+setSocketServer(io);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Testiva Backend Running" });

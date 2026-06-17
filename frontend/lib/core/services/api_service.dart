@@ -36,12 +36,6 @@ class ApiService {
 
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
-    } else {
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
-      headers['Authorization'] = 'Bearer dev-token-placeholder';
     }
     return headers;
   }

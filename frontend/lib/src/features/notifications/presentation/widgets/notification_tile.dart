@@ -30,6 +30,8 @@ class NotificationTile extends StatelessWidget {
         return Icons.delete_outline;
       case 'preference_new_post':
         return Icons.campaign_outlined;
+      case 'test_result_synced':
+        return Icons.assignment_turned_in_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -49,6 +51,8 @@ class NotificationTile extends StatelessWidget {
         return const Color(0xFF28A745);
       case 'preference_new_post':
         return const Color(0xFF8B5CF6);
+      case 'test_result_synced':
+        return const Color(0xFF0066F5);
       default:
         return const Color(0xFF64748B);
     }
@@ -180,6 +184,17 @@ class NotificationTile extends StatelessWidget {
                             const Spacer(),
                             Text(
                               'View post',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: accent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          if (notification.isTestResultSynced) ...[
+                            const Spacer(),
+                            Text(
+                              'View results',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: accent,

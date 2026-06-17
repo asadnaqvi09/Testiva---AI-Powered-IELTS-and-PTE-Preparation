@@ -8,6 +8,7 @@ import '../dashboard/home/widgets/stats_row.dart';
 import 'widgets/progress_graph.dart';
 import 'widgets/preference_tiles.dart';
 import 'widgets/support_section.dart';
+import 'all_tests_screen.dart';
 
 import '../../widgets/custom_drawer.dart';
 import '../../widgets/logout_dialog.dart';
@@ -278,6 +279,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Preference Tile ───────────────────────────────────────────────────────
+  Widget _buildAllTestsTile() {
+    return Material(
+      color: AppTheme.cardBg(context),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AllTestsScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.borderColor(context)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0066F5).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.history, color: Color(0xFF0066F5)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'All Tests',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryText(context),
+                      ),
+                    ),
+                    Text(
+                      'View completed and offline-saved attempts',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.secondaryText(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: AppTheme.secondaryText(context)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPreferenceTile() {
     final pref = _userData['preference']?.toString();
     final displayPref = (pref != null && pref.isNotEmpty) ? pref : 'Not Set';
@@ -375,6 +434,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const ProgressGraph(),
                       const SizedBox(height: 30),
 
+                      Text(
+                        'Test History',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryText(context)),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildAllTestsTile(),
+
+                      const SizedBox(height: 30),
                       // ── Preferences Section ───────────────────────────
                       Text(
                         'Preferences',

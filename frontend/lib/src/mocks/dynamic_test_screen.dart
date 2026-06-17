@@ -2,8 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
+import '../../core/database/local_db.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/connectivity_service.dart';
+import '../../core/services/offline_sync_service.dart';
 import '../../widgets/app_theme.dart';
+import '../profile/all_tests_screen.dart';
 import 'models/runtime_question.dart';
 import 'test_results_screen.dart';
 import 'widgets/matching_engine.dart';
@@ -38,6 +43,8 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _playingAudioUrl;
   bool _isAudioPlaying = false;
+  bool _loadedFromCache = false;
+  bool _isOfflineMode = false;
 
   @override
   void initState() {
@@ -53,12 +60,52 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   Future<void> _fetchTestDetails() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiService.get('/content/test/${widget.testId}/runtime');
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true) {
-          final loaded = TestRuntimeParser.parseRuntimePayload(body['data'] as Map<String, dynamic>);
-          setState(() => _questions = loaded);
+      final online = await ConnectivityService.instance.checkOnline();
+
+      if (online) {
+        try {
+          final response =
+              await ApiService.get('/content/test/${widget.testId}/runtime');
+          if (response.statusCode == 200) {
+            final body = jsonDecode(response.body) as Map<String, dynamic>;
+            if (body['success'] == true) {
+              final data = body['data'] as Map<String, dynamic>;
+              await LocalDb.instance.cacheTestRuntime(
+                testId: widget.testId,
+                title: widget.testTitle,
+                durationMinutes: widget.totalDurationMinutes,
+                payload: data,
+              );
+              final loaded =
+                  TestRuntimeParser.parseRuntimePayload(data);
+              if (mounted) {
+                setState(() {
+                  _questions = loaded;
+                  _loadedFromCache = false;
+                  _isOfflineMode = false;
+                  _isLoading = false;
+                });
+                _syncTextController();
+                if (loaded.isNotEmpty) _startTimer();
+              }
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      final cached = await LocalDb.instance.getCachedTestRuntime(widget.testId);
+      if (cached != null) {
+        final loaded = TestRuntimeParser.parseRuntimePayload(
+          cached['data'] as Map<String, dynamic>,
+        );
+        if (mounted) {
+          setState(() {
+            _questions = loaded;
+            _loadedFromCache = true;
+            _isOfflineMode = !online;
+            _isLoading = false;
+          });
           _syncTextController();
           if (loaded.isNotEmpty) _startTimer();
         }
@@ -204,45 +251,49 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         'responses': responses,
       };
 
-      final response = await ApiService.post('/progress/submit-test', body);
-      if (response.statusCode == 201 || response.statusCode == 202) {
-        final resData = jsonDecode(response.body);
-        if (resData['success'] == true) {
-          final attemptId = resData['data']['attemptId'] as String;
-          final status = resData['data']['status'] as String? ?? 'completed';
-          if (!mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TestResultsScreen(
+      final online = await ConnectivityService.instance.checkOnline();
+      if (online) {
+        try {
+          final response = await ApiService.post('/progress/submit-test', body);
+          if (response.statusCode == 201 || response.statusCode == 202) {
+            final resData = jsonDecode(response.body) as Map<String, dynamic>;
+            if (resData['success'] == true) {
+              final attemptId =
+                  (resData['data'] as Map?)?['attemptId']?.toString() ?? '';
+              final status =
+                  (resData['data'] as Map?)?['status']?.toString() ?? 'completed';
+              if (!mounted) return;
+              _navigateToResults(
                 attemptId: attemptId,
-                initialPending: status == 'pending',
-                onRetake: () {
-                  setState(() {
-                    _currentIndex = 0;
-                    _remainingSeconds = widget.totalDurationMinutes * 60;
-                    _answers.clear();
-                    _startedAt = DateTime.now();
-                  });
-                  _syncTextController();
-                  Navigator.pop(context);
-                  _startTimer();
-                },
-                onAllTestsPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context, 'switch_to_mocks');
-                },
-              ),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Submit failed (${response.statusCode})')),
-          );
+                pending: status == 'pending',
+              );
+              return;
+            }
+          }
+        } catch (_) {
+          // Fall through to offline save on network failure.
         }
       }
+
+      final localId = const Uuid().v4();
+      await LocalDb.instance.saveOfflineAttempt(
+        localId: localId,
+        testId: widget.testId,
+        testTitle: widget.testTitle,
+        clientStartedAt: body['client_started_at'] as String,
+        clientCompletedAt: body['client_completed_at'] as String,
+        payload: body,
+      );
+
+      if (ConnectivityService.instance.isOnline) {
+        unawaited(OfflineSyncService.instance.syncPendingAttempts());
+      }
+
+      if (!mounted) return;
+      _navigateToResults(
+        localId: localId,
+        isOfflineSaved: true,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +302,43 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
       }
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _navigateToResults({
+    String attemptId = '',
+    String? localId,
+    bool pending = false,
+    bool isOfflineSaved = false,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TestResultsScreen(
+          attemptId: attemptId.isNotEmpty ? attemptId : (localId ?? ''),
+          initialPending: pending,
+          isOfflineSaved: isOfflineSaved,
+          testTitle: widget.testTitle,
+          onRetake: () {
+            setState(() {
+              _currentIndex = 0;
+              _remainingSeconds = widget.totalDurationMinutes * 60;
+              _answers.clear();
+              _startedAt = DateTime.now();
+            });
+            _syncTextController();
+            Navigator.pop(context);
+            _startTimer();
+          },
+          onAllTestsPressed: () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AllTestsScreen()),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -278,7 +366,9 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'No questions available for this test.\n(Speaking sections are skipped in the app for now.)',
+              _loadedFromCache
+                  ? 'This test is not cached on your device yet.\nOpen it once while online to take it offline.'
+                  : 'No questions available for this test.\n(Speaking sections are skipped in the app for now.)',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppTheme.secondaryText(context)),
             ),
@@ -324,6 +414,30 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (_isOfflineMode || _loadedFromCache)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cloud_off, size: 16, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _isOfflineMode
+                                ? 'Offline mode — answers will sync when you reconnect'
+                                : 'Loaded from device cache',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (q.hasAudio) _buildAudioBar(context),
                 Expanded(
                   child: SingleChildScrollView(

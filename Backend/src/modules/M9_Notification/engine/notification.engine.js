@@ -151,3 +151,15 @@ export const handleAdminSubscriptionNotification = async (io, payload) => {
         senderId: payload.user_id,
     });
 };
+
+export const handleTestResultSyncedNotification = async (io, { userId, attemptId, testTitle }) => {
+    if (!userId) return;
+    return sendNotification({
+        io,
+        recipientId: userId,
+        type: "test_result_synced",
+        title: "Test Result Uploaded",
+        message: `Your "${testTitle || "mock test"}" result has been uploaded and evaluated. Tap to view in All Tests.`,
+        postId: attemptId,
+    });
+};
