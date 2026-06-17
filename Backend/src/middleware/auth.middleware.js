@@ -4,6 +4,7 @@ import { redisClient } from "../config/redis.js";
 export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    console.log("authHeader", authHeader);
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,

@@ -1,16 +1,13 @@
-/**
- * API Service for Notification Module using Native Fetch
- * Maps directly to Router: M9_Notification/routes/notification.routes.js
- */
-
 const BASE_URL = '/api/v1/notifications';
 
-// Helper to get headers with Auth token
 const getHeaders = () => {
-  const token = localStorage.getItem('token'); // Adjust based on where you store your JWT
+  const token = localStorage.getItem('accessToken');
+
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    ...(token && {
+      Authorization: `Bearer ${token}`,
+    }),
   };
 };
 
@@ -19,8 +16,12 @@ export const fetchNotificationsAPI = async (limit = 20, offset = 0) => {
     method: 'GET',
     headers: getHeaders(),
   });
-  if (!response.ok) throw new Error('Failed to fetch notifications');
-  return response.json(); 
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch notifications');
+  }
+
+  return response.json();
 };
 
 export const fetchUnreadCountAPI = async () => {
@@ -28,7 +29,11 @@ export const fetchUnreadCountAPI = async () => {
     method: 'GET',
     headers: getHeaders(),
   });
-  if (!response.ok) throw new Error('Failed to fetch unread count');
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch unread count');
+  }
+
   return response.json();
 };
 
@@ -37,7 +42,11 @@ export const markNotificationReadAPI = async (id: string) => {
     method: 'PATCH',
     headers: getHeaders(),
   });
-  if (!response.ok) throw new Error('Failed to mark notification as read');
+
+  if (!response.ok) {
+    throw new Error('Failed to mark notification as read');
+  }
+
   return response.json();
 };
 
@@ -46,7 +55,11 @@ export const markAllNotificationsReadAPI = async () => {
     method: 'PATCH',
     headers: getHeaders(),
   });
-  if (!response.ok) throw new Error('Failed to mark all notifications as read');
+
+  if (!response.ok) {
+    throw new Error('Failed to mark all notifications as read');
+  }
+
   return response.json();
 };
 
@@ -55,6 +68,10 @@ export const deleteNotificationAPI = async (id: string) => {
     method: 'DELETE',
     headers: getHeaders(),
   });
-  if (!response.ok) throw new Error('Failed to delete notification');
+
+  if (!response.ok) {
+    throw new Error('Failed to delete notification');
+  }
+
   return response.json();
 };
