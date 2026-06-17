@@ -482,9 +482,8 @@
     fd.append('file', file);
     return apiFetch<{
       success: boolean;
-      url: string;
-      file_name: string;
-      file_size: number;
+      data: { file_url: string; file_name: string; file_size: number; file_type?: string };
+      message?: string;
     }>('/content/preparations/upload-pdf', {
       method: 'POST',
       body: fd,
