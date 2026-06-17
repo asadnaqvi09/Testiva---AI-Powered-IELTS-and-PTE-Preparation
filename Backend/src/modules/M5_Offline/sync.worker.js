@@ -2,6 +2,7 @@ import { syncQueue } from "./sync.queue.js";
 import * as Progress from "../M4_Progress/models/progress.model.js";
 import pool from "../../config/db.js";
 import { cacheDelByPrefix } from "../../utils/redisCache.js";
+import { computeAttemptBandScores } from "../../utils/bandScore.js";
 import * as writingEvaluation from "../M6_AI/evaluators/writing.evaluator.js";
 import * as speakingEvaluation from "../M6_AI/evaluators/speaking.evaluator.js";
 
@@ -57,14 +58,20 @@ syncQueue.process(async (job) => {
           client,
         );
       }
+      const scoreMeta = await Progress.getAttemptScoreMeta(attemptId, client);
+      const gradedResponses = await Progress.getAttemptResponses(attemptId, client);
+      const computed = computeAttemptBandScores(gradedResponses, {
+        examType: scoreMeta.exam_type,
+        testCategory: scoreMeta.test_category,
+      });
       await Progress.finalizeAttempt(
         attemptId,
         {
-          overall_band_score: testData.overall_band_score ?? 0,
-          reading_score: testData.reading_score ?? 0,
-          listening_score: testData.listening_score ?? 0,
-          writing_score: testData.writing_score ?? 0,
-          speaking_score: testData.speaking_score ?? 0,
+          overall_band_score: testData.overall_band_score ?? computed.overall_band_score,
+          reading_score: testData.reading_score ?? computed.reading_score,
+          listening_score: testData.listening_score ?? computed.listening_score,
+          writing_score: testData.writing_score ?? computed.writing_score,
+          speaking_score: testData.speaking_score ?? computed.speaking_score,
           feedback: "Offline data synchronized. Running AI Evaluators...",
           client_completed_at: testData.client_completed_at,
           status: "pending",
@@ -107,8 +114,8 @@ syncQueue.process(async (job) => {
         }
       }
     }
-    const rScore = Number(testData.reading_score) || 0;
-    const lScore = Number(testData.listening_score) || 0;
+    const rScore = Number(testMeta?.reading_score) || Number(testData.reading_score) || 0;
+    const lScore = Number(testMeta?.listening_score) || Number(testData.listening_score) || 0;
     const wScore = calculatedWritingScore || Number(testData.writing_score) || 0;
     const sScore = calculatedSpeakingScore || Number(testData.speaking_score) || 0;
     let computedBand = (rScore + lScore + wScore + sScore) / 4;

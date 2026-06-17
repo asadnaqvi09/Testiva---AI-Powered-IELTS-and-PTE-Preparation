@@ -220,18 +220,31 @@ export const getAttemptById = async (id) => {
   return result.rows[0];
 };
 
-export const getAttemptResponses = async (attemptId) => {
-  const result = await pool.query(
+export const getAttemptResponses = async (attemptId, client = pool) => {
+  const result = await client.query(
     `SELECT ur.id, ur.attempt_id, ur.question_id, ur.user_answer, ur.audio_response_url, ur.is_correct, ur.marks_obtained,
             ur.word_count, ur.time_spent_seconds, ur.ai_feedback_per_question, ur.client_created_at,
-            q.question_text, q.question_type, q.sub_question_type, q.correct_answer, q.marks AS total_marks, q.order_number, q.word_limit_instruction
+            q.question_text, q.question_type, q.sub_question_type, q.correct_answer, q.marks AS total_marks, q.order_number,
+            q.word_limit_instruction, ts.section_type
      FROM user_responses ur
      JOIN questions q ON ur.question_id = q.id
+     JOIN test_sections ts ON q.section_id = ts.id
      WHERE ur.attempt_id = $1::uuid
-     ORDER BY q.order_number`,
+     ORDER BY ts.order_number, q.order_number`,
     [attemptId],
   );
   return result.rows;
+};
+
+export const getAttemptScoreMeta = async (attemptId, client = pool) => {
+  const { rows } = await client.query(
+    `SELECT t.exam_type, t.test_category
+     FROM test_attempts ta
+     JOIN tests t ON ta.test_id = t.id
+     WHERE ta.id = $1::uuid`,
+    [attemptId],
+  );
+  return rows[0] || { exam_type: "IELTS", test_category: "full_mock" };
 };
 
 export const updateAttemptScores = async (id, scores) => {

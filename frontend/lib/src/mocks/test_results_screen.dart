@@ -100,7 +100,10 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
     final int correctCount = _parseInt(stats['correct_answers']);
     final int totalQuestions = _parseInt(stats['total_questions']);
     final int incorrectCount = totalQuestions - correctCount;
+    final int marksObtained = _parseInt(stats['marks_obtained']);
+    final int totalMarks = _parseInt(stats['total_marks']);
     final String accuracyString = stats['accuracy']?.toString() ?? '0%';
+    final String marksString = totalMarks > 0 ? '$marksObtained/$totalMarks' : '$marksObtained';
     final double accuracyValue = totalQuestions > 0 ? correctCount / totalQuestions : 0.0;
 
     // Module Scores Null-Safety Parsing
@@ -162,7 +165,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                       Container(height: 30, width: 1, color: Colors.white24),
                       _buildScoreStat('$incorrectCount', 'Incorrect'),
                       Container(height: 30, width: 1, color: Colors.white24),
-                      _buildScoreStat(accuracyString, 'Score'),
+                      _buildScoreStat(marksString, 'Marks'),
                     ],
                   )
                 ],
@@ -228,6 +231,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                   var q = reviewList[index] as Map<String, dynamic>;
                   bool isCorrect = q['is_correct'] as bool? ?? false;
                   String userAns = q['your_answer']?.toString() ?? '';
+                  final int qMarks = _parseInt(q['marks']);
 
                   return Container(
                     padding: const EdgeInsets.all(12),
@@ -284,6 +288,15 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                         Text(
                           'Correct response: ${q['correct_answer'] ?? "N/A"}',
                           style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Marks: $qMarks',
+                          style: TextStyle(
+                            color: isCorrect ? Colors.green.shade700 : Colors.grey.shade600,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),

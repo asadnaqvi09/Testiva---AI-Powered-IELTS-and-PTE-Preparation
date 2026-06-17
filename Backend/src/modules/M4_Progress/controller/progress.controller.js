@@ -3,6 +3,7 @@ import * as progressModel from "../models/progress.model.js";
 import { addSyncJob } from "../../M5_Offline/sync.queue.js";
 import { submitFullTestSchema } from "../validator/progress.validator.js";
 import { cacheDelByPrefix } from "../../../utils/redisCache.js";
+import { computeAttemptBandScores, sumMarks } from "../../../utils/bandScore.js";
 
 async function bustUserTestCaches(userId) {
   await cacheDelByPrefix(`test:mobile:${userId}:`);
@@ -50,25 +51,37 @@ export const submitTest = async (req, res) => {
           client,
         );
       }
+
+      const scoreMeta = await progressModel.getAttemptScoreMeta(attemptId, client);
+      const gradedResponses = await progressModel.getAttemptResponses(attemptId, client);
+      const computed = computeAttemptBandScores(gradedResponses, {
+        examType: scoreMeta.exam_type,
+        testCategory: scoreMeta.test_category,
+      });
+
       let finalStatus = "completed";
       let finalSyncStatus = "synced";
-      let writingScore = value.writing_score ?? 0;
-      let speakingScore = value.speaking_score ?? 0;
+      let writingScore = value.writing_score ?? computed.writing_score;
+      let speakingScore = value.speaking_score ?? computed.speaking_score;
+      let readingScore = value.reading_score ?? computed.reading_score;
+      let listeningScore = value.listening_score ?? computed.listening_score;
+      let overallBand = value.overall_band_score ?? computed.overall_band_score;
       let globalFeedback = value.feedback ?? "Evaluation completed.";
       if (hasSubjectiveSection) {
         finalStatus = "pending";
         finalSyncStatus = "pending";
         writingScore = 0;
         speakingScore = 0;
+        overallBand = 0;
         globalFeedback = "Your subjective answers are being evaluated by Testiva AI Engine.";
       }
 
       await progressModel.finalizeAttempt(
         attemptId,
         {
-          overall_band_score: hasSubjectiveSection ? 0 : (value.overall_band_score ?? 0),
-          reading_score: value.reading_score ?? 0,
-          listening_score: value.listening_score ?? 0,
+          overall_band_score: overallBand,
+          reading_score: readingScore,
+          listening_score: listeningScore,
           writing_score: writingScore,
           speaking_score: speakingScore,
           feedback: globalFeedback,
@@ -129,6 +142,7 @@ export const getTestResult = async (req, res) => {
     const responses = await progressModel.getAttemptResponses(attempt_id);
     const total = responses.length;
     const correct = responses.filter((r) => r.is_correct).length;
+    const { marks_obtained, total_marks } = sumMarks(responses);
     res.status(200).json({
       success: true,
       data: {
@@ -142,6 +156,8 @@ export const getTestResult = async (req, res) => {
           total_questions: total,
           correct_answers: correct,
           accuracy: total > 0 ? ((correct / total) * 100).toFixed(1) + "%" : "0%",
+          marks_obtained,
+          total_marks,
         },
         scores_breakdown: {
           reading: attempt.reading_score ?? 0,

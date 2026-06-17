@@ -378,7 +378,7 @@ export const upsertTestNested = async (req, res) => {
       for (const q of s.questions || []) {
         const { id: qid, ...rest } = q;
         if (qid) {
-          await testModel.updateQuestion(qid, rest, client);
+          await testModel.updateQuestion(qid, sanitizeQuestionPayload(rest), client);
           qKeep.push(qid);
         } else {
           const row = await testModel.createSingleQuestion({ ...sanitizeQuestionPayload(rest), section_id: sid }, client);
