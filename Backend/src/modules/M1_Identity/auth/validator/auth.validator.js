@@ -36,7 +36,8 @@ export const resetPasswordSchema = Joi.object({
 export const otpSchema = Joi.object({
   email: Joi.string().email().lowercase().required(),
   otp: Joi.string().length(4).pattern(/^\d+$/).required(),
-  type: Joi.string().valid("register", "reset").required()
+  type: Joi.string().valid("register", "reset").required(),
+  preference: preferenceSchema
 });
 
 export const resendOtpSchema = Joi.object({

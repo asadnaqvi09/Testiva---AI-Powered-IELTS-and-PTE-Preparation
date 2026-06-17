@@ -209,7 +209,7 @@ export const saveRefreshToken = async (userId, token, expiresAt) => {
 
 export const findRefreshToken = async (token) => {
   const result = await pool.query(
-    `SELECT * FROM refresh_tokens WHERE token=$1`,
+    `SELECT *, (expires_at < NOW()) as is_expired FROM refresh_tokens WHERE token=$1`,
     [token]
   );
   return result.rows[0] || null;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/app_theme.dart';
 
-class CollapsibleLessonTile extends StatelessWidget {
+class CollapsibleLessonTile extends StatefulWidget {
   final String title;
   final List<LessonItem> items;
 
@@ -12,6 +12,13 @@ class CollapsibleLessonTile extends StatelessWidget {
   });
 
   @override
+  State<CollapsibleLessonTile> createState() => _CollapsibleLessonTileState();
+}
+
+class _CollapsibleLessonTileState extends State<CollapsibleLessonTile> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -20,20 +27,40 @@ class CollapsibleLessonTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.borderColor(context)),
       ),
-      child: ExpansionTile(
-        shape: const RoundedRectangleBorder(side: BorderSide.none),
-        collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
-        iconColor: AppTheme.iconColor(context),
-        collapsedIconColor: AppTheme.secondaryText(context),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: AppTheme.primaryText(context),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          // Yeh default arrow ko hata kar hamara custom button dikhaye ga
+          trailing: _buildMediaButton(),
+          onExpansionChanged: (expanded) => setState(() => _isExpanded = expanded),
+          title: Text(
+            widget.title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: AppTheme.primaryText(context),
+            ),
           ),
+          children: widget.items.map((item) => _buildItem(context, item)).toList(),
         ),
-        children: items.map((item) => _buildItem(context, item)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildMediaButton() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        _isExpanded ? "Collapse" : "Media",
+        style: const TextStyle(
+          color: Colors.blue,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

@@ -5,11 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/core/constants/app_colors.dart';
-import 'package:frontend/src/prep/widgets/prep_header.dart';
+import 'package:frontend/widgets/app_header.dart';
 import 'package:frontend/src/prep/widgets/module_card.dart';
 import 'package:frontend/widgets/custom_drawer.dart';
 import 'package:frontend/widgets/app_theme.dart';
 import '../../../../data/models/prep_module_model.dart';
+import '../dashboard/home/widgets/premium_modal.dart';
 
 class PrepScreen extends StatefulWidget {
   const PrepScreen({super.key});
@@ -41,20 +42,23 @@ class _PrepScreenState extends State<PrepScreen> {
     final userPref = UserNotifier.notifier.value['preference'];
     if (userPref != null) {
       selectedType = userPref.toUpperCase();
-      _fetchLiveModules();
     } else {
-      _isLoading = true; // Wait for preference
+      selectedType = 'IELTS';
     }
+    _fetchLiveModules();
   }
 
   void _onUserChanged() {
     if (mounted) {
       final userPref = UserNotifier.notifier.value['preference'];
-      if (userPref != null && _isLoading && _liveModules.isEmpty) {
-        setState(() {
-          selectedType = userPref.toUpperCase();
-        });
-        _fetchLiveModules();
+      if (userPref != null) {
+        final newType = userPref.toUpperCase();
+        if (selectedType != newType) {
+          setState(() {
+            selectedType = newType;
+          });
+          _fetchLiveModules();
+        }
       }
     }
   }
@@ -155,7 +159,7 @@ class _PrepScreenState extends State<PrepScreen> {
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
-      appBar: PrepHeader(scaffoldKey: _scaffoldKey),
+      appBar: AppHeader(scaffoldKey: _scaffoldKey),
       body: RefreshIndicator(
         onRefresh: _fetchLiveModules,
         color: AppColors.primary,
@@ -249,12 +253,11 @@ class _PrepScreenState extends State<PrepScreen> {
       child: GestureDetector(
         onTap: isLocked
             ? () {
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Access denied. Your active track is locked to ${UserNotifier.notifier.value['preference'] ?? 'IELTS'}.'),
-                    backgroundColor: Colors.red,
-                  ),
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const PremiumModal(),
                 );
               }
             : () {

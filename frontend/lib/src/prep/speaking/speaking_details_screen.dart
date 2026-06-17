@@ -6,8 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../reading/widgets/collapsible_lesson_tile.dart';
 import '../widgets/prep_segmented_control.dart';
 import '../widgets/media_tab_content.dart';
-import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_theme.dart';
+import '../../../../widgets/app_header.dart';
 
 class SpeakingDetailsScreen extends StatefulWidget {
   const SpeakingDetailsScreen({super.key});
@@ -179,52 +179,22 @@ class _SpeakingDetailsScreenState extends State<SpeakingDetailsScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      drawer: const CustomDrawer(),
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              color: AppTheme.appBarBg(context),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            AppHeader(
+              showBackButton: true,
+              titleWidget: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceBg(context),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.menu, color: AppTheme.iconColor(context)),
+                  const Icon(Icons.record_voice_over, color: Colors.purple, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Speaking Prep',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryText(context),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.record_voice_over, color: Colors.purple, size: 24),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Speaking Prep',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryText(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.purple,
-                        child: Text(
-                          'AK',
-                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),

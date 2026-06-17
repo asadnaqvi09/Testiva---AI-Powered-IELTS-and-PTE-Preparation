@@ -55,8 +55,7 @@ export const sendOtpEmail = async ({ email, otp, type = 'register' }) => {
     console.log(`[EMAIL SUCCESS] OTP email successfully sent to ${email}`);
   } catch (error) {
     console.error(`[EMAIL ERROR] Failed to send OTP email to ${email}:`, error.message);
-    console.log(`[BYPASS] OTP code for ${email} (${type}) is: ${otp}`);
-    // Do not rethrow the error, allow registration/verification flow to proceed.
+    throw new Error(`Email sending failed: ${error.message}. Please verify SMTP settings or Gmail App Password.`);
   }
 };
 

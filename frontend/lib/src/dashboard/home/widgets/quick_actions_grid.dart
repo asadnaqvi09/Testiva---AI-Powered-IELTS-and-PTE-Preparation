@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'premium_modal.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import 'package:frontend/core/services/user_notifier.dart';
 
 class QuickActionsGrid extends StatelessWidget {
   final Function(int) onActionTap;
@@ -9,39 +10,96 @@ class QuickActionsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 15,
-      crossAxisSpacing: 15,
-      childAspectRatio: 1.1,
-      children: [
-        _actionCard(context, 'Start Mock', 'IELTS Reading', Icons.description_outlined, Colors.blue,
-            onTap: () => onActionTap(1)),
-        _actionCard(context, 'Continue Prep', 'IELTS Writing', Icons.menu_book_outlined, Colors.green,
-            onTap: () => onActionTap(2)),
-        _actionCard(context, 'Community', '3 new replies', Icons.people_outline, Colors.orange,
-            onTap: () => onActionTap(3)),
+    return ValueListenableBuilder<Map<String, dynamic>>(
+      valueListenable: UserNotifier.notifier,
+      builder: (context, user, child) {
+        final String preference = user['preference'] ?? 'IELTS';
+        final bool isPremium = user['isPremium'] == true || user['subscription'] == 'premium';
+        final bool isAdmin = user['role'] == 'admin';
+        final bool hasAccessAll = isPremium || isAdmin;
 
-        // PTE Prep Card
-        _actionCard(
-            context,
-            'PTE Prep',
-            'Unlock Premium',
-            Icons.track_changes,
-            const Color(0xFF94A3B8),
-            isLocked: true,
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => const PremiumModal(),
-              );
-            }
-        ),
-      ],
+        final bool isIeltsActive = preference.toUpperCase() == 'IELTS';
+        
+        // Lock statuses
+        final bool isIeltsLocked = !isIeltsActive && !hasAccessAll;
+        final bool isPteLocked = isIeltsActive && !hasAccessAll;
+
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 15,
+          crossAxisSpacing: 15,
+          childAspectRatio: 1.1,
+          children: [
+            // Start Mock (matches chosen preference, unlocked)
+            _actionCard(
+              context,
+              isIeltsActive ? 'Start Mock' : 'PTE Mock',
+              isIeltsActive ? 'IELTS Reading' : 'Start Mock Test',
+              Icons.description_outlined,
+              Colors.blue,
+              isLocked: false,
+              onTap: () => onActionTap(1),
+            ),
+            
+            // IELTS Prep Card
+            _actionCard(
+              context,
+              'IELTS Prep',
+              isIeltsLocked ? 'Unlock Premium' : 'IELTS Writing',
+              Icons.menu_book_outlined,
+              isIeltsLocked ? const Color(0xFF94A3B8) : Colors.green,
+              isLocked: isIeltsLocked,
+              onTap: () {
+                if (isIeltsLocked) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => const PremiumModal(),
+                  );
+                } else {
+                  onActionTap(2);
+                }
+              },
+            ),
+
+            // Community Card (unlocked)
+            _actionCard(
+              context,
+              'Community',
+              '3 new replies',
+              Icons.people_outline,
+              Colors.orange,
+              isLocked: false,
+              onTap: () => onActionTap(3),
+            ),
+
+            // PTE Prep Card
+            _actionCard(
+              context,
+              'PTE Prep',
+              isPteLocked ? 'Unlock Premium' : 'PTE Preparation',
+              Icons.track_changes,
+              isPteLocked ? const Color(0xFF94A3B8) : Colors.purple,
+              isLocked: isPteLocked,
+              onTap: () {
+                if (isPteLocked) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => const PremiumModal(),
+                  );
+                } else {
+                  onActionTap(2);
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

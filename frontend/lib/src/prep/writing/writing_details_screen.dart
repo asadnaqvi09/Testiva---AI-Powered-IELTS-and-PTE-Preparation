@@ -7,8 +7,8 @@ import 'widgets/writing_ai_card.dart';
 import 'widgets/collapsible_lesson_tile.dart';
 import '../widgets/prep_segmented_control.dart';
 import '../widgets/media_tab_content.dart';
-import '../../../widgets/custom_drawer.dart';
 import '../../../widgets/app_theme.dart';
+import '../../../widgets/app_header.dart';
 
 class WritingDetailsScreen extends StatefulWidget {
   const WritingDetailsScreen({super.key});
@@ -160,51 +160,22 @@ class _WritingDetailsScreenState extends State<WritingDetailsScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      drawer: const CustomDrawer(),
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              color: AppTheme.appBarBg(context),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            AppHeader(
+              showBackButton: true,
+              titleWidget: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceBg(context),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.menu, color: AppTheme.iconColor(context)),
+                  const Icon(Icons.book, color: Color(0xFF007BFF), size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Writing Prep',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryText(context),
                     ),
-                  ),
-                  const Row(
-                    children: [
-                      Icon(Icons.book, color: Color(0xFF007BFF), size: 24),
-                      SizedBox(width: 8),
-                      Text(
-                        'Testiva AI',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Color(0xFF007BFF),
-                        child: Text(
-                          'AK',
-                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),

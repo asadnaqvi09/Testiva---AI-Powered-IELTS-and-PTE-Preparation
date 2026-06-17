@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import 'package:frontend/widgets/app_header.dart';
 import 'reading_test_screen.dart';
 
 class TestOverviewScreen extends StatelessWidget {
@@ -30,65 +31,16 @@ class TestOverviewScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg(context),
-      appBar: AppBar(
-        backgroundColor: AppTheme.appBarBg(context),
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: AppTheme.iconColor(context)),
-          onPressed: () {},
+      appBar: AppHeader(
+        showBackButton: true,
+        titleWidget: Text(
+          testTitle,
+          style: TextStyle(color: AppTheme.primaryText(context), fontWeight: FontWeight.bold, fontSize: 18),
+          overflow: TextOverflow.ellipsis,
         ),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.menu_book, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'TestPrep Hub',
-              style: TextStyle(color: AppTheme.primaryText(context), fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        actions: [
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              backgroundColor: AppColors.primary,
-              radius: 16,
-              child: Text(
-                'AK',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: AppTheme.iconColor(context)),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Expanded(
-                  child: Text(
-                    testTitle,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
