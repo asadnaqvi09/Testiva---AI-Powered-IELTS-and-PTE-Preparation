@@ -57,7 +57,7 @@ class _SignupFormState extends State<SignupForm> {
             const SnackBar(content: Text('Registration Successful! OTP sent to your email.')),
           );
 
-          // Save before clearing so they can be passed to OtpScreen
+
           final savedEmail = enteredEmail;
           final savedPass = enteredPassword;
 

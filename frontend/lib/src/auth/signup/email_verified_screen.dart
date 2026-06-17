@@ -16,7 +16,7 @@ class EmailVerifiedScreen extends StatelessWidget {
     final primaryText = AppTheme.primaryText(context);
     final secondaryText = AppTheme.secondaryText(context);
 
-    // Green success colors matching screenshots, with dark mode fallbacks
+
     final cardBg = isDark ? const Color(0xFF166534).withValues(alpha: 0.2) : const Color(0xFFF0FDF4);
     final borderColor = isDark ? const Color(0xFF15803D).withValues(alpha: 0.4) : const Color(0xFFDCFCE7);
     final iconColor = isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
@@ -38,7 +38,7 @@ class EmailVerifiedScreen extends StatelessWidget {
               ),
               const Spacer(),
 
-              // Checked Green Badge with Sparkle Accent
+
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -79,7 +79,7 @@ class EmailVerifiedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 35),
 
-              // Title
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -100,7 +100,7 @@ class EmailVerifiedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 15),
 
-              // Subtitle
+
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
@@ -124,7 +124,7 @@ class EmailVerifiedScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // Milestone Cards List
+
               _buildMilestoneCard(
                 icon: Icons.check_circle_outline,
                 label: 'Email address verified',
@@ -154,7 +154,7 @@ class EmailVerifiedScreen extends StatelessWidget {
 
               const Spacer(),
 
-              // Choose Preference Button
+
               SizedBox(
                 width: double.infinity,
                 height: 56,

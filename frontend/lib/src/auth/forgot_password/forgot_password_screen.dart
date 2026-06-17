@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService ka path verify kar lein
+import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
 import '../../../widgets/app_button.dart';
@@ -16,7 +16,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false; // Senior Touch: Loading state management
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,7 +24,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  // API Call Function
+
   Future<void> _handleForgotPassword() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -43,7 +43,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('OTP sent successfully to your email!'), backgroundColor: Colors.green),
         );
-        // Successful response par OTP Screen par email pass kar ke navigation
+
         Navigator.push(
           context,
           MaterialPageRoute(
