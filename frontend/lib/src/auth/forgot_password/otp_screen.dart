@@ -17,7 +17,7 @@ class _OTPScreenState extends State<OTPScreen> {
   Timer? _t;
   final _ctrls = List.generate(4, (_) => TextEditingController());
   bool _isComplete = false;
-  bool _isLoading = false; // Senior Touch: Loading overlay
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -41,13 +41,13 @@ class _OTPScreenState extends State<OTPScreen> {
     });
   }
 
-  // OTP Verification API Call
+
   Future<void> _verifyOTP() async {
     if (!_isComplete) return;
 
     setState(() => _isLoading = true);
 
-    // Charon boxes se 4-digit code single string mein assemble karna
+
     String otpCode = _ctrls.map((c) => c.text).join();
 
     try {
@@ -65,7 +65,7 @@ class _OTPScreenState extends State<OTPScreen> {
           const SnackBar(content: Text('OTP Verified Successfully!'), backgroundColor: Colors.green),
         );
 
-        // Navigation to Reset Password Screen (Passing email for the next step)
+
         Navigator.push(
             context,
             MaterialPageRoute(
@@ -88,7 +88,7 @@ class _OTPScreenState extends State<OTPScreen> {
     }
   }
 
-  // Resend OTP API Call
+
   Future<void> _resendOTP() async {
     try {
       final response = await ApiService.post('/auth/forgot-password', {

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService ka path verify kar lein
+import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/app_theme.dart';
 
 class ProgressCard extends StatefulWidget {
@@ -12,8 +12,8 @@ class ProgressCard extends StatefulWidget {
 
 class _ProgressCardState extends State<ProgressCard> {
   bool _isLoading = true;
-  double _overallProgress = 0.0; // Default zero se start hoga jab tak API load ho
-  String _activeTrack = 'IELTS'; // Default user track tracking
+  double _overallProgress = 0.0;
+  String _activeTrack = 'IELTS';
 
   @override
   void initState() {
@@ -56,7 +56,7 @@ class _ProgressCardState extends State<ProgressCard> {
 
   @override
   Widget build(BuildContext context) {
-    // UI display percentage string format calculation
+
     int percentageDisplay = (_overallProgress * 100).round();
 
     return Container(

@@ -72,8 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           };
           UserNotifier.notifier.value = newUserData;
 
-          // If preference is null, redirect to SelectPreference screen
-          // (no modal — preference MUST be set via the dedicated screen)
+
           if (user['preference'] == null && mounted) {
             final userName = user['full_name'] ?? user['name'] ?? 'User';
             Navigator.pushReplacementNamed(
