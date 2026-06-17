@@ -128,7 +128,7 @@ class _PreferenceSelectionScreenState extends State<PreferenceSelectionScreen> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'TestPrep Hub',
+                      'Testiva',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -177,7 +177,7 @@ class _PreferenceSelectionScreenState extends State<PreferenceSelectionScreen> {
                         ),
                       ),
                       const TextSpan(
-                        text: '! Which test are you preparing for? You can change this later from your profile.',
+                        text: '! Which test are you preparing for? This is a one-time selection — choose carefully.',
                       ),
                     ],
                   ),

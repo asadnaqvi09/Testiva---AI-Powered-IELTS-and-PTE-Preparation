@@ -8,15 +8,19 @@ import 'package:frontend/widgets/app_button.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
+  // Password is passed from signup so we can auto-login after OTP verification
+  // to obtain an accessToken before navigating to SelectPreference
+  final String? password;
 
-  const OtpScreen({required this.email, super.key});
+  const OtpScreen({required this.email, this.password, super.key});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final List<TextEditingController> _controllers = List.generate(4, (i) => TextEditingController());
+  final List<TextEditingController> _controllers =
+      List.generate(4, (i) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (i) => FocusNode());
 
   bool _isLoading = false;
@@ -35,16 +39,16 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() {
       _secondsRemaining = 50;
       _isExpired = false;
-      for (var c in _controllers) { c.clear(); }
+      for (var c in _controllers) {
+        c.clear();
+      }
     });
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining > 0) {
         setState(() => _secondsRemaining--);
       } else {
-        setState(() {
-          _isExpired = true;
-        });
+        setState(() => _isExpired = true);
         _timer?.cancel();
       }
     });
@@ -66,7 +70,6 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
-  // 🔄 Resend OTP API Call Linked with Server Route
   Future<void> _handleResendOtp() async {
     setState(() => _isLoading = true);
     try {
@@ -74,25 +77,30 @@ class _OtpScreenState extends State<OtpScreen> {
         'email': widget.email,
         'type': 'register',
       });
-
       final responseData = jsonDecode(response.body);
-
       if (mounted) {
         if (response.statusCode == 200 && responseData['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('A fresh OTP has been sent!'), backgroundColor: Colors.green),
+            const SnackBar(
+                content: Text('A fresh OTP has been sent!'),
+                backgroundColor: Colors.green),
           );
           _startTimer();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(responseData['message'] ?? 'Failed to resend OTP'), backgroundColor: Colors.red),
+            SnackBar(
+                content:
+                    Text(responseData['message'] ?? 'Failed to resend OTP'),
+                backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Connection error: ${e.toString()}'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Connection error: ${e.toString()}'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -100,65 +108,98 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
-  // 🚀 Live Email Verification API Call
   Future<void> _handleVerifyOtp() async {
     if (_isExpired) return;
 
     String otpCode = _controllers.map((c) => c.text).join();
     if (otpCode.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter all 4 digits'), backgroundColor: Colors.orange),
+        const SnackBar(
+            content: Text('Please enter all 4 digits'),
+            backgroundColor: Colors.orange),
       );
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      // FIX: Gateway route map kiya backend engine ke mutabiq
-      final Map<String, dynamic> requestBody = {
+      final response = await ApiService.post('/auth/verify-otp', {
         'email': widget.email,
         'otp': otpCode,
         'type': 'register',
-      };
+      });
 
-      final response = await ApiService.post('/auth/verify-otp', requestBody);
+      if (!mounted) return;
+      final responseData = jsonDecode(response.body);
 
-      if (mounted) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          responseData['success'] == true) {
+        // Get user name from verification response
+        final userMap =
+            responseData['user'] as Map<String, dynamic>? ?? {};
+        final userName =
+            userMap['full_name'] ?? userMap['name'] ?? 'User';
 
-        if (response.statusCode == 200 && responseData['success'] == true) {
-          // Senior Touch: Token received ho gaya, isay globally state mein inject kar dein
-          if (responseData['accessToken'] != null) {
-            ApiService.setToken(responseData['accessToken']);
+        // ── Auto-login to obtain accessToken ──────────────────────────────
+        // verify-otp for register does NOT return a token, so we login
+        // automatically with the password passed from the signup form.
+        if (widget.password != null && widget.password!.isNotEmpty) {
+          try {
+            final loginResp = await ApiService.post('/auth/login', {
+              'email': widget.email,
+              'password': widget.password,
+            });
+            if (loginResp.statusCode == 200) {
+              final loginData = jsonDecode(loginResp.body);
+              if (loginData['accessToken'] != null) {
+                await ApiService.setToken(loginData['accessToken']);
+              }
+              if (loginData['user'] != null) {
+                UserNotifier.notifier.value = {
+                  'name': loginData['user']['full_name'] ??
+                      loginData['user']['name'] ??
+                      userName,
+                  'email': loginData['user']['email'] ?? widget.email,
+                  'preference': loginData['user']['preference'],
+                  'role': loginData['user']['role'] ?? 'user',
+                  'subscription':
+                      loginData['user']['subscription'] ?? 'free',
+                  'isPremium': (loginData['user']['subscription'] ?? '')
+                          .toString()
+                          .toLowerCase() ==
+                      'premium',
+                };
+              }
+            }
+          } catch (_) {
+            // Auto-login failed — user will be redirected to preference screen
+            // which requires auth; preference screen handles 401 gracefully.
           }
-          
-          if (responseData['user'] != null) {
-            UserNotifier.notifier.value = responseData['user'];
-          }
+        }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account Verified Successfully! Welcome to Testiva.'), backgroundColor: Colors.green),
-          );
-
-          final userMap = responseData['user'] as Map<String, dynamic>? ?? {};
-          final userName = userMap['full_name'] ?? userMap['name'] ?? 'User';
-
+        // Navigate directly to SelectPreference — no intermediate screen
+        if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
             context,
-            '/email-verified',
+            '/select-preference',
             (route) => false,
             arguments: userName,
           );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(responseData['message'] ?? 'Invalid OTP code'), backgroundColor: Colors.red),
-          );
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text(responseData['message'] ?? 'Invalid OTP code'),
+              backgroundColor: Colors.red),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Verification failed: ${e.toString()}'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Verification failed: ${e.toString()}'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -166,20 +207,15 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
-  void _fillDemoOtp() {
-    if (_isExpired) return;
-    const demoOtp = '1234';
-    for (int i = 0; i < 4; i++) {
-      _controllers[i].text = demoOtp[i];
-    }
-    FocusScope.of(context).requestFocus(_focusNodes[3]);
-  }
-
   @override
   void dispose() {
     _timer?.cancel();
-    for (var c in _controllers) { c.dispose(); }
-    for (var f in _focusNodes) { f.dispose(); }
+    for (var c in _controllers) {
+      c.dispose();
+    }
+    for (var f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -209,12 +245,16 @@ class _OtpScreenState extends State<OtpScreen> {
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.menu_book, color: Colors.white, size: 24),
+                  child: const Icon(Icons.menu_book,
+                      color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 10),
                 const Text(
-                  'Testiva App',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+                  'Testiva',
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
               ],
             ),
@@ -223,13 +263,17 @@ class _OtpScreenState extends State<OtpScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: _isExpired ? Colors.red[50] : AppColors.primary.withOpacity(0.1),
+                color: _isExpired
+                    ? Colors.red[50]
+                    : AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                  _isExpired ? Icons.access_time_filled : Icons.verified_user,
-                  size: 50,
-                  color: _isExpired ? Colors.red : AppColors.primary
+                _isExpired
+                    ? Icons.access_time_filled
+                    : Icons.verified_user,
+                size: 50,
+                color: _isExpired ? Colors.red : AppColors.primary,
               ),
             ),
             const SizedBox(height: 24),
@@ -237,24 +281,33 @@ class _OtpScreenState extends State<OtpScreen> {
             if (!_isExpired) ...[
               const Text(
                 'Verify Your Email ✉️',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               ),
               const SizedBox(height: 10),
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+                  style: const TextStyle(
+                      color: Colors.grey, fontSize: 14, height: 1.5),
                   children: [
-                    const TextSpan(text: "We've sent a 4-digit verification code to\n"),
+                    const TextSpan(
+                        text:
+                            "We've sent a 4-digit verification code to\n"),
                     const WidgetSpan(
                       child: Padding(
                         padding: EdgeInsets.only(right: 5, top: 2),
-                        child: Icon(Icons.email_outlined, size: 16, color: AppColors.primary),
+                        child: Icon(Icons.email_outlined,
+                            size: 16, color: AppColors.primary),
                       ),
                     ),
                     TextSpan(
                       text: _maskEmail(widget.email),
-                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -262,16 +315,19 @@ class _OtpScreenState extends State<OtpScreen> {
             ] else ...[
               const Text(
                 'OTP Expired ⏰',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               ),
               const SizedBox(height: 10),
               const Text(
                 'Your OTP has expired. Request a new one to\ncontinue.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+                style:
+                    TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
               ),
               const SizedBox(height: 20),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -282,7 +338,8 @@ class _OtpScreenState extends State<OtpScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 22),
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -290,12 +347,18 @@ class _OtpScreenState extends State<OtpScreen> {
                         children: [
                           const Text(
                             'Verification Code Expired',
-                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                            style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'The OTP sent to your email is no longer valid. Click "Resend OTP" below to get a fresh code.',
-                            style: TextStyle(color: Colors.red[900], fontSize: 12, height: 1.4),
+                            'The OTP sent to your email is no longer valid. Tap "Resend OTP" below to get a fresh code.',
+                            style: TextStyle(
+                                color: Colors.red[900],
+                                fontSize: 12,
+                                height: 1.4),
                           ),
                         ],
                       ),
@@ -311,10 +374,14 @@ class _OtpScreenState extends State<OtpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Code expires in', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const Text('Code expires in',
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
                   Text(
                     _getFormattedTime(),
-                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
                   ),
                 ],
               ),
@@ -324,7 +391,8 @@ class _OtpScreenState extends State<OtpScreen> {
                 child: LinearProgressIndicator(
                   value: _secondsRemaining / 50,
                   backgroundColor: Colors.grey[200],
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Colors.green),
                   minHeight: 6,
                 ),
               ),
@@ -333,72 +401,53 @@ class _OtpScreenState extends State<OtpScreen> {
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(4, (index) => _buildOtpBox(index)),
+              children:
+                  List.generate(4, (index) => _buildOtpBox(index)),
             ),
             const SizedBox(height: 30),
 
             _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary))
                 : _isExpired
-                ? AppButton(
-              text: 'Resend OTP',
-              onPressed: _handleResendOtp,
-            )
-                : AppButton(
-              text: 'Verify OTP',
-              onPressed: _handleVerifyOtp,
-            ),
+                    ? AppButton(
+                        text: 'Resend OTP',
+                        onPressed: _handleResendOtp,
+                      )
+                    : AppButton(
+                        text: 'Verify OTP',
+                        onPressed: _handleVerifyOtp,
+                      ),
             const SizedBox(height: 25),
 
             if (_isExpired) ...[
-              _buildInfoCard(Icons.mail_outline, 'Check your spam/junk folder', 'Sometimes OTP emails land in spam. Check all folders before resending.'),
+              _buildInfoCard(
+                  Icons.mail_outline,
+                  'Check your spam/junk folder',
+                  'Sometimes OTP emails land in spam. Check all folders before resending.'),
               const SizedBox(height: 12),
-              _buildInfoCard(Icons.access_time, 'OTP valid for 15 minutes', 'Each code expires after backend countdown session. Enter it quickly.'),
+              _buildInfoCard(
+                  Icons.access_time,
+                  'OTP valid for 15 minutes',
+                  'Each code expires after backend countdown session. Enter it quickly.'),
               const SizedBox(height: 25),
             ],
 
             if (!_isExpired) ...[
-              GestureDetector(
-                onTap: _fillDemoOtp,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF9E6),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFFE599)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lightbulb_outline, color: Colors.orange, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: RichText(
-                          text: const TextSpan(
-                            style: TextStyle(fontSize: 13, color: Colors.black),
-                            children: [
-                              TextSpan(text: 'Demo OTP: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                              TextSpan(text: '1 2 3 4 ', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-                              TextSpan(text: '(prototype verification matches backend)', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Didn't receive the code? ", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  TextButton(
-                    onPressed: null,
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                    child: Text(
-                      'Resend in ${_secondsRemaining}s',
-                      style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
+                  const Text("Didn't receive the code? ",
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 13)),
+                  Text(
+                    'Resend in ${_secondsRemaining}s',
+                    style: const TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
                   ),
                 ],
               ),
@@ -409,7 +458,10 @@ class _OtpScreenState extends State<OtpScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text(
                 '← Back to Register',
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500, fontSize: 14),
+                style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14),
               ),
             ),
             const SizedBox(height: 20),
@@ -430,7 +482,10 @@ class _OtpScreenState extends State<OtpScreen> {
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
         maxLength: 1,
-        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _isExpired ? Colors.grey : Colors.black),
+        style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: _isExpired ? Colors.grey : Colors.black),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
@@ -441,7 +496,8 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            borderSide:
+                const BorderSide(color: AppColors.primary, width: 2),
           ),
           disabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -460,7 +516,8 @@ class _OtpScreenState extends State<OtpScreen> {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String title, String description) {
+  Widget _buildInfoCard(
+      IconData icon, String title, String description) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -479,12 +536,16 @@ class _OtpScreenState extends State<OtpScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Colors.black),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   description,
-                  style: const TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
+                  style: const TextStyle(
+                      color: Colors.grey, fontSize: 11, height: 1.4),
                 ),
               ],
             ),

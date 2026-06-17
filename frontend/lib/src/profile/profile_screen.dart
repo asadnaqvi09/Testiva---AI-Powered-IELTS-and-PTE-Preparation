@@ -24,11 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoading = true;
 
-
   Map<String, dynamic> _userData = {
     'name': 'User',
     'email': '',
     'isPremium': false,
+    'preference': null,
   };
 
   @override
@@ -55,7 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _userData = newUserData;
             _isLoading = false;
           });
-          // Update global notifier for other widgets (e.g., HeaderSection)
           UserNotifier.notifier.value = newUserData;
           return;
         }
@@ -63,10 +62,265 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _isLoading = false);
     } catch (e) {
       debugPrint(e.toString());
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // ── Preference Change Request Modal ──────────────────────────────────────
+  void _showPreferenceChangeDialog() {
+    final currentPref = _userData['preference']?.toString() ?? 'IELTS';
+    final otherPref = currentPref.toUpperCase() == 'IELTS' ? 'PTE' : 'IELTS';
+    final reasonController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              backgroundColor: AppTheme.cardBg(context),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF007BFF).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.swap_horiz,
+                        color: Color(0xFF007BFF), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Request Preference Change',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryText(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF9E6),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFFE599)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline,
+                              color: Color(0xFFD97706), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Your preference ($currentPref) is a one-time selection. '
+                              'To request a change to $otherPref, please provide a reason below. '
+                              'Our admin will review your request.',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF92400E),
+                                  height: 1.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Reason for changing to $otherPref *',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryText(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: reasonController,
+                      maxLines: 4,
+                      style: TextStyle(
+                          color: AppTheme.primaryText(context), fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Reason for changing preference...',
+                        hintStyle: TextStyle(
+                            color: AppTheme.secondaryText(context),
+                            fontSize: 13),
+                        filled: true,
+                        fillColor: AppTheme.scaffoldBg(context),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: AppTheme.borderColor(context)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF007BFF), width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Minimum 10 characters required',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.secondaryText(context)),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isSubmitting ? null : () => Navigator.pop(dialogCtx),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: AppTheme.secondaryText(context)),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF007BFF),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final reason = reasonController.text.trim();
+                          if (reason.length < 10) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Please provide a reason (min 10 characters)'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final resp = await ApiService.post(
+                              '/user/request-preference-change',
+                              {
+                                'feedback': reason,
+                                'targetPreference': otherPref,
+                              },
+                            );
+                            final body = jsonDecode(resp.body);
+                            if (!context.mounted) return;
+
+                            Navigator.pop(dialogCtx);
+
+                            if (resp.statusCode == 200 &&
+                                body['success'] == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Your request has been sent to the admin for review.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(body['message'] ??
+                                      'Failed to submit request'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            Navigator.pop(dialogCtx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Connection error: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          } finally {
+                            setDialogState(() => isSubmitting = false);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Submit Request',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Preference Tile ───────────────────────────────────────────────────────
+  Widget _buildPreferenceTile() {
+    final pref = _userData['preference']?.toString();
+    final displayPref = (pref != null && pref.isNotEmpty) ? pref : 'Not Set';
+    final prefColor =
+        displayPref == 'IELTS' ? const Color(0xFF007BFF) : const Color(0xFF10B981);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg(context),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: AppTheme.cardShadow(context),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: prefColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.school_outlined, color: prefColor, size: 20),
+        ),
+        title: Text(
+          'Test Preference',
+          style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.primaryText(context),
+              fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text(
+          displayPref,
+          style: TextStyle(
+              fontSize: 13,
+              color: prefColor,
+              fontWeight: FontWeight.bold),
+        ),
+        trailing: Icon(Icons.chevron_right,
+            color: AppTheme.secondaryText(context)),
+        dense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        onTap: pref != null ? _showPreferenceChangeDialog : null,
+      ),
+    );
   }
 
   @override
@@ -87,59 +341,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFF007BFF)))
             : RefreshIndicator(
-          onRefresh: _fetchUserProfileData,
-          color: const Color(0xFF007BFF),
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                onRefresh: _fetchUserProfileData,
+                color: const Color(0xFF007BFF),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ProfileHeader(
+                        isDarkMode: AppTheme.isDark(context),
+                        userData: _userData,
+                        onEditPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => EditProfileModal(
+                              currentName: _userData['name'] ?? '',
+                              currentEmail: _userData['email'] ?? '',
+                              onProfileUpdated: _fetchUserProfileData,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 25),
+                      const StatsRow(),
+                      const SizedBox(height: 25),
+                      const ProgressGraph(),
+                      const SizedBox(height: 30),
 
-                ProfileHeader(
-                    isDarkMode: AppTheme.isDark(context),
-                    userData: _userData,
-                    onEditPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => EditProfileModal(
-                          currentName: _userData['name'] ?? '',
-                          currentEmail: _userData['email'] ?? '',
-                          onProfileUpdated: _fetchUserProfileData,
+                      // ── Preferences Section ───────────────────────────
+                      Text(
+                        'Preferences',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryText(context)),
+                      ),
+                      const SizedBox(height: 12),
+                      // Dark mode toggle
+                      PreferenceTiles(isDarkMode: AppTheme.isDark(context)),
+                      const SizedBox(height: 12),
+                      // Test Preference tile (with change-request modal)
+                      _buildPreferenceTile(),
+
+                      const SizedBox(height: 25),
+                      Text(
+                        'Support',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryText(context)),
+                      ),
+                      const SizedBox(height: 15),
+                      const SupportSection(),
+                      const SizedBox(height: 30),
+                      _buildLogoutButton(context),
+                      const SizedBox(height: 25),
+                      const Center(
+                        child: Text(
+                          'Testiva v1.0.0 • © 2026',
+                          style:
+                              TextStyle(color: Colors.grey, fontSize: 11),
                         ),
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 25),
-                const StatsRow(),
-                const SizedBox(height: 25),
-                const ProgressGraph(),
-                const SizedBox(height: 30),
-                const Text('Preferences', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 15),
-                PreferenceTiles(isDarkMode: AppTheme.isDark(context)),
-                const SizedBox(height: 25),
-                const Text('Support', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 15),
-                const SupportSection(),
-                const SizedBox(height: 30),
-                _buildLogoutButton(context),
-                const SizedBox(height: 25),
-                const Center(
-                    child: Text(
-                        'Testiva v1.0.0 • © 2026',
-                        style: TextStyle(color: Colors.grey, fontSize: 11)
-                    )
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -166,7 +441,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Icon(Icons.logout, color: Colors.red, size: 18),
             SizedBox(width: 8),
-            Text('Logout', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.w600)),
+            Text('Logout',
+                style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
       ),
