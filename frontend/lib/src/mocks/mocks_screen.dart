@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/user_notifier.dart';
 import '../../data/models/mock_test_model.dart';
@@ -98,18 +99,19 @@ class _MocksScreenState extends State<MocksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.appBarBg(context),
         elevation: 0,
         title: Text(
           '${UserNotifier.notifier.value['preference'] ?? 'IELTS'} Mock Tests',
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
+        iconTheme: IconThemeData(color: AppTheme.iconColor(context)),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -125,7 +127,7 @@ class _MocksScreenState extends State<MocksScreen> {
               Text(
                 _errorMessage,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.black54, fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -148,15 +150,9 @@ class _MocksScreenState extends State<MocksScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x0D000000).withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: AppTheme.cardShadow(context),
               ),
               child: Row(
                 children: [
@@ -166,17 +162,17 @@ class _MocksScreenState extends State<MocksScreen> {
                       children: [
                         Text(
                           mock.title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Test ID: ${mock.displayId}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.secondaryText(context)),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${mock.difficultyLevel} — ${mock.totalQuestions} Questions — ${mock.totalDuration} Min',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 12, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
                         ),
                         if (mock.lastAttemptScore != null) ...[
                           const SizedBox(height: 6),

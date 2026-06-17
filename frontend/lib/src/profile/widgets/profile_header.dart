@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 
 class ProfileHeader extends StatelessWidget {
+  // isDarkMode kept for backward compatibility — uses AppTheme internally now
   final bool isDarkMode;
   final Map<String, dynamic> userData;
   final VoidCallback? onEditPressed;
@@ -14,11 +16,9 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     final String name = userData['name'] ?? 'User Name';
     final String email = userData['email'] ?? 'user@email.com';
     final bool isPremium = userData['isPremium'] ?? false;
-
 
     String initials = 'U';
     try {
@@ -34,7 +34,6 @@ class ProfileHeader extends StatelessWidget {
 
     return Row(
       children: [
-
         CircleAvatar(
           radius: 35,
           backgroundColor: const Color(0xFF007BFF),
@@ -48,7 +47,6 @@ class ProfileHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 15),
-
 
         Expanded(
           child: Column(
@@ -64,12 +62,11 @@ class ProfileHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                        color: AppTheme.primaryText(context),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-
 
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -98,8 +95,8 @@ class ProfileHeader extends StatelessWidget {
                       email,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.grey,
+                      style: TextStyle(
+                        color: AppTheme.secondaryText(context),
                         fontSize: 13,
                       ),
                     ),

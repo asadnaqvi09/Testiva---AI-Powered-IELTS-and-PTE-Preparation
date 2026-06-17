@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService ka path check kar lein
-import '../../../../widgets/stats_card.dart'; // Aapke original import ko maintain rakha hai
+import 'package:frontend/core/services/api_service.dart';
+import '../../../../widgets/stats_card.dart';
 
 class StatsRow extends StatefulWidget {
   const StatsRow({super.key});
@@ -49,15 +49,12 @@ class _StatsRowState extends State<StatsRow> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // 1. Day Streak Card
         Expanded(
           child: GlobalStatsCard(
-            isDarkMode: isDarkMode,
             value: _isLoading ? '...' : _dayStreak,
             label: 'Day Streak',
             icon: Icons.local_fire_department,
@@ -69,7 +66,6 @@ class _StatsRowState extends State<StatsRow> {
         // 2. Est. Band Card
         Expanded(
           child: GlobalStatsCard(
-            isDarkMode: isDarkMode,
             value: _isLoading ? '...' : _estBand,
             label: 'Est. Band',
             icon: Icons.workspace_premium_outlined,
@@ -81,7 +77,6 @@ class _StatsRowState extends State<StatsRow> {
         // 3. Tests Done Card
         Expanded(
           child: GlobalStatsCard(
-            isDarkMode: isDarkMode,
             value: _isLoading ? '...' : _testsDone,
             label: 'Tests Done',
             icon: Icons.trending_up,

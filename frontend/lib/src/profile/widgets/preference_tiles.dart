@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import '../../../../providers/theme_provider.dart';
 
 class PreferenceTiles extends StatefulWidget {
+  // isDarkMode param kept for backward compat — AppTheme used internally
   final bool isDarkMode;
   const PreferenceTiles({super.key, required this.isDarkMode});
 
@@ -22,7 +24,6 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
     _fetchUserPreferences();
   }
 
-
   Future<void> _fetchUserPreferences() async {
     try {
       final response = await ApiService.get('/user/preferences');
@@ -39,7 +40,6 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
     }
   }
 
-
   Future<void> _toggleNotification(bool value) async {
     setState(() {
       _pushNotifications = value;
@@ -53,7 +53,6 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
 
       final data = jsonDecode(response.body);
       if (response.statusCode != 200 || data['success'] != true) {
-
         setState(() {
           _pushNotifications = !value;
         });
@@ -77,18 +76,13 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          if (!widget.isDarkMode)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            )
-        ],
+        boxShadow: AppTheme.cardShadow(context),
       ),
       child: Column(
         children: [
@@ -99,14 +93,14 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
             _pushNotifications,
             _isUpdating ? null : _toggleNotification,
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Divider(height: 1, color: AppTheme.dividerColor(context)),
           _buildSwitchTile(
             context,
             Icons.dark_mode_outlined,
             'Dark Mode',
-            widget.isDarkMode,
-                (value) {
-              Provider.of<ThemeProvider>(context, listen: false).toggleTheme(value);
+            themeProvider.isDarkMode,
+            (value) {
+              themeProvider.toggleTheme(value);
             },
           ),
         ],
@@ -117,7 +111,7 @@ class _PreferenceTilesState extends State<PreferenceTiles> {
   Widget _buildSwitchTile(BuildContext context, IconData icon, String title, bool value, Function(bool)? onChanged) {
     return ListTile(
       leading: Icon(icon, color: Colors.grey[600]),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
+      title: Text(title, style: TextStyle(fontSize: 14, color: AppTheme.primaryText(context))),
       trailing: Switch(
         value: value,
         onChanged: onChanged,

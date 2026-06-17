@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/google_auth_service.dart';
 import 'google_button.dart';
 
 class SocialLoginBtns extends StatelessWidget {
@@ -10,9 +11,7 @@ class SocialLoginBtns extends StatelessWidget {
       children: [
         Expanded(
           child: GoogleButton(
-            onTap: () {
-              print('Google Login Tapped!');
-            },
+            onTap: () => GoogleAuthService.handleGoogleSignIn(context),
           ),
         ),
       ],

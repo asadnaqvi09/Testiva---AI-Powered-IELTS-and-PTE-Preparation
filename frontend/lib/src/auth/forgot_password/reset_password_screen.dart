@@ -27,7 +27,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   void _validate() {
     setState(() {
-      _canUpdate = _pass.text.length >= 6 && _pass.text == _confirm.text;
+      _canUpdate = _pass.text.length >= 8 && _pass.text == _confirm.text;
     });
   }
 
@@ -41,7 +41,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       // Backend router mapping ke mutabiq payload bhej rahe hain
       final response = await ApiService.post('/auth/reset-password', {
         'email': widget.email,
-        'newPassword': _pass.text.trim(),
+        'new_password': _pass.text.trim(),
+        'confirm_password': _confirm.text.trim(),
       });
 
       final responseData = jsonDecode(response.body);

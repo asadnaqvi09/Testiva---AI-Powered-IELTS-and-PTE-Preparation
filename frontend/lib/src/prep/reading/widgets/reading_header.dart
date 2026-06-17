@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/app_theme.dart';
 
 class ReadingHeader extends StatelessWidget {
   const ReadingHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final linkColor = isDark ? Colors.blueAccent : Colors.blue[700];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -12,12 +16,12 @@ class ReadingHeader extends StatelessWidget {
           onTap: () => Navigator.pop(context),
           child: Row(
             children: [
-              Icon(Icons.arrow_back, size: 20, color: Colors.blue[700]),
+              Icon(Icons.arrow_back, size: 20, color: linkColor),
               const SizedBox(width: 5),
               Text(
                 'Back to Prep',
                 style: TextStyle(
-                  color: Colors.blue[700],
+                  color: linkColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -30,22 +34,26 @@ class ReadingHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: isDark ? Colors.blue.withValues(alpha: 0.15) : Colors.blue[50],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.menu_book, color: Colors.blue),
+              child: Icon(Icons.menu_book, color: isDark ? Colors.blueAccent : Colors.blue),
             ),
             const SizedBox(width: 15),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'IELTS Reading',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryText(context),
+                  ),
                 ),
                 Text(
                   '12 lessons & tips',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
                 ),
               ],
             ),

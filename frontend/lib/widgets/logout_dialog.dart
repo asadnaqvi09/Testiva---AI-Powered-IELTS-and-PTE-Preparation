@@ -1,37 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_theme.dart';
 
 class LogoutDialog extends StatelessWidget {
   const LogoutDialog({super.key});
 
-
   Future<void> _handleSecureLogout(BuildContext context) async {
     try {
-
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('token');
       await prefs.remove('user_data');
-
     } catch (e) {
       debugPrint("Local cache tracking flush error: ${e.toString()}");
     } finally {
-
       if (context.mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/',
-              (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return AlertDialog(
-      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      backgroundColor: AppTheme.dialogBg(context),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
@@ -41,35 +32,27 @@ class LogoutDialog extends StatelessWidget {
             'Confirm Logout',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+              color: AppTheme.primaryText(context),
             ),
           ),
         ],
       ),
       content: Text(
         'Are you sure you want to log out of Testiva AI? Your current active learning session parameters will be saved securely.',
-        style: TextStyle(
-          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-          fontSize: 14,
-        ),
+        style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
       ),
       actionsPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
       actions: [
-
         TextButton(
           onPressed: () => Navigator.pop(context),
           style: TextButton.styleFrom(
-            foregroundColor: isDarkMode ? Colors.white60 : Colors.black54,
+            foregroundColor: AppTheme.secondaryText(context),
           ),
           child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
         ),
-
-
         ElevatedButton(
           onPressed: () {
-
             Navigator.pop(context);
-
             _handleSecureLogout(context);
           },
           style: ElevatedButton.styleFrom(

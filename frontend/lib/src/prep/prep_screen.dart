@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:math'; 
 import 'package:flutter/material.dart';
-import 'package:frontend/core/constants/app_colors.dart';
+import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/src/prep/widgets/prep_header.dart';
 import 'package:frontend/src/prep/widgets/module_card.dart';
 import 'package:frontend/widgets/custom_drawer.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import '../../../../data/models/prep_module_model.dart';
 
 class PrepScreen extends StatefulWidget {
@@ -149,10 +151,9 @@ class _PrepScreenState extends State<PrepScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
       appBar: PrepHeader(scaffoldKey: _scaffoldKey),
       body: RefreshIndicator(
@@ -164,30 +165,29 @@ class _PrepScreenState extends State<PrepScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Preparation', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+              Text('Preparation', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context))),
               const SizedBox(height: 25),
               Row(children: [
                 _buildExamTab(
+                  context,
                   'GB',
                   'IELTS',
                   selectedType == 'IELTS',
-                  isDarkMode,
                   isLocked: _isTabLocked('IELTS'),
                 ),
                 const SizedBox(width: 15),
                 _buildExamTab(
+                  context,
                   '🌐',
                   'PTE',
                   selectedType == 'PTE',
-                  isDarkMode,
                   isLocked: _isTabLocked('PTE'),
                 ),
               ]),
               const SizedBox(height: 25),
-              _buildAIRecommendation(isDarkMode),
+              _buildAIRecommendation(context),
               const SizedBox(height: 25),
-              // ... rest of your code
-              Text('$selectedType Modules', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+              Text('$selectedType Modules', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context))),
               const SizedBox(height: 15),
               _isLoading ? const Center(child: CircularProgressIndicator()) : GridView.builder(
                 shrinkWrap: true,
@@ -213,15 +213,17 @@ class _PrepScreenState extends State<PrepScreen> {
     return userPref.toUpperCase() != track.toUpperCase();
   }
 
-  Widget _buildAIRecommendation(bool isDarkMode) {
+  Widget _buildAIRecommendation(BuildContext context) {
     return GestureDetector(
       onTap: _refreshAIRecommendation,
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFE3F2FD).withOpacity(0.5),
+          color: AppTheme.tipBg(context),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: isDarkMode ? Colors.blue.shade900 : Colors.blue.shade100),
+          border: Border.all(
+            color: AppTheme.isDark(context) ? Colors.blue.shade900 : Colors.blue.shade100,
+          ),
         ),
         child: Row(
           children: [
@@ -232,7 +234,7 @@ class _PrepScreenState extends State<PrepScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('AI Tip (Tap to refresh)', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11)),
-                  Text(_currentTip, style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.grey[300] : Colors.black87)),
+                  Text(_currentTip, style: TextStyle(fontSize: 12, color: AppTheme.secondaryText(context))),
                 ],
               ),
             )
@@ -242,10 +244,10 @@ class _PrepScreenState extends State<PrepScreen> {
     );
   }
 
-  Widget _buildExamTab(String code, String name, bool isSelected, bool isDarkMode, {bool isLocked = false}) {
+  Widget _buildExamTab(BuildContext context, String code, String name, bool isSelected, {bool isLocked = false}) {
     return Expanded(
       child: GestureDetector(
-        onTap: isLocked 
+        onTap: isLocked
             ? () {
                 ScaffoldMessenger.of(context).clearSnackBars();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -254,7 +256,7 @@ class _PrepScreenState extends State<PrepScreen> {
                     backgroundColor: Colors.red,
                   ),
                 );
-              } 
+              }
             : () {
                 setState(() => selectedType = name);
                 _fetchLiveModules();
@@ -262,14 +264,12 @@ class _PrepScreenState extends State<PrepScreen> {
         child: Container(
           height: 100,
           decoration: BoxDecoration(
-            color: isSelected 
-                ? AppColors.primary 
-                : (isDarkMode ? const Color(0xFF1E1E1E) : Colors.white),
+            color: isSelected ? AppColors.primary : AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected 
-                  ? Colors.transparent 
-                  : (isDarkMode ? Colors.grey[800]! : Colors.grey[200]!),
+              color: isSelected
+                  ? Colors.transparent
+                  : AppTheme.borderColor(context),
             ),
           ),
           child: Stack(
@@ -278,7 +278,7 @@ class _PrepScreenState extends State<PrepScreen> {
                 child: Text(
                   name,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
+                    color: isSelected ? Colors.white : AppTheme.primaryText(context),
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),

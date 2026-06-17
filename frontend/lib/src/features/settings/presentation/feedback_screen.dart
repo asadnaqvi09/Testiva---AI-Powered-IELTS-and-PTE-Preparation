@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart'; // Core ApiService handler pipeline
-import '../../../../../../providers/feedback_provider.dart';
+import 'package:frontend/providers/feedback_provider.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import 'widgets/rating_section.dart';
 import 'widgets/category_chips.dart';
 import 'widgets/feedback_input.dart';
@@ -128,15 +129,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     final feedbackProvider = Provider.of<FeedbackProvider>(context);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
         title: const Text('Feedback & Suggestions'),
-        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: AppTheme.appBarBg(context),
         elevation: 0,
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        foregroundColor: AppTheme.primaryText(context),
       ),
       body: Stack(
         children: [

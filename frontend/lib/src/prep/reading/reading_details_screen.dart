@@ -6,7 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'widgets/reading_header.dart';
 import 'widgets/reading_ai_card.dart';
 import 'widgets/collapsible_lesson_tile.dart';
+import '../widgets/prep_segmented_control.dart';
+import '../widgets/media_tab_content.dart';
 import '../../../../widgets/custom_drawer.dart';
+import '../../../../widgets/app_theme.dart';
 
 class ReadingDetailsScreen extends StatefulWidget {
   const ReadingDetailsScreen({super.key});
@@ -20,6 +23,7 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
   bool _isLoading = true;
   Map<String, List<LessonItem>> _liveSections = {};
   List<dynamic> _mediaItems = [];
+  int _selectedTabIndex = 0;
 
   @override
   void initState() {
@@ -140,11 +144,9 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
       body: SafeArea(
         child: Column(
@@ -152,7 +154,7 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
 
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+              color: AppTheme.appBarBg(context),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -161,10 +163,10 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                        color: AppTheme.surfaceBg(context),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(Icons.menu, color: isDarkMode ? Colors.white : Colors.black87),
+                      child: Icon(Icons.menu, color: AppTheme.iconColor(context)),
                     ),
                   ),
                   Row(
@@ -176,52 +178,13 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                          color: AppTheme.primaryText(context),
                         ),
                       ),
                     ],
                   ),
                   Row(
                     children: [
-                      if (_mediaItems.isNotEmpty) ...[
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.attachment_rounded, color: Color(0xFF007BFF)),
-                          tooltip: 'Lesson Resources',
-                          onSelected: (String url) async {
-                            try {
-                              final uri = Uri.parse(url);
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            } catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Could not open resource: $e'), backgroundColor: Colors.red),
-                                );
-                              }
-                            }
-                          },
-                          itemBuilder: (BuildContext context) {
-                            return _mediaItems.map((media) {
-                              return PopupMenuItem<String>(
-                                value: media['file_url'],
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.insert_drive_file, color: Colors.blue, size: 20),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        media['file_name'] ?? 'Resource File',
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList();
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                      ],
                       const CircleAvatar(
                         radius: 18,
                         backgroundColor: Color(0xFF007BFF),
@@ -250,18 +213,28 @@ class _ReadingDetailsScreenState extends State<ReadingDetailsScreen> {
                     children: [
                       const SizedBox(height: 15),
                       const ReadingHeader(),
-                      const SizedBox(height: 20),
-                      const ReadingAICard(),
-                      const SizedBox(height: 25),
-
-
-                      ..._liveSections.entries.map((entry) {
-                        return CollapsibleLessonTile(
-                          title: entry.key,
-                          items: entry.value,
-                        );
-                      }),
-
+                      PrepSegmentedControl(
+                        selectedIndex: _selectedTabIndex,
+                        onChanged: (index) {
+                          setState(() {
+                            _selectedTabIndex = index;
+                          });
+                        },
+                        mediaCount: _mediaItems.length,
+                      ),
+                      const SizedBox(height: 10),
+                      if (_selectedTabIndex == 0) ...[
+                        const ReadingAICard(),
+                        const SizedBox(height: 25),
+                        ..._liveSections.entries.map((entry) {
+                          return CollapsibleLessonTile(
+                            title: entry.key,
+                            items: entry.value,
+                          );
+                        }),
+                      ] else ...[
+                        MediaTabContent(mediaItems: _mediaItems),
+                      ],
                       const SizedBox(height: 20),
                     ],
                   ),

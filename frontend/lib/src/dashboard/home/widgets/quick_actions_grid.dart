@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'premium_modal.dart';
+import 'package:frontend/widgets/app_theme.dart';
 
 class QuickActionsGrid extends StatelessWidget {
   final Function(int) onActionTap;
@@ -16,15 +17,16 @@ class QuickActionsGrid extends StatelessWidget {
       crossAxisSpacing: 15,
       childAspectRatio: 1.1,
       children: [
-        _actionCard('Start Mock', 'IELTS Reading', Icons.description_outlined, Colors.blue,
+        _actionCard(context, 'Start Mock', 'IELTS Reading', Icons.description_outlined, Colors.blue,
             onTap: () => onActionTap(1)),
-        _actionCard('Continue Prep', 'IELTS Writing', Icons.menu_book_outlined, Colors.green,
+        _actionCard(context, 'Continue Prep', 'IELTS Writing', Icons.menu_book_outlined, Colors.green,
             onTap: () => onActionTap(2)),
-        _actionCard('Community', '3 new replies', Icons.people_outline, Colors.orange,
+        _actionCard(context, 'Community', '3 new replies', Icons.people_outline, Colors.orange,
             onTap: () => onActionTap(3)),
 
         // PTE Prep Card
         _actionCard(
+            context,
             'PTE Prep',
             'Unlock Premium',
             Icons.track_changes,
@@ -43,30 +45,37 @@ class QuickActionsGrid extends StatelessWidget {
     );
   }
 
-  Widget _actionCard(String title, String sub, IconData icon, Color color, {bool isLocked = false, required VoidCallback onTap}) {
+  Widget _actionCard(BuildContext context, String title, String sub, IconData icon, Color color, {bool isLocked = false, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          boxShadow: AppTheme.cardShadow(context),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Icon(icon, color: color),
-            if (isLocked) const Icon(Icons.lock_outline, size: 16, color: Color(0xFF94A3B8)),
+            if (isLocked) Icon(Icons.lock_outline, size: 16, color: AppTheme.secondaryText(context)),
           ]),
           const Spacer(),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          Text(sub, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppTheme.primaryText(context),
+            ),
+          ),
+          Text(
+            sub,
+            style: TextStyle(
+              color: AppTheme.secondaryText(context),
+              fontSize: 12,
+            ),
+          ),
         ]),
       ),
     );

@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../widgets/app_theme.dart';
 import 'test_results_screen.dart';
+
 
 class ReadingQuestion {
   final String id;
@@ -11,6 +13,7 @@ class ReadingQuestion {
   final List<String> options;
   final String passageTitle;
   final String passageText;
+  final String? imageUrl;
 
   const ReadingQuestion({
     required this.id,
@@ -19,6 +22,7 @@ class ReadingQuestion {
     this.options = const [],
     required this.passageTitle,
     required this.passageText,
+    this.imageUrl,
   });
 }
 
@@ -69,8 +73,8 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
           final sections = body['data']['sections'] as List;
           final List<ReadingQuestion> loaded = [];
           for (var sec in sections) {
-            final passageText = sec['instructions'] as String? ?? 'Read the passage and answer the questions.';
-            final passageTitle = sec['section_name'] as String? ?? 'Passage Section';
+            final passageTextFallback = sec['instructions'] as String? ?? '';
+            final passageTitle = sec['section_name'] as String? ?? 'Section';
             final list = sec['questions'] as List? ?? [];
             for (var q in list) {
               final rawType = q['question_type'] as String? ?? 'Short Answer';
@@ -82,13 +86,18 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
               } else if (rawType.toLowerCase().contains('yes') || rawType.toLowerCase().contains('no')) {
                 mappedType = 'Yes / No / NG';
               }
+
+              final qPassage = q['passage_text'] as String?;
+              final finalPassage = (qPassage != null && qPassage.trim().isNotEmpty) ? qPassage : passageTextFallback;
+
               loaded.add(ReadingQuestion(
                 id: q['id'] as String,
                 type: mappedType,
                 text: q['question_text'] as String? ?? '',
                 options: List<String>.from(q['options'] ?? []),
-                passageText: q['passage_text'] as String? ?? passageText,
+                passageText: finalPassage,
                 passageTitle: passageTitle,
+                imageUrl: q['image_url'] as String?,
               ));
             }
           }
@@ -229,46 +238,51 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading && _questions.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: AppTheme.scaffoldBg(context),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_questions.isEmpty) {
       return Scaffold(
+        backgroundColor: AppTheme.scaffoldBg(context),
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: Icon(Icons.arrow_back, color: AppTheme.iconColor(context)),
             onPressed: () => Navigator.pop(context),
           ),
-          title: const Text('Test Taking', style: TextStyle(color: Colors.black)),
-          backgroundColor: Colors.white,
+          title: Text('Test Taking', style: TextStyle(color: AppTheme.primaryText(context))),
+          backgroundColor: AppTheme.appBarBg(context),
           elevation: 0,
         ),
-        body: const Center(child: Text('No questions loaded.')),
+        body: Center(child: Text('No questions loaded.', style: TextStyle(color: AppTheme.primaryText(context)))),
       );
     }
 
     var currentQuestion = _questions[_currentIndex];
+    final isDark = AppTheme.isDark(context);
+    final nextBtnColor = isDark ? Colors.blueAccent : const Color(0xFF0066F5);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.appBarBg(context),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: AppTheme.iconColor(context)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Time Left: ${_getFormattedTime()}',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(color: AppTheme.primaryText(context), fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.unfold_more, color: Colors.black),
-            onPressed: () => setState(() => _isPassageExpanded = !_isPassageExpanded),
-          )
+          if (currentQuestion.passageText.trim().isNotEmpty || currentQuestion.imageUrl != null)
+            IconButton(
+              icon: Icon(Icons.unfold_more, color: AppTheme.iconColor(context)),
+              onPressed: () => setState(() => _isPassageExpanded = !_isPassageExpanded),
+            )
         ],
       ),
       body: _isLoading
@@ -281,37 +295,51 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
                     child: IntrinsicHeight(
                       child: Column(
                         children: [
-                          if (_isPassageExpanded)
-            Expanded(
-              flex: 4,
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        currentQuestion.passageTitle,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        currentQuestion.passageText,
-                        style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF334155)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          Expanded(
+                          if (_isPassageExpanded && (currentQuestion.passageText.trim().isNotEmpty || currentQuestion.imageUrl != null)) ...[
+                            Expanded(
+                              flex: 4,
+                              child: Container(
+                                margin: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceBg(context),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppTheme.borderColor(context)),
+                                ),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        currentQuestion.passageTitle,
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (currentQuestion.imageUrl != null && currentQuestion.imageUrl!.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 12),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              currentQuestion.imageUrl!,
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                                            ),
+                                          ),
+                                        ),
+                                      if (currentQuestion.passageText.trim().isNotEmpty)
+                                        Text(
+                                          currentQuestion.passageText,
+                                          style: TextStyle(fontSize: 14, height: 1.6, color: AppTheme.primaryText(context).withValues(alpha: 0.8)),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Divider(height: 1, color: AppTheme.dividerColor(context)),
+                          ],
+                          Expanded(
             flex: 5,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -323,12 +351,12 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEDF5FF),
+                          color: AppTheme.tagBg(context),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           currentQuestion.type,
-                          style: const TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: AppTheme.tagText(context), fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -336,12 +364,12 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
                   const SizedBox(height: 12),
                   Text(
                     '${_currentIndex + 1}. ${currentQuestion.text}',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black, height: 1.4),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context), height: 1.4),
                   ),
                   const SizedBox(height: 20),
                   Expanded(
                     child: SingleChildScrollView(
-                      child: _buildInputWidget(currentQuestion),
+                      child: _buildInputWidget(context, currentQuestion),
                     ),
                   ),
                   Row(
@@ -353,11 +381,10 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
                             setState(() => _currentIndex--);
                             _updateInputController();
                           },
-                          icon: const Icon(Icons.arrow_back, size: 16),
-                          label: const Text('Prev'),
+                          icon: Icon(Icons.arrow_back, size: 16, color: AppTheme.primaryText(context)),
+                          label: Text('Prev', style: TextStyle(color: AppTheme.primaryText(context))),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black87,
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            side: BorderSide(color: AppTheme.borderColor(context)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         )
@@ -370,7 +397,7 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
                             _updateInputController();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0066F5),
+                            backgroundColor: nextBtnColor,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           child: const Text('Next', style: TextStyle(color: Colors.white)),
@@ -400,7 +427,7 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
     );
   }
 
-  Widget _buildInputWidget(ReadingQuestion question) {
+  Widget _buildInputWidget(BuildContext context, ReadingQuestion question) {
     if (question.type == 'Multiple Choice') {
       return Column(
         children: question.options.map((option) {
@@ -408,13 +435,13 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFEDF5FF) : Colors.white,
+              color: isSelected ? AppTheme.tagBg(context) : AppTheme.cardBg(context),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isSelected ? Colors.blue : const Color(0xFFE2E8F0)),
+              border: Border.all(color: isSelected ? AppTheme.tagText(context) : AppTheme.borderColor(context)),
             ),
             child: ListTile(
-              title: Text(option, style: const TextStyle(fontSize: 14)),
-              leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? Colors.blue : Colors.grey),
+              title: Text(option, style: TextStyle(fontSize: 14, color: AppTheme.primaryText(context))),
+              leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? AppTheme.tagText(context) : AppTheme.secondaryText(context)),
               onTap: () => setState(() => _masterUserAnswers[_currentIndex] = option),
             ),
           );
@@ -429,8 +456,8 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
           return ElevatedButton(
             onPressed: () => setState(() => _masterUserAnswers[_currentIndex] = option),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isSelected ? Colors.blue : const Color(0xFFF1F5F9),
-              foregroundColor: isSelected ? Colors.white : Colors.black87,
+              backgroundColor: isSelected ? AppTheme.tagText(context) : AppTheme.surfaceBg(context),
+              foregroundColor: isSelected ? Colors.white : AppTheme.primaryText(context),
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
@@ -442,17 +469,19 @@ class _ReadingTestScreenState extends State<ReadingTestScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: AppTheme.inputFill(context),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppTheme.borderColor(context)),
         ),
         child: TextField(
           controller: _inputController,
+          style: TextStyle(color: AppTheme.primaryText(context)),
           onChanged: (val) {
             _masterUserAnswers[_currentIndex] = val;
           },
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Type your response here...',
+            hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
             border: InputBorder.none,
           ),
         ),
