@@ -1,4 +1,4 @@
-  const BASE = '/api/v1';
+const BASE = '/api/v1';
 
   export function getAccessToken(): string | null {
     return localStorage.getItem('accessToken');
@@ -26,7 +26,7 @@
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {}),
     };
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -215,7 +215,7 @@
 
   export async function uploadUserAvatarAPI(file: File) {
     const fd = new FormData();
-    fd.append('avatar', file); 
+    fd.append('avatar', file);
     return apiFetch<{
       success: boolean;
       message: string;
@@ -482,8 +482,13 @@
     fd.append('file', file);
     return apiFetch<{
       success: boolean;
-      data: { file_url: string; file_name: string; file_size: number; file_type?: string };
-      message?: string;
+      data: {
+        file_url: string;   // ← it's data.file_url, not root .url
+        file_name: string;
+        file_size: number;
+        file_type: string;
+      };
+      message: string;
     }>('/content/preparations/upload-pdf', {
       method: 'POST',
       body: fd,
