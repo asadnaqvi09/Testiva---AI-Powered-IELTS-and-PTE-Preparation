@@ -8,7 +8,8 @@ import '../../../../widgets/app_theme.dart';
 
 class ModuleCard extends StatelessWidget {
   final PrepModule module;
-  const ModuleCard({super.key, required this.module});
+  final bool isRecommended;
+  const ModuleCard({super.key, required this.module, this.isRecommended = false});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +48,10 @@ class ModuleCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.borderColor(context)),
+          border: Border.all(
+            color: isRecommended ? module.color : AppTheme.borderColor(context),
+            width: isRecommended ? 2 : 1,
+          ),
           boxShadow: AppTheme.cardShadow(context),
         ),
         child: Column(
@@ -64,7 +68,19 @@ class ModuleCard extends StatelessWidget {
                   ),
                   child: Icon(module.icon, color: module.color, size: 24),
                 ),
-                if (module.isCompleted)
+                if (isRecommended)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: module.color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Focus',
+                      style: TextStyle(color: module.color, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                else if (module.isCompleted)
                   const Icon(Icons.check_circle, color: Colors.green, size: 20),
               ],
             ),

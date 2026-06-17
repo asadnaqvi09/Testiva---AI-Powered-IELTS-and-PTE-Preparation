@@ -1,6 +1,8 @@
 import * as aiService from "../services/ai.service.js";
 import * as progressModel from "../../M4_Progress/models/progress.model.js";
-import { model } from "../../../config/gemini.js";
+import { getModuleFocusRecommendation } from "../services/performanceInsight.service.js";
+import { generateJsonFromPrompt } from "../utils/gemini.helper.js";
+import { buildFeedbackSuggestionPrompt } from "../prompts/performanceInsight.prompt.js";
 
 export const evaluateSubmission = async (req, res) => {
   try {
@@ -79,56 +81,36 @@ export const patchResponseAiFeedback = async (req, res) => {
 
 export const getAiRecommendation = async (req, res) => {
   try {
-    const examType = req.query.exam_type || "IELTS";
-    const prompt = `Generate a JSON object with a single key "tip" containing a short, actionable study tip (under 20 words) for a student preparing for the ${examType} exam. Focus on either reading, writing, listening, speaking, or general time management. Return only the JSON structure.`;
-    
-    let tip = "";
-    try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text().trim();
-      const json = JSON.parse(text);
-      tip = json.tip;
-    } catch (apiErr) {
-      console.warn("Gemini API error in recommendation tip:", apiErr.message);
-      const fallbackTips = [
-        "Focus on Writing Task 2 - it carries the most weight in your score.",
-        "Your Reading speed is key! Try the skimming strategy on long paragraphs.",
-        "Listening practice: focus on signpost words like 'however' or 'finally'.",
-        "Speaking Tip: Record yourself and listen for filler words like 'um' or 'uh'.",
-        "Consistency is key! Keep up your daily streak for a higher band score."
-      ];
-      tip = fallbackTips[Math.floor(Math.random() * fallbackTips.length)];
-    }
-    
-    return res.status(200).json({ success: true, tip });
+    const examType = (req.query.exam_type || "IELTS").toUpperCase();
+    const recommendation = await getModuleFocusRecommendation(req.user.id, examType);
+    return res.status(200).json({ success: true, ...recommendation });
   } catch (error) {
+    console.error("AI recommendation error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 export const getAiFeedbackSuggestion = async (req, res) => {
   try {
-    const prompt = `Generate a JSON object with a single key "suggestion" containing a single detailed feedback suggestion (around 20-30 words) that a student might write to the developers of an IELTS/PTE preparation app. It should be constructive, pointing out something good or suggesting a feature (like adding offline mode, speaking simulation, more mock tests, or dark mode). Return only the JSON structure.`;
-    
-    let suggestion = "";
+    const examType = (req.query.exam_type || req.user?.preference || "IELTS").toUpperCase();
+    const prompt = buildFeedbackSuggestionPrompt(examType);
+
     try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text().trim();
-      const json = JSON.parse(text);
-      suggestion = json.suggestion;
+      const json = await generateJsonFromPrompt(prompt);
+      if (json.suggestion) {
+        return res.status(200).json({ success: true, suggestion: String(json.suggestion).trim() });
+      }
     } catch (apiErr) {
       console.warn("Gemini API error in feedback suggestion:", apiErr.message);
-      const fallbackSuggestions = [
-        "The IELTS preparation content is very helpful. I would appreciate more full-length mock tests and real-time speaking evaluation.",
-        "I really like the interactive Reading prep module, but it would be great to have more exercises for Matching Headings.",
-        "The writing feedback is excellent, but please add an option to download the evaluation reports as PDF.",
-        "PTE mock tests are locked for free users; maybe add one free PTE diagnostic test to let us try the format."
-      ];
-      suggestion = fallbackSuggestions[Math.floor(Math.random() * fallbackSuggestions.length)];
     }
-    
+
+    const fallbackSuggestions = [
+      "The IELTS preparation content is very helpful. I would appreciate more full-length mock tests and real-time speaking evaluation.",
+      "I really like the interactive Reading prep module, but it would be great to have more exercises for Matching Headings.",
+      "The writing feedback is excellent, but please add an option to download the evaluation reports as PDF.",
+      "PTE mock tests are locked for free users; maybe add one free PTE diagnostic test to let us try the format.",
+    ];
+    const suggestion = fallbackSuggestions[Math.floor(Math.random() * fallbackSuggestions.length)];
     return res.status(200).json({ success: true, suggestion });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

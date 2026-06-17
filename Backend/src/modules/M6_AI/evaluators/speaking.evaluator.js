@@ -1,4 +1,5 @@
-import { model } from "../../../config/gemini.js";
+import { GEMINI_MODEL_ID } from "../../../config/gemini.js";
+import { generateJsonFromPrompt } from "../utils/gemini.helper.js";
 import { speakingPromptTemplate } from "../prompts/speakingEvaluation.prompt.js";
 import * as aiModel from "../models/ai.model.js";
 import * as progressModel from "../../M4_Progress/models/progress.model.js";
@@ -9,9 +10,7 @@ export const evaluateSpeakingTask = async (userId, attemptId, transcriptionData,
       transcriptionData.transcribedText || "",
       transcriptionData.durationSeconds ?? 0,
     );
-    const result = await model.generateContent(prompt);
-    const raw = (await result.response.text()).replace(/```json|```/gi, "").trim();
-    const feedbackJson = JSON.parse(raw);
+    const feedbackJson = await generateJsonFromPrompt(prompt);
 
     await aiModel.saveFeedback({
       attempt_id: attemptId,
@@ -23,7 +22,7 @@ export const evaluateSpeakingTask = async (userId, attemptId, transcriptionData,
       grammatical_range_score: feedbackJson.grammatical_range_score,
       detailed_analysis: JSON.stringify({ pronunciation: feedbackJson.pronunciation_feedback }),
       improvement_suggestions: feedbackJson.improvement_tips,
-      model_used: "gemini-1.5-flash",
+      model_used: GEMINI_MODEL_ID,
     });
 
     if (!isMultipartOptions.skipScoreUpdate) {

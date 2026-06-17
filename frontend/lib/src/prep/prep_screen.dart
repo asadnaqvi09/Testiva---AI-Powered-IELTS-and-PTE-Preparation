@@ -34,6 +34,8 @@ class _PrepScreenState extends State<PrepScreen> {
     "Consistency is key! Keep up your daily streak for a higher band score."
   ];
   String _currentTip = "Focus on Writing Task 2 - it carries the most weight in your score.";
+  String? _focusModule;
+  String? _focusReason;
 
   @override
   void initState() {
@@ -78,6 +80,8 @@ class _PrepScreenState extends State<PrepScreen> {
           if (mounted) {
             setState(() {
               _currentTip = body['tip'];
+              _focusModule = body['focus_module']?.toString();
+              _focusReason = body['reason']?.toString();
             });
           }
           return;
@@ -89,6 +93,8 @@ class _PrepScreenState extends State<PrepScreen> {
     if (mounted) {
       setState(() {
         _currentTip = _aiTips[Random().nextInt(_aiTips.length)];
+        _focusModule = null;
+        _focusReason = null;
       });
     }
   }
@@ -198,7 +204,13 @@ class _PrepScreenState extends State<PrepScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 1.1),
                 itemCount: _liveModules.length,
-                itemBuilder: (context, index) => ModuleCard(module: _liveModules[index]),
+                itemBuilder: (context, index) {
+                  final module = _liveModules[index];
+                  final focus = (_focusModule ?? '').toLowerCase();
+                  final title = module.title.toLowerCase();
+                  final isRecommended = focus.isNotEmpty && title.contains(focus);
+                  return ModuleCard(module: module, isRecommended: isRecommended);
+                },
               ),
             ],
           ),
@@ -230,6 +242,7 @@ class _PrepScreenState extends State<PrepScreen> {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Icon(Icons.lightbulb, color: Colors.blue, size: 24),
             const SizedBox(width: 15),
@@ -237,8 +250,41 @@ class _PrepScreenState extends State<PrepScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('AI Tip (Tap to refresh)', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11)),
+                  Row(
+                    children: [
+                      const Text(
+                        'AI Study Focus',
+                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11),
+                      ),
+                      const SizedBox(width: 8),
+                      if (_focusModule != null && _focusModule!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Focus: $_focusModule',
+                            style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 10),
+                          ),
+                        ),
+                      const Spacer(),
+                      Text(
+                        'Tap to refresh',
+                        style: TextStyle(fontSize: 10, color: AppTheme.secondaryText(context)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Text(_currentTip, style: TextStyle(fontSize: 12, color: AppTheme.secondaryText(context))),
+                  if (_focusReason != null && _focusReason!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _focusReason!,
+                      style: TextStyle(fontSize: 11, color: AppTheme.secondaryText(context).withValues(alpha: 0.85), fontStyle: FontStyle.italic),
+                    ),
+                  ],
                 ],
               ),
             )

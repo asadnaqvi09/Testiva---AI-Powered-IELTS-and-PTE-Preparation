@@ -1,4 +1,5 @@
-import { model } from "../../../config/gemini.js";
+import { GEMINI_MODEL_ID } from "../../../config/gemini.js";
+import { generateJsonFromPrompt } from "../utils/gemini.helper.js";
 import { writingPrompt } from "../prompts/writingEvaluation.prompt.js";
 import * as aiModel from "../models/ai.model.js";
 import * as progressModel from "../../M4_Progress/models/progress.model.js";
@@ -8,11 +9,7 @@ export const evaluateWriting = async (userId, attemptId, testType, questionText,
   try {
     const { processedText } = processWritingResponse(studentResponse);
     const prompt = writingPrompt(`${testType || "IELTS"} Writing`, questionText, processedText);
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
-    const cleanJsonText = text.replace(/```json|```/gi, "").trim();
-    const feedbackJson = JSON.parse(cleanJsonText);
+    const feedbackJson = await generateJsonFromPrompt(prompt);
     const detailed = feedbackJson.detailed_analysis ?? {};
 
     await aiModel.saveFeedback({
@@ -25,7 +22,7 @@ export const evaluateWriting = async (userId, attemptId, testType, questionText,
       grammatical_range_score: feedbackJson.breakdown?.grammatical_range_accuracy?.score ?? feedbackJson.grammatical_range_score,
       detailed_analysis: typeof detailed === "string" ? detailed : JSON.stringify(detailed),
       improvement_suggestions: feedbackJson.improvement_suggestions,
-      model_used: "gemini-1.5-flash",
+      model_used: GEMINI_MODEL_ID,
     });
 
     if (!isMultipartOptions.skipScoreUpdate) {

@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:frontend/core/services/api_service.dart'; // Core ApiService handler pipeline
+import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/providers/feedback_provider.dart';
 import 'package:frontend/widgets/app_theme.dart';
 import 'widgets/rating_section.dart';
@@ -30,7 +31,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   Future<void> _fetchAiSuggestion() async {
     try {
-      final response = await ApiService.get('/ai/feedback-suggestion');
+      final userPref = UserNotifier.notifier.value['preference'] ?? 'IELTS';
+      final response = await ApiService.get('/ai/feedback-suggestion?exam_type=$userPref');
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         if (body['success'] == true && body['suggestion'] != null) {
