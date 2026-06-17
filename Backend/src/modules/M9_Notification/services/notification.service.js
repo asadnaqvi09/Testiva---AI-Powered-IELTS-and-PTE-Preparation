@@ -14,7 +14,9 @@ export const sendNotification = async ({io,recipientId,senderId = null,type,titl
     comment_id: commentId
   });
   const unreadCount = await getUnreadNotificationCount(recipientId);
-  emitToUser(io, recipientId, "notification:new", { notification, unreadCount });
+  if (io) {
+    emitToUser(io, recipientId, "notification:new", { notification, unreadCount });
+  }
   try {
     const userResult = await pool.query('SELECT fcm_token FROM users WHERE id = $1', [recipientId]);
     const fcmToken = userResult.rows[0]?.fcm_token;
@@ -34,10 +36,12 @@ export const sendBulkNotifications = async (params) => {
   const notifications = await createBulkNotifications({
     recipientIds, senderId, type, title, message, post_id: postId, comment_id: commentId
   });
-  setImmediate(() => {
-    notifications.forEach(notif => {
-      emitToUser(io, notif.user_id, "notification:new", { notification: notif });
+  if (io) {
+    setImmediate(() => {
+      notifications.forEach(notif => {
+        emitToUser(io, notif.user_id, "notification:new", { notification: notif });
+      });
     });
-  });
+  }
   return notifications;
 };

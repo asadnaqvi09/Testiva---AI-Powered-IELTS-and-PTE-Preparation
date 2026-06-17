@@ -17,6 +17,7 @@ const NOTIF_CONFIG: Record<string, any> = {
   admin_new_user: { icon: <UserPlus size={14} />, color: '#007BFF', bg: '#007BFF15' },
   admin_subscription_changed: { icon: <CreditCard size={14} />, color: '#28A745', bg: '#28A74515' },
   admin_new_post: { icon: <FileText size={14} />, color: '#8B5CF6', bg: '#8B5CF615' },
+  preference_change_request: { icon: <MessageSquare size={14} />, color: '#F59E0B', bg: '#F59E0B15' },
   PREFERENCE_CHANGE_REQUEST: { icon: <MessageSquare size={14} />, color: '#F59E0B', bg: '#F59E0B15' },
   default: { icon: <Bell size={14} />, color: '#6B7280', bg: '#F3F4F6' }
 };

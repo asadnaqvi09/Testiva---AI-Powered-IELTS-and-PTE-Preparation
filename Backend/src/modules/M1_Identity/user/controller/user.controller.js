@@ -1,7 +1,7 @@
 import pool from "../../../../config/db.js";
 import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken, getUserHistoricalResults } from "../../user.model.js";
 import { processAndUploadAvatar } from "../services/image.service.js";
-import { createNotification } from "../../../M9_Notification/models/notification.model.js";
+import { handleAdminPreferenceChangeNotification } from "../../../M9_Notification/engine/notification.engine.js";
 import { sendPreferenceChangeEmail } from "../../../../email_templates/email.service.js";
 import * as userValidator from "../validator/user.validator.js";
 
@@ -125,21 +125,7 @@ export const requestPreferenceChangeController = async (req,res)=> {
       targetPreference,
       feedback
     });
-    if (adminUser) {
-      await createNotification({
-        user_id: adminUser.id,
-        actor_id: user.id,
-        type: 'PREFERENCE_CHANGE_REQUEST',
-        title: 'Preference Change Request',
-        message: `User ${user.email} send you an email regarding preferences.`
-      });
-      if (req.io) {
-        req.io.to(`user_${adminUser.id}`).emit("new_notification", {
-          type: "PREFERENCE_CHANGE_REQUEST",
-          message: `User ${user.email} send you an email regarding preferences.`
-        });
-      }
-    } 
+    await handleAdminPreferenceChangeNotification(req.io, { user, targetPreference, feedback }).catch(console.error);
     res.status(200).json({
       success: true,
       message: 'Your preference change request has been sent to Admin.'

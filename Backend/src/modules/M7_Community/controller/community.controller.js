@@ -113,7 +113,11 @@ export const createComment = async (req, res) => {
     emitCommentCreated(req.io, { comment: fullComment, topic_tag: post.topic_tag });
     if (body.parent_id && parentComment) {
       await handleReplyNotification(req.io, {
-        actorId: req.user.id, actorName: req.user.full_name, parentCommentOwnerId: parentComment.user_id, postId
+        actorId: req.user.id,
+        actorName: req.user.full_name,
+        parentCommentOwnerId: parentComment.user_id,
+        postId,
+        commentId: comment.id,
       });
     } else {
       await handleCommentNotification(req.io, {
@@ -256,9 +260,12 @@ export const adminFlagPost = async (req, res) => {
 export const adminUnflagPost = async (req, res) => {
   try {
     const { postId } = validatePostId(req.params);
+    const post = await PostModel.getPostById(postId);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
     const unflagged = await PostModel.unflagPost(postId);
     if (!unflagged) return res.status(404).json({ success: false, message: 'Post not found' });
     await FlagModel.insertModerationLog({ adminId: req.user.id, targetId: postId, action: 'unflag' });
+    await handleModerationNotification(req.io, { postId, postOwnerId: post.user_id, action: 'unflag' });
     return res.json({ success: true, data: unflagged });
   } catch (err) {
     console.log("Error in adminUnFlagPost...", err)

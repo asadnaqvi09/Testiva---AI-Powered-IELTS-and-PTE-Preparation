@@ -22,7 +22,7 @@ export const registerConnectionSocket = (io) => {
       socket.user = {
         id: decoded.id,
         role: decoded.role,
-        preferences: decoded.preferences || null
+        preferences: decoded.preference || decoded.preferences || null,
       };
       next();
     } catch {
