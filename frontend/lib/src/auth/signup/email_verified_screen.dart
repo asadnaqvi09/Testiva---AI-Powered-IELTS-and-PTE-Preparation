@@ -112,7 +112,7 @@ class EmailVerifiedScreen extends StatelessWidget {
                   children: [
                     const TextSpan(text: 'Your account has been successfully created.\nWelcome to '),
                     const TextSpan(
-                      text: 'TestPrep Hub',
+                      text: 'Testiva',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF007BFF),

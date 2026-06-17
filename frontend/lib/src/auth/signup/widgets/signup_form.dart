@@ -54,8 +54,12 @@ class _SignupFormState extends State<SignupForm> {
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration Successful! Code sent.')),
+            const SnackBar(content: Text('Registration Successful! OTP sent to your email.')),
           );
+
+          // Save before clearing so they can be passed to OtpScreen
+          final savedEmail = enteredEmail;
+          final savedPass = enteredPassword;
 
           _nameController.clear();
           _emailController.clear();
@@ -65,7 +69,7 @@ class _SignupFormState extends State<SignupForm> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (c) => OtpScreen(email: enteredEmail),
+              builder: (c) => OtpScreen(email: savedEmail, password: savedPass),
             ),
           );
         } else {

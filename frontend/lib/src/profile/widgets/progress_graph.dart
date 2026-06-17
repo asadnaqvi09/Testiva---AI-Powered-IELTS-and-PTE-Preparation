@@ -28,7 +28,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
 
   Future<void> _fetchLiveGraphData() async {
     try {
-      final response = await ApiService.get('/progress');
+      final response = await ApiService.get('/progress/my-stats');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
