@@ -127,7 +127,16 @@ export const createComment = async (req, res) => {
 export const getComments = async (req, res) => {
   try {
     const { postId } = validatePostId(req.params);
-    const comments = await CommentModel.getCommentsForPost({ postId, userId: req.user.id });
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+    const comments = await CommentModel.getCommentsForPost({
+      postId,
+      userId: req.user.id
+    });
     const nestedComments = comments
       .filter((c) => !c.parent_id)
       .map((parent) => ({
@@ -135,7 +144,10 @@ export const getComments = async (req, res) => {
         replies: comments.filter((r) => r.parent_id === parent.id),
       }));
     return res.json({ success: true, data: nestedComments });
-  } catch (err) { return sendError(res, err); }
+  } catch (err) {
+    console.error("getComments error:", err);
+    return sendError(res, err);
+  }
 };
 
 export const updateComment = async (req, res) => {

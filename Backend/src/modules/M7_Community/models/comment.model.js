@@ -15,11 +15,10 @@ export const getCommentById = async (commentId) => {
     `SELECT c.id, c.post_id, c.user_id, c.parent_id, c.content,
             c.is_flagged, c.flagged_by, c.flag_reason,
             c.created_at, c.updated_at,
-            u.full_name, u.profile_image,
-            s.plan_type AS subscription_type
+            u.full_name, u.avatar_url,
+            u.subscription AS subscription_type
      FROM comments c
-     JOIN users u              ON u.id = c.user_id
-     LEFT JOIN subscriptions s ON s.user_id = c.user_id AND s.status = 'active'
+     JOIN users u ON u.id = c.user_id
      WHERE c.id = $1 AND c.deleted_at IS NULL`,
     [commentId]
   );
@@ -28,23 +27,49 @@ export const getCommentById = async (commentId) => {
 
 export const getCommentsForPost = async ({ postId, userId }) => {
   const result = await pool.query(
-    `SELECT c.id, c.post_id, c.user_id, c.parent_id, c.content,
-            c.is_flagged, c.created_at, c.updated_at,
-            u.full_name, u.profile_image,
-            s.plan_type AS subscription_type,
-            COUNT(DISTINCT cl.user_id)::INT AS like_count,
-            EXISTS(
-              SELECT 1 FROM comment_likes cl2
-              WHERE cl2.comment_id = c.id AND cl2.user_id = $2
-            ) AS liked_by_me
-     FROM comments c
-     JOIN users u              ON u.id = c.user_id
-     LEFT JOIN subscriptions s ON s.user_id = c.user_id AND s.status = 'active'
-     LEFT JOIN comment_likes cl ON cl.comment_id = c.id
-     WHERE c.post_id = $1 AND c.deleted_at IS NULL
-     GROUP BY c.id, u.full_name, u.profile_image, s.plan_type
-     ORDER BY c.created_at ASC`,
-    [postId, userId]
+    `
+    SELECT
+      c.id,
+      c.post_id,
+      c.user_id,
+      c.parent_id,
+      c.content,
+      c.is_flagged,
+      c.created_at,
+      c.updated_at,
+      u.full_name,
+      u.avatar_url,
+      u.subscription AS subscription_type,
+      COUNT(DISTINCT cl.user_id)::INT AS like_count,
+      CASE
+        WHEN $2::uuid IS NULL THEN FALSE
+        ELSE EXISTS (
+          SELECT 1
+          FROM comment_likes cl2
+          WHERE cl2.comment_id = c.id
+            AND cl2.user_id = $2
+        )
+      END AS liked_by_me
+    FROM comments c
+    JOIN users u ON u.id = c.user_id
+    LEFT JOIN comment_likes cl ON cl.comment_id = c.id
+    WHERE c.post_id = $1
+      AND c.deleted_at IS NULL
+    GROUP BY
+      c.id,
+      c.post_id,
+      c.user_id,
+      c.parent_id,
+      c.content,
+      c.is_flagged,
+      c.created_at,
+      c.updated_at,
+      u.full_name,
+      u.avatar_url,
+      u.subscription
+    ORDER BY c.created_at ASC
+    `,
+    [postId, userId || null]
   );
   return result.rows;
 };
@@ -93,7 +118,9 @@ export const flagComment = async ({ commentId, flaggedBy, flagReason }) => {
 
 export const getParentCommentPostId = async (commentId) => {
   const result = await pool.query(
-    `SELECT post_id, parent_id FROM comments WHERE id = $1 AND deleted_at IS NULL`,
+    `SELECT post_id, parent_id
+     FROM comments
+     WHERE id = $1 AND deleted_at IS NULL`,
     [commentId]
   );
   return result.rows[0] || null;
