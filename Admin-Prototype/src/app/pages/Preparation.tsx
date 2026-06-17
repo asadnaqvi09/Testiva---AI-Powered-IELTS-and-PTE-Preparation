@@ -48,14 +48,15 @@ const SectionBadge = ({ section }: { section: string }) => {
   );
 };
 
-type MediaFile = { name: string; size: string };
-type Part = { title: string; content: string };
-
-type PrepItem = {
-  id: string; title: string; testType: string; section: string;
-  summary: string; date: string; status: string; parts: number;
-  partsDetail: Part[]; mediaFiles: MediaFile[]; instituteOnly: boolean;
+const formatFileSize = (bytes: number) => {
+  if (!bytes || bytes <= 0) return '0 KB';
+  return bytes > 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
 };
+
+const generateLocalId = () => `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+type MediaFile = { id: string; name: string; size: string; url: string; bytes: number; uploading?: boolean };
+type Part = { title: string; content: string };
 
 type FormState = {
   title: string; testType: string; section: string; summary: string;
@@ -67,7 +68,6 @@ const emptyForm = (): FormState => ({
   parts: [{ title: '', content: '' }], mediaFiles: [], instituteOnly: false, status: 'published'
 });
 
-/* ─────────────── Shared Form Body ─────────────────────────────────────────── */
 function ContentFormBody({
   form, setForm, userRole, fileInputRef, onFileChange, onRemoveFile,
 }: {
@@ -76,11 +76,10 @@ function ContentFormBody({
   userRole?: string;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemoveFile: (i: number) => void;
+  onRemoveFile: (id: string) => void;
 }) {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-5">
-      {/* ── Basic Info ── */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: '#007BFF' }}>
@@ -164,7 +163,6 @@ function ContentFormBody({
 
       <div className="border-t" style={{ borderColor: '#F0F0F0' }} />
 
-      {/* ── Content Parts ── */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -220,7 +218,6 @@ function ContentFormBody({
 
       <div className="border-t" style={{ borderColor: '#F0F0F0' }} />
 
-      {/* ── Media ── */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: '#F59E0B' }}>
@@ -234,7 +231,6 @@ function ContentFormBody({
           )}
         </div>
         <div className="pl-7 space-y-3">
-          {/* Drop zone */}
           <div
             onClick={() => fileInputRef.current?.click()}
             className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors hover:border-yellow-400 hover:bg-yellow-50"
@@ -254,20 +250,19 @@ function ContentFormBody({
             />
           </div>
 
-          {/* Uploaded files list */}
           {form.mediaFiles.length > 0 && (
             <div className="space-y-2">
-              {form.mediaFiles.map((f, i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border" style={{ borderColor: '#E5E7EB', background: '#FAFAFA' }}>
+              {form.mediaFiles.map((f) => (
+                <div key={f.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border" style={{ borderColor: '#E5E7EB', background: '#FAFAFA' }}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#DC354515' }}>
-                    <FileText size={16} style={{ color: '#DC3545' }} />
+                    {f.uploading ? <Loader2 size={16} className="animate-spin" style={{ color: '#DC3545' }} /> : <FileText size={16} style={{ color: '#DC3545' }} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-700 truncate">{f.name}</p>
-                    <p className="text-xs text-gray-400">{f.size}</p>
+                    <p className="text-xs text-gray-400">{f.uploading ? 'Uploading...' : f.size}</p>
                   </div>
                   <button
-                    onClick={() => onRemoveFile(i)}
+                    onClick={() => onRemoveFile(f.id)}
                     className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors">
                     <X size={14} />
                   </button>
@@ -288,7 +283,6 @@ function ContentFormBody({
   );
 }
 
-/* ─────────────── Main Component ───────────────────────────────────────────── */
 export function Preparation() {
   const { user } = useAuth();
   const [prepList, setPrepList] = useState<any[]>([]);
@@ -299,7 +293,6 @@ export function Preparation() {
   const [showDelete, setShowDelete] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState<string | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [expandedData, setExpandedData] = useState<any>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -329,23 +322,53 @@ export function Preparation() {
 
   const filtered = prepList;
 
-  /* ── Handlers ── */
-  const handleFileChange = (
+  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: React.Dispatch<React.SetStateAction<FormState>>
   ) => {
     const files = Array.from(e.target.files || []);
-    const newFiles: MediaFile[] = files.map(f => ({
-      name: f.name,
-      size: f.size > 1024 * 1024 ? `${(f.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(f.size / 1024)} KB`,
-    }));
-    setter(p => ({ ...p, mediaFiles: [...p.mediaFiles, ...newFiles] }));
     e.target.value = '';
+    if (files.length === 0) return;
+    const entries = files.map(file => ({ file, id: generateLocalId() }));
+    setter(p => ({
+      ...p,
+      mediaFiles: [
+        ...p.mediaFiles,
+        ...entries.map(({ file, id }) => ({
+          id,
+          name: file.name,
+          size: formatFileSize(file.size),
+          url: '',
+          bytes: file.size,
+          uploading: true,
+        })),
+      ],
+    }));
+
+    for (const { file, id } of entries) {
+      try {
+        const res = await uploadPrepPdf(file);
+        if (!res.success || !res.url) throw new Error('Upload failed');
+        setter(p => ({
+          ...p,
+          mediaFiles: p.mediaFiles.map(m =>
+            m.id === id
+              ? { ...m, url: res.data.res.url, name: res.file_name || m.name, bytes: res.file_size || m.bytes, uploading: false }
+              : m
+          ),
+        }));
+      } catch (err: any) {
+        toast.error(`Failed to upload ${file.name}: ${err.message || 'Unknown error'}`);
+        setter(p => ({ ...p, mediaFiles: p.mediaFiles.filter(m => m.id !== id) }));
+      }
+    }
   };
 
   const handleCreate = async () => {
     if (!form.title.trim()) { toast.error('Title is required.'); return; }
     if (form.parts.length === 0 || !form.parts[0].title) { toast.error('At least one content part required.'); return; }
+    if (form.mediaFiles.some(f => f.uploading)) { toast.error('Please wait for file uploads to finish.'); return; }
+    if (form.mediaFiles.some(f => !f.url)) { toast.error('One or more files failed to upload. Remove them and try again.'); return; }
     setActionLoading(true);
     try {
       const payload = {
@@ -355,7 +378,7 @@ export function Preparation() {
         summary: form.summary || undefined,
         status: form.status,
         parts: form.parts.map((p, i) => ({ part_title: p.title, part_content: p.content || 'Content pending...', order_index: i + 1 })),
-        media: form.mediaFiles.map(f => ({ file_url: (f as any).url || `https://placeholder.com/${f.name}`, file_name: f.name, file_size: parseInt(f.size) || 0 })),
+        media: form.mediaFiles.map(f => ({ file_url: f.url, file_name: f.name, file_size: f.bytes || 0 })),
       };
       const res = await createPrepLesson(payload);
       if (res.success) {
@@ -378,7 +401,13 @@ export function Preparation() {
           title: item.title, testType: item.test_type, section: item.section,
           summary: item.summary || '',
           parts: item.parts?.length ? item.parts.map((p: any) => ({ title: p.part_title, content: p.part_content })) : [{ title: '', content: '' }],
-          mediaFiles: item.media?.map((m: any) => ({ name: m.file_name, size: String(m.file_size || 0), url: m.file_url })) || [],
+          mediaFiles: item.media?.map((m: any) => ({
+            id: m.id || generateLocalId(),
+            name: m.file_name,
+            size: formatFileSize(m.file_size || 0),
+            url: m.file_url,
+            bytes: m.file_size || 0,
+          })) || [],
           instituteOnly: false,
           status: item.status,
         });
@@ -390,6 +419,8 @@ export function Preparation() {
   const handleSaveEdit = async () => {
     if (!editForm.title.trim()) { toast.error('Title is required.'); return; }
     if (!showEdit) return;
+    if (editForm.mediaFiles.some(f => f.uploading)) { toast.error('Please wait for file uploads to finish.'); return; }
+    if (editForm.mediaFiles.some(f => !f.url)) { toast.error('One or more files failed to upload. Remove them and try again.'); return; }
     setActionLoading(true);
     try {
       const payload = {
@@ -399,6 +430,7 @@ export function Preparation() {
         summary: editForm.summary || undefined,
         status: editForm.status,
         parts: editForm.parts.map((p, i) => ({ part_title: p.title, part_content: p.content || 'Content pending...', order_index: i + 1 })),
+        media: editForm.mediaFiles.map(f => ({ file_url: f.url, file_name: f.name, file_size: f.bytes || 0 })),
       };
       await updatePrepLesson(showEdit, payload);
       toast.success('Lesson updated!');
@@ -421,7 +453,6 @@ export function Preparation() {
     } finally { setActionLoading(false); }
   };
 
-  /* ── Stats ── */
   const publishedCount = prepList.filter(p => p.status === 'published').length;
   const draftCount = prepList.filter(p => p.status === 'draft').length;
   const totalMedia = prepList.reduce((acc, p) => acc + (p.mediaFiles?.length || 0), 0);
@@ -429,7 +460,6 @@ export function Preparation() {
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
 
-      {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 style={{ color: '#1A1A1A' }}>Preparation Content</h1>
@@ -445,7 +475,6 @@ export function Preparation() {
         </button>
       </div>
 
-      {/* ── Summary Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total Lessons', value: prepList.length, color: '#007BFF', bg: '#EFF6FF' },
@@ -462,7 +491,6 @@ export function Preparation() {
         ))}
       </div>
 
-      {/* ── Filters ── */}
       <div className="bg-white rounded-xl border p-4 shadow-sm flex flex-wrap gap-3 items-center" style={{ borderColor: '#E5E7EB' }}>
         <div className="relative flex-1 min-w-48">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -509,11 +537,9 @@ export function Preparation() {
             <div key={prep.id}
               className="bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col group"
               style={{ borderColor: '#E5E7EB' }}>
-              {/* Top accent */}
               <div className="h-1 rounded-t-2xl" style={{ background: typeColor.color }} />
 
               <div className="p-5 flex-1 space-y-3">
-                {/* Badges row */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <TypeBadge type={prep.test_type || prep.testType} />
                   <SectionBadge section={prep.section} />
@@ -531,7 +557,6 @@ export function Preparation() {
                   </span>
                 </div>
 
-                {/* Title & Meta */}
                 <div>
                   <h3 className="font-semibold text-sm leading-snug mb-1" style={{ color: '#1A1A1A' }}>{prep.title}</h3>
                   <p className="text-xs text-gray-400">{prep.id?.slice(0,8)} · {prep.created_at ? new Date(prep.created_at).toLocaleDateString() : prep.date}</p>
@@ -539,7 +564,6 @@ export function Preparation() {
 
                 <p className="text-xs text-gray-500 line-clamp-2">{prep.summary}</p>
 
-                {/* Expandable parts preview */}
                 {isExpanded && prep.partsDetail?.length > 0 && (
                   <div className="space-y-2 pt-1">
                     {prep.partsDetail.map((part, i) => (
@@ -570,7 +594,6 @@ export function Preparation() {
                 )}
               </div>
 
-              {/* Footer */}
               <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: '#F5F7FA' }}>
                 <div className="flex items-center gap-3 text-xs text-gray-400">
                   <span className="flex items-center gap-1">
@@ -619,11 +642,9 @@ export function Preparation() {
       </div>
       )}
 
-      {/* ══════════════ CREATE MODAL ══════════════ */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: '#E5E7EB' }}>
               <div>
                 <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>Create Preparation Content</h3>
@@ -640,10 +661,9 @@ export function Preparation() {
               userRole={user?.role}
               fileInputRef={createFileRef}
               onFileChange={e => handleFileChange(e, setForm)}
-              onRemoveFile={i => setForm(p => ({ ...p, mediaFiles: p.mediaFiles.filter((_, j) => j !== i) }))}
+              onRemoveFile={id => setForm(p => ({ ...p, mediaFiles: p.mediaFiles.filter(m => m.id !== id) }))}
             />
 
-            {/* Footer */}
             <div className="px-6 py-4 border-t flex gap-3" style={{ borderColor: '#E5E7EB' }}>
               <button
                 onClick={() => setShowCreate(false)}
@@ -653,20 +673,19 @@ export function Preparation() {
               </button>
               <button
                 onClick={handleCreate}
-                className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm"
+                disabled={actionLoading || form.mediaFiles.some(f => f.uploading)}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm disabled:opacity-60"
                 style={{ background: 'linear-gradient(135deg, #007BFF, #0056B3)' }}>
-                <Check size={15} /> Create Content
+                {actionLoading ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Create Content
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════ EDIT MODAL ══════════════ */}
       {showEdit && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: '#E5E7EB' }}>
               <div>
                 <div className="flex items-center gap-2">
@@ -688,10 +707,9 @@ export function Preparation() {
               userRole={user?.role}
               fileInputRef={editFileRef}
               onFileChange={e => handleFileChange(e, setEditForm)}
-              onRemoveFile={i => setEditForm(p => ({ ...p, mediaFiles: p.mediaFiles.filter((_, j) => j !== i) }))}
+              onRemoveFile={id => setEditForm(p => ({ ...p, mediaFiles: p.mediaFiles.filter(m => m.id !== id) }))}
             />
 
-            {/* Footer */}
             <div className="px-6 py-4 border-t flex gap-3" style={{ borderColor: '#E5E7EB' }}>
               <button
                 onClick={() => setShowEdit(null)}
@@ -701,16 +719,16 @@ export function Preparation() {
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm"
+                disabled={actionLoading || editForm.mediaFiles.some(f => f.uploading)}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm disabled:opacity-60"
                 style={{ background: 'linear-gradient(135deg, #28A745, #1e7e34)' }}>
-                <Check size={15} /> Save Changes
+                {actionLoading ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save Changes
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════ DELETE MODAL ══════════════ */}
       {showDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
