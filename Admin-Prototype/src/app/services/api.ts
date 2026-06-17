@@ -494,3 +494,52 @@ const BASE = '/api/v1';
       body: fd,
     });
   }
+
+  export interface AdminNotification {
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    post_id?: string;
+    comment_id?: string;
+    sender?: {
+      id: string;
+      full_name: string;
+      avatar_url: string;
+    };
+  }
+
+  export async function fetchNotificationsAPI(limit = 20, offset = 0) {
+    return apiFetch<{ success: boolean; notifications: AdminNotification[] }>(
+      `/notifications?limit=${limit}&offset=${offset}`,
+    );
+  }
+
+  export async function fetchUnreadCountAPI() {
+    return apiFetch<{ success: boolean; unreadCount: number }>(
+      '/notifications/unread-count',
+    );
+  }
+
+  export async function markNotificationReadAPI(id: string) {
+    return apiFetch<{ success: boolean; notification: AdminNotification; unreadCount: number }>(
+      `/notifications/${id}/read`,
+      { method: 'PATCH' },
+    );
+  }
+
+  export async function markAllNotificationsReadAPI() {
+    return apiFetch<{ success: boolean; message: string; unreadCount: number }>(
+      '/notifications/read-all',
+      { method: 'PATCH' },
+    );
+  }
+
+  export async function deleteNotificationAPI(id: string) {
+    return apiFetch<{ success: boolean; message: string; unreadCount: number }>(
+      `/notifications/${id}`,
+      { method: 'DELETE' },
+    );
+  }

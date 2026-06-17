@@ -1,76 +1,76 @@
 import { io, Socket } from 'socket.io-client';
 
-/**
- * Socket.io Frontend Service
- * Connects specifically to the /community namespace
- */
-
-// Use environment variable for the backend URL
-const SOCKET_URL = 'http://localhost:5000';
 const NAMESPACE = '/community';
+
+/** Same origin in dev (Vite proxies /socket.io). Set VITE_SOCKET_URL at build time for production. */
+const resolveSocketUrl = () => {
+  if (typeof window === 'undefined') return 'http://localhost:5173';
+  const envUrl = (window as Window & { __SOCKET_URL__?: string }).__SOCKET_URL__;
+  return envUrl || window.location.origin;
+};
+
+type ConnectListener = () => void;
 
 class SocketService {
   public socket: Socket | null = null;
+  private connectListeners = new Set<ConnectListener>();
 
-  /**
-   * Initialize connection with the JWT token
-   * @param token - User authentication token
-   */
   connect(token: string) {
-    if (this.socket?.connected) return;
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
 
-    // Initialize the socket with the community namespace
-    this.socket = io(`${SOCKET_URL}${NAMESPACE}`, {
-      auth: {
-        token: token, // Matches socket.handshake.auth?.token in your backend
-      },
-      transports: ['websocket'], // Faster, preferred transport
+    this.socket = io(`${resolveSocketUrl()}${NAMESPACE}`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 5000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 3000,
     });
 
     this.socket.on('connect', () => {
       console.log('[Socket] Connected to /community namespace');
+      this.connectListeners.forEach((cb) => cb());
     });
 
-    this.socket.on('connected', (data) => {
-      // Matches your backend emission: socket.emit("connected", { userId, rooms })
-      console.log('[Socket] Room Confirmation:', data.rooms);
+    this.socket.on('connected', (data: { userId: string; rooms: string[] }) => {
+      console.log('[Socket] Room confirmation:', data.rooms);
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('[Socket] Connection Error:', error.message);
+    this.socket.on('connect_error', (error: Error) => {
+      console.error('[Socket] Connection error:', error.message);
       if (error.message === 'UNAUTHORIZED') {
-        // Handle token expiration or invalidity
         this.disconnect();
       }
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', (reason: string) => {
       console.log('[Socket] Disconnected:', reason);
     });
   }
 
-  /**
-   * Helper to register listeners
-   */
+  onConnect(callback: ConnectListener) {
+    this.connectListeners.add(callback);
+    if (this.socket?.connected) {
+      callback();
+    }
+    return () => this.connectListeners.delete(callback);
+  }
+
   on(event: string, callback: (...args: any[]) => void) {
     this.socket?.on(event, callback);
   }
 
-  /**
-   * Helper to remove listeners
-   */
   off(event: string, callback: (...args: any[]) => void) {
     this.socket?.off(event, callback);
   }
 
-  /**
-   * Safely disconnect
-   */
   disconnect() {
+    this.connectListeners.clear();
     if (this.socket) {
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
