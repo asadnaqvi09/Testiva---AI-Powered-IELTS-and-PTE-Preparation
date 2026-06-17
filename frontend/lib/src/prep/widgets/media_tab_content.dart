@@ -161,32 +161,20 @@ class MediaTabContent extends StatelessWidget {
                     ),
                   ),
                   Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () => _openFile(context, fileUrl),
-                          icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: Colors.blue),
-                          label: const Text('Preview', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16))),
-                          ),
+                  TextButton.icon(
+                    onPressed: () => _openFile(context, fileUrl),
+                    icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: Colors.blue),
+                    label: const Text('Preview', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size(double.infinity, 0),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(16),
+                          bottomRight: Radius.circular(16),
                         ),
                       ),
-                      Container(width: 1, height: 40, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () => _openFile(context, fileUrl),
-                          icon: const Icon(Icons.file_download_outlined, size: 18, color: Colors.green),
-                          label: const Text('Download', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomRight: Radius.circular(16))),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
