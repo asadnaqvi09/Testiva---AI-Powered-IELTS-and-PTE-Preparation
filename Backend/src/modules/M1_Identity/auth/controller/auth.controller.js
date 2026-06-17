@@ -130,17 +130,13 @@ export const verifyOTP = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
-<<<<<<< Updated upstream
 
     const { email, otp, type } = value;
 
-=======
-    const { email, otp, type, preference } = value;
->>>>>>> Stashed changes
     await client.query("BEGIN");
 
     const { rows } = await client.query(
-      `SELECT *, (expires_at < NOW()) as is_expired FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
+      `SELECT * FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
       [email, type],
     );
 
@@ -176,12 +172,8 @@ export const verifyOTP = async (req, res) => {
 
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
-<<<<<<< Updated upstream
 
     if (new Date(temp.expires_at) < new Date()) {
-=======
-    if (temp.is_expired) {
->>>>>>> Stashed changes
       await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [
         email,
         type,
@@ -195,9 +187,9 @@ export const verifyOTP = async (req, res) => {
     if (type === "register") {
       const { rows: userRows } = await client.query(
         `INSERT INTO users (full_name,email,password_hash,auth_provider,is_email_verified,subscription,preference)
-         VALUES ($1,$2,$3,'email',true,'free',$4)
+         VALUES ($1,$2,$3,'email',true,'free',NULL)
          RETURNING *`,
-        [temp.full_name, temp.email, temp.password_hash, preference || null],
+        [temp.full_name, temp.email, temp.password_hash],
       );
 
       const user = userRows[0];
@@ -214,42 +206,11 @@ export const verifyOTP = async (req, res) => {
       } catch (e) {
         console.error(e);
       }
-<<<<<<< Updated upstream
 
       return res.status(201).json({
         success: true,
         message: "Account verified",
         user,
-=======
-      await client.query(
-        `DELETE FROM temp_users WHERE email=$1 AND type='register'`,
-        [email],
-      );
-
-      const accessToken = generateAccessToken(buildToken(user));
-      const refreshToken = generateRefreshToken(user.id);
-      await client.query(
-        `INSERT INTO refresh_tokens (user_id, token, expires_at)
-         VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
-        [user.id, refreshToken],
-      );
-
-      await client.query("COMMIT");
-      return res.status(201).json({
-        success: true,
-        message: "Account verified",
-        accessToken,
-        refreshToken,
-        expiresIn: "15m",
-        user: {
-          id: user.id,
-          full_name: user.full_name,
-          email: user.email,
-          role: user.role,
-          subscription: resolveSubscription(user),
-          preference: user.preference,
-        },
->>>>>>> Stashed changes
       });
     }
 
