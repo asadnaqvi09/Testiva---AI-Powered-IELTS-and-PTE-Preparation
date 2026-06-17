@@ -348,12 +348,12 @@ export function Preparation() {
     for (const { file, id } of entries) {
       try {
         const res = await uploadPrepPdf(file);
-        if (!res.success || !res.data?.file_url) throw new Error('Upload failed');
+        if (!res.success || !res.url) throw new Error('Upload failed');
         setter(p => ({
           ...p,
           mediaFiles: p.mediaFiles.map(m =>
             m.id === id
-              ? { ...m, url: res.data.file_url, name: res.data.file_name || m.name, bytes: res.data.file_size || m.bytes, uploading: false }
+              ? { ...m, url: res.data.res.url, name: res.file_name || m.name, bytes: res.file_size || m.bytes, uploading: false }
               : m
           ),
         }));
