@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../widgets/custom_drawer.dart';
+import '../../../../widgets/app_header.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../data/models/community_post_model.dart';
 import 'widgets/community_post_card.dart';
@@ -246,48 +247,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: const Icon(Icons.menu, color: Colors.black87),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.menu_book, color: Colors.white, size: 20),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Testiva',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primary,
-                    child: Text('AK', style: TextStyle(color: Colors.white, fontSize: 14)),
-                  ),
-                ],
-              ),
-            ),
+            AppHeader(scaffoldKey: _scaffoldKey),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(

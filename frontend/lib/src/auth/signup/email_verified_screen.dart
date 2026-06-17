@@ -28,8 +28,14 @@ class EmailVerifiedScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 20.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: Icon(Icons.arrow_back, color: primaryText),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
               const Spacer(),
 
               // Checked Green Badge with Sparkle Accent

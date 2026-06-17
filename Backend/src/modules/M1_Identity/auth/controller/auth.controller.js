@@ -50,13 +50,12 @@ export const registerUser = async (req, res) => {
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
     const password_hash = await hashPassword(password);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await pool.query(
       `INSERT INTO temp_users (email, full_name, password_hash, otp_code, expires_at, type, attempts, is_verified)
-       VALUES ($1,$2,$3,$4,$5,'register',0,false)
+       VALUES ($1,$2,$3,$4,NOW() + INTERVAL '15 minutes','register',0,false)
        ON CONFLICT (email, type)
-       DO UPDATE SET full_name=$2, password_hash=$3, otp_code=$4, expires_at=$5, attempts=0, is_verified=false`,
-      [email, full_name, password_hash, otp_hash, expiresAt],
+       DO UPDATE SET full_name=$2, password_hash=$3, otp_code=$4, expires_at=NOW() + INTERVAL '15 minutes', attempts=0, is_verified=false`,
+      [email, full_name, password_hash, otp_hash],
     );
     await sendOtpEmail({ email, otp, type: "register" });
     return res.json({ success: true, message: "OTP sent", email });
@@ -64,7 +63,7 @@ export const registerUser = async (req, res) => {
     console.log("Error In Register Controller : ", error.message);
     return res
       .status(500)
-      .json({ success: false, message: "Registration failed" });
+      .json({ success: false, message: error.message || "Registration failed" });
   }
 };
 
@@ -94,8 +93,8 @@ export const loginUser = async (req, res) => {
     const refreshToken = generateRefreshToken(user.id);
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1,$2,$3)`,
-      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
+       VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
+      [user.id, refreshToken],
     );
     await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [
       user.id,
@@ -131,13 +130,17 @@ export const verifyOTP = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
+<<<<<<< Updated upstream
 
     const { email, otp, type } = value;
 
+=======
+    const { email, otp, type, preference } = value;
+>>>>>>> Stashed changes
     await client.query("BEGIN");
 
     const { rows } = await client.query(
-      `SELECT * FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
+      `SELECT *, (expires_at < NOW()) as is_expired FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
       [email, type],
     );
 
@@ -173,8 +176,12 @@ export const verifyOTP = async (req, res) => {
 
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
+<<<<<<< Updated upstream
 
     if (new Date(temp.expires_at) < new Date()) {
+=======
+    if (temp.is_expired) {
+>>>>>>> Stashed changes
       await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [
         email,
         type,
@@ -188,9 +195,9 @@ export const verifyOTP = async (req, res) => {
     if (type === "register") {
       const { rows: userRows } = await client.query(
         `INSERT INTO users (full_name,email,password_hash,auth_provider,is_email_verified,subscription,preference)
-         VALUES ($1,$2,$3,'email',true,'free',NULL)
+         VALUES ($1,$2,$3,'email',true,'free',$4)
          RETURNING *`,
-        [temp.full_name, temp.email, temp.password_hash],
+        [temp.full_name, temp.email, temp.password_hash, preference || null],
       );
 
       const user = userRows[0];
@@ -207,11 +214,42 @@ export const verifyOTP = async (req, res) => {
       } catch (e) {
         console.error(e);
       }
+<<<<<<< Updated upstream
 
       return res.status(201).json({
         success: true,
         message: "Account verified",
         user,
+=======
+      await client.query(
+        `DELETE FROM temp_users WHERE email=$1 AND type='register'`,
+        [email],
+      );
+
+      const accessToken = generateAccessToken(buildToken(user));
+      const refreshToken = generateRefreshToken(user.id);
+      await client.query(
+        `INSERT INTO refresh_tokens (user_id, token, expires_at)
+         VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
+        [user.id, refreshToken],
+      );
+
+      await client.query("COMMIT");
+      return res.status(201).json({
+        success: true,
+        message: "Account verified",
+        accessToken,
+        refreshToken,
+        expiresIn: "15m",
+        user: {
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          role: user.role,
+          subscription: resolveSubscription(user),
+          preference: user.preference,
+        },
+>>>>>>> Stashed changes
       });
     }
 
@@ -303,7 +341,7 @@ export const refreshAccessToken = async (req, res) => {
     const stored = await findRefreshToken(refreshToken);
     if (!stored)
       return res.status(401).json({ success: false, message: "Invalid token" });
-    if (new Date(stored.expires_at) < new Date()) {
+    if (stored.is_expired) {
       await deleteRefreshToken(refreshToken);
       return res.status(401).json({ success: false, message: "Expired token" });
     }
@@ -320,14 +358,12 @@ export const refreshAccessToken = async (req, res) => {
     }
     const accessToken = generateAccessToken(buildToken(user));
     const newRefreshToken = generateRefreshToken(user.id);
-    await pool.query(`DELETE FROM refresh_tokens WHERE user_id=$1`, [user.id]);
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1,$2,$3)`,
+       VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
       [
         user.id,
         newRefreshToken,
-        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       ],
     );
     return res.json({
@@ -357,18 +393,18 @@ export const forgotPassword = async (req, res) => {
         .json({ success: false, message: "User not found" });
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await pool.query(
       `INSERT INTO temp_users (email, otp_code, expires_at, type, attempts, is_verified)
-       VALUES ($1,$2,$3,'reset',0,false)
+       VALUES ($1,$2,NOW() + INTERVAL '15 minutes','reset',0,false)
        ON CONFLICT (email, type)
-       DO UPDATE SET otp_code=$2, expires_at=$3, attempts=0, is_verified=false`,
-      [email, otp_hash, expiresAt],
+       DO UPDATE SET otp_code=$2, expires_at=NOW() + INTERVAL '15 minutes', attempts=0, is_verified=false`,
+      [email, otp_hash],
     );
     await sendOtpEmail({ email, otp, type: "reset" });
     return res.json({ success: true, message: "OTP sent" });
-  } catch {
-    return res.status(500).json({ success: false, message: "Request failed" });
+  } catch (error) {
+    console.log("Error In Forgot Password Controller : ", error.message);
+    return res.status(500).json({ success: false, message: error.message || "Request failed" });
   }
 };
 
@@ -443,13 +479,14 @@ export const resendOTP = async (req, res) => {
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
     await pool.query(
-      `UPDATE temp_users SET otp_code=$1, expires_at=$2, attempts=0 WHERE email=$3 AND type=$4`,
-      [otp_hash, new Date(Date.now() + 15 * 60 * 1000), email, type],
+      `UPDATE temp_users SET otp_code=$1, expires_at=NOW() + INTERVAL '15 minutes', attempts=0 WHERE email=$2 AND type=$3`,
+      [otp_hash, email, type],
     );
     await sendOtpEmail({ email, otp, type });
     return res.json({ success: true, message: "OTP resent" });
-  } catch {
-    return res.status(500).json({ success: false, message: "Failed" });
+  } catch (error) {
+    console.log("Error In Resend OTP Controller : ", error.message);
+    return res.status(500).json({ success: false, message: error.message || "Failed" });
   }
 };
 
@@ -486,8 +523,8 @@ export const googleAuth = async (req, res) => {
     const refreshToken = generateRefreshToken(user.id);
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1,$2,$3)`,
-      [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)],
+       VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
+      [user.id, refreshToken],
     );
     return res.json({
       success: true,

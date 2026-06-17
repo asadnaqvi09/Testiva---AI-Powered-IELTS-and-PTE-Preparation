@@ -39,7 +39,13 @@ class _PreferenceSelectionScreenState extends State<PreferenceSelectionScreen> {
           }
 
           if (responseData['user'] != null) {
-            UserNotifier.notifier.value = responseData['user'];
+            final userObj = responseData['user'];
+            final currentData = Map<String, dynamic>.from(UserNotifier.notifier.value);
+            currentData['preference'] = userObj['preference'];
+            currentData['name'] = userObj['full_name'] ?? userObj['name'] ?? currentData['name'];
+            currentData['email'] = userObj['email'] ?? currentData['email'];
+            currentData['role'] = userObj['role'] ?? currentData['role'];
+            UserNotifier.notifier.value = currentData;
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -103,6 +109,11 @@ class _PreferenceSelectionScreenState extends State<PreferenceSelectionScreen> {
                 // Top Header Row (Logo & App Name)
                 Row(
                   children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: primaryText),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 5),
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(

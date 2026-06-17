@@ -5,6 +5,8 @@ import 'package:frontend/widgets/app_theme.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/user_notifier.dart';
 import '../../data/models/mock_test_model.dart';
+import '../../widgets/app_header.dart';
+import '../../widgets/custom_drawer.dart';
 import 'test_overview_screen.dart';
 
 class MocksScreen extends StatefulWidget {
@@ -20,24 +22,33 @@ class MocksScreen extends StatefulWidget {
 }
 
 class _MocksScreenState extends State<MocksScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   List<MockTest> _mocks = [];
   bool _isLoading = false;
   String _errorMessage = '';
+
+  String? _currentExamType;
 
   @override
   void initState() {
     super.initState();
     UserNotifier.notifier.addListener(_onUserChanged);
-    if (UserNotifier.notifier.value['preference'] != null) {
-      _fetchMocks();
+    final pref = UserNotifier.notifier.value['preference'];
+    if (pref != null) {
+      _currentExamType = pref;
     } else {
-      _isLoading = true; // Wait for preference to be set
+      _currentExamType = 'IELTS';
     }
+    _fetchMocks();
   }
 
   void _onUserChanged() {
-    if (mounted && UserNotifier.notifier.value['preference'] != null) {
-      if (_mocks.isEmpty && _errorMessage.isNotEmpty || _isLoading) {
+    if (mounted) {
+      final pref = UserNotifier.notifier.value['preference'];
+      if (pref != null && pref != _currentExamType) {
+        setState(() {
+          _currentExamType = pref;
+        });
         _fetchMocks();
       }
     }
@@ -99,11 +110,12 @@ class _MocksScreenState extends State<MocksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      appBar: AppBar(
-        backgroundColor: AppTheme.appBarBg(context),
-        elevation: 0,
-        title: Text(
+      drawer: const CustomDrawer(),
+      appBar: AppHeader(
+        scaffoldKey: _scaffoldKey,
+        titleWidget: Text(
           '${UserNotifier.notifier.value['preference'] ?? 'IELTS'} Mock Tests',
           style: TextStyle(
             color: AppTheme.primaryText(context),
@@ -111,7 +123,6 @@ class _MocksScreenState extends State<MocksScreen> {
             fontSize: 20,
           ),
         ),
-        iconTheme: IconThemeData(color: AppTheme.iconColor(context)),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
