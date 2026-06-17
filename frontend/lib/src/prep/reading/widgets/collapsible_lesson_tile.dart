@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/app_theme.dart';
 
 class CollapsibleLessonTile extends StatelessWidget {
   final String title;
@@ -12,26 +13,24 @@ class CollapsibleLessonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDarkMode ? Colors.grey[800]! : Colors.grey.shade200),
+        border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: ExpansionTile(
         shape: const RoundedRectangleBorder(side: BorderSide.none),
         collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
-        iconColor: isDarkMode ? Colors.white : Colors.black87,
-        collapsedIconColor: isDarkMode ? Colors.white60 : Colors.black87,
+        iconColor: AppTheme.iconColor(context),
+        collapsedIconColor: AppTheme.secondaryText(context),
         title: Text(
           title,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: isDarkMode ? Colors.white : Colors.black87,
+            color: AppTheme.primaryText(context),
           ),
         ),
         children: items.map((item) => _buildItem(context, item)).toList(),
@@ -40,12 +39,10 @@ class CollapsibleLessonTile extends StatelessWidget {
   }
 
   Widget _buildItem(BuildContext context, LessonItem item) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: isDarkMode ? Colors.grey[800]! : Colors.grey.shade100)),
+        border: Border(top: BorderSide(color: AppTheme.dividerColor(context))),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,7 +68,7 @@ class CollapsibleLessonTile extends StatelessWidget {
                         item.title,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87,
+                          color: AppTheme.primaryText(context),
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -81,7 +78,7 @@ class CollapsibleLessonTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: item.tagColor.withOpacity(0.1),
+                        color: item.tagColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -99,7 +96,7 @@ class CollapsibleLessonTile extends StatelessWidget {
                 Text(
                   item.subtitle,
                   style: TextStyle(
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    color: AppTheme.secondaryText(context),
                     fontSize: 13,
                   ),
                 ),

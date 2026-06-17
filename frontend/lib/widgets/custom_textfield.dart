@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
+import 'app_theme.dart';
 
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -25,21 +26,19 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
       validator: validator,
-      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+      style: TextStyle(color: AppTheme.primaryText(context)),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(prefixIcon, color: AppColors.primary),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[100],
+        fillColor: AppTheme.inputFill(context),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

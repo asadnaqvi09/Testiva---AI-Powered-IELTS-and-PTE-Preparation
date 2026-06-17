@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/app_theme.dart';
 
 class WritingHeader extends StatelessWidget {
   const WritingHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final linkColor = isDark ? Colors.blueAccent : Colors.blue[700];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -12,12 +16,12 @@ class WritingHeader extends StatelessWidget {
           onTap: () => Navigator.pop(context),
           child: Row(
             children: [
-              Icon(Icons.arrow_back, color: Colors.blue[700], size: 16),
+              Icon(Icons.arrow_back, color: linkColor, size: 16),
               const SizedBox(width: 4),
               Text(
                 'Back to Prep',
                 style: TextStyle(
-                  color: Colors.blue[700],
+                  color: linkColor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -30,13 +34,13 @@ class WritingHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: isDark ? Colors.orange.withValues(alpha: 0.15) : Colors.orange.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.edit, color: Colors.orange, size: 28),
             ),
             const SizedBox(width: 15),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -44,12 +48,12 @@ class WritingHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: AppTheme.primaryText(context),
                   ),
                 ),
                 Text(
                   '8 lessons & tips',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
                 ),
               ],
             ),

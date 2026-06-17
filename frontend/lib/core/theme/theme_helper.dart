@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
+
 
 class ThemeHelper {
-  static Color getCardColor(BuildContext context) {
-   return Theme.of(context).brightness == Brightness.dark
-       ? const Color(0xFF1E1E1E)
-     : Colors.white;
-  }
+  static Color getCardColor(BuildContext context) => AppTheme.cardBg(context);
 
   static TextStyle getTitleStyle(BuildContext context) {
     return TextStyle(
-      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+      color: AppTheme.primaryText(context),
       fontSize: 18,
       fontWeight: FontWeight.bold,
     );

@@ -11,6 +11,7 @@ import 'widgets/support_section.dart';
 
 import '../../widgets/custom_drawer.dart';
 import '../../widgets/logout_dialog.dart';
+import '../../widgets/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -70,18 +71,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
     return Scaffold(
       key: _scaffoldKey,
-      drawer: CustomDrawer(),
+      drawer: const CustomDrawer(),
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: false,
         elevation: 0,
-        backgroundColor: theme.scaffoldBackgroundColor,
-        foregroundColor: theme.textTheme.titleLarge?.color,
+        backgroundColor: AppTheme.appBarBg(context),
+        foregroundColor: AppTheme.primaryText(context),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -101,7 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
 
                 ProfileHeader(
-                    isDarkMode: isDarkMode,
+                    isDarkMode: AppTheme.isDark(context),
                     userData: _userData,
                     onEditPressed: () {
                       showModalBottomSheet(
@@ -123,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 30),
                 const Text('Preferences', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 15),
-                PreferenceTiles(isDarkMode: isDarkMode),
+                PreferenceTiles(isDarkMode: AppTheme.isDark(context)),
                 const SizedBox(height: 25),
                 const Text('Support', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 15),

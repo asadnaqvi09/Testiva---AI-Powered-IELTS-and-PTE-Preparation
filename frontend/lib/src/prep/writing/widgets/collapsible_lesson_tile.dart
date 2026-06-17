@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/app_theme.dart';
 
 class LessonItem {
   final String title;
@@ -37,19 +38,21 @@ class CollapsibleLessonTile extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppTheme.borderColor(context)),
         ),
         child: ExpansionTile(
           initiallyExpanded: true,
           shape: const RoundedRectangleBorder(side: BorderSide.none),
           collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
+          iconColor: AppTheme.iconColor(context),
+          collapsedIconColor: AppTheme.secondaryText(context),
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: AppTheme.primaryText(context),
               fontSize: 16,
             ),
           ),
@@ -57,7 +60,7 @@ class CollapsibleLessonTile extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                border: Border(top: BorderSide(color: AppTheme.dividerColor(context))),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,10 +84,10 @@ class CollapsibleLessonTile extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 item.title,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
-                                  color: Color(0xFF1E293B),
+                                  color: AppTheme.primaryText(context),
                                 ),
                               ),
                             ),
@@ -110,7 +113,7 @@ class CollapsibleLessonTile extends StatelessWidget {
                         Text(
                           item.subtitle,
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: AppTheme.secondaryText(context),
                             fontSize: 13,
                             height: 1.4,
                           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/widgets/app_button.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import 'reading_test_screen.dart';
 
 class TestOverviewScreen extends StatelessWidget {
@@ -13,7 +14,7 @@ class TestOverviewScreen extends StatelessWidget {
   final List<String> questionTypes;
 
   const TestOverviewScreen({
-    super.key,
+    key,
     required this.testId,
     required this.testTitle,
     required this.questionCount,
@@ -21,17 +22,19 @@ class TestOverviewScreen extends StatelessWidget {
     required this.difficulty,
     required this.minBand,
     required this.questionTypes,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.appBarBg(context),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black),
+          icon: Icon(Icons.menu, color: AppTheme.iconColor(context)),
           onPressed: () {},
         ),
         title: Row(
@@ -46,9 +49,9 @@ class TestOverviewScreen extends StatelessWidget {
               child: const Icon(Icons.menu_book, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'TestPrep Hub',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(color: AppTheme.primaryText(context), fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
@@ -73,13 +76,13 @@ class TestOverviewScreen extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  icon: Icon(Icons.arrow_back, color: AppTheme.iconColor(context)),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
                   child: Text(
                     testTitle,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -106,12 +109,12 @@ class TestOverviewScreen extends StatelessWidget {
                   Text(
                     testTitle,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Academic Module — $questionCount Questions',
-                    style: const TextStyle(fontSize: 14, color: AppColors.textGrey, fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 24),
                   GridView.count(
@@ -122,16 +125,16 @@ class TestOverviewScreen extends StatelessWidget {
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
                     children: [
-                      _buildInfoCard(Icons.timer_outlined, 'Duration', '$duration minutes', Colors.deepPurple),
-                      _buildInfoCard(Icons.help_outline, 'Questions', '$questionCount Qs', Colors.red),
-                      _buildInfoCard(Icons.bar_chart_outlined, 'Scoring', 'Band $minBand – 9.0', Colors.blue),
-                      _buildInfoCard(Icons.track_changes, 'Difficulty', difficulty, Colors.pink),
+                      _buildInfoCard(context, Icons.timer_outlined, 'Duration', '$duration minutes', Colors.deepPurple),
+                      _buildInfoCard(context, Icons.help_outline, 'Questions', '$questionCount Qs', Colors.red),
+                      _buildInfoCard(context, Icons.bar_chart_outlined, 'Scoring', 'Band $minBand – 9.0', Colors.blue),
+                      _buildInfoCard(context, Icons.track_changes, 'Difficulty', difficulty, Colors.pink),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _buildQuestionTypesSection(),
+                  _buildQuestionTypesSection(context),
                   const SizedBox(height: 20),
-                  _buildInstructionsSection(),
+                  _buildInstructionsSection(context),
                   const SizedBox(height: 24),
                   AppButton(
                     text: '🚀 Start Test',
@@ -154,9 +157,9 @@ class TestOverviewScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text(
+                    child: Text(
                       'Cancel',
-                      style: TextStyle(color: AppColors.textGrey, fontSize: 15, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 15, fontWeight: FontWeight.w500),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -169,13 +172,13 @@ class TestOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String label, String value, Color iconColor) {
+  Widget _buildInfoCard(BuildContext context, IconData icon, String label, String value, Color iconColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppTheme.surfaceBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+        border: Border.all(color: AppTheme.borderColor(context).withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
@@ -186,9 +189,9 @@ class TestOverviewScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textGrey, fontWeight: FontWeight.w500)),
+                Text(label, style: TextStyle(fontSize: 11, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 13, color: Colors.black, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(value, style: TextStyle(fontSize: 13, color: AppTheme.primaryText(context), fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -197,21 +200,21 @@ class TestOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuestionTypesSection() {
+  Widget _buildQuestionTypesSection(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppTheme.surfaceBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+        border: Border.all(color: AppTheme.borderColor(context).withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Question Types in this Test',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -220,12 +223,12 @@ class TestOverviewScreen extends StatelessWidget {
             children: questionTypes.map((type) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFEDF5FF),
+                color: AppTheme.tagBg(context),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 type,
-                style: const TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppTheme.tagText(context), fontSize: 12, fontWeight: FontWeight.w600),
               ),
             )).toList(),
           ),
@@ -234,7 +237,7 @@ class TestOverviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInstructionsSection() {
+  Widget _buildInstructionsSection(BuildContext context) {
     final instructions = [
       'Read each passage carefully before answering',
       'Questions may refer to specific paragraphs — check labels',
@@ -244,24 +247,29 @@ class TestOverviewScreen extends StatelessWidget {
       'You can navigate freely between questions during the test'
     ];
 
+    final isDark = AppTheme.isDark(context);
+    final bgColor = isDark ? Colors.blue.withValues(alpha: 0.12) : const Color(0xFFEEF7FF);
+    final borderColor = isDark ? Colors.blue.withValues(alpha: 0.25) : const Color(0xFFD0E8FF);
+    final linkColor = isDark ? Colors.blueAccent : Colors.blue;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF7FF),
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD0E8FF)),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.assignment_outlined, color: Colors.blue, size: 20),
+              Icon(Icons.assignment_outlined, color: linkColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Instructions',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: linkColor),
               ),
             ],
           ),
@@ -276,15 +284,15 @@ class TestOverviewScreen extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 2.0),
-                      child: Icon(Icons.check_circle, color: Colors.blue, size: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Icon(Icons.check_circle, color: linkColor, size: 16),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         instructions[index],
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13, color: AppTheme.primaryText(context).withValues(alpha: 0.8), height: 1.4, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart'; // ApiService ka path verify kar lein
+import 'package:frontend/widgets/app_theme.dart';
 
 class ProgressCard extends StatefulWidget {
   const ProgressCard({super.key});
@@ -61,28 +62,40 @@ class _ProgressCardState extends State<ProgressCard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        boxShadow: AppTheme.cardShadow(context),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Overall Progress', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Text("Keep going, you're doing great!", style: TextStyle(color: Colors.grey, fontSize: 13)),
-              const SizedBox(height: 15),
-              Row(
-                children: [
-                  // Tab automatically highlight ho jayenge jo backend track data return karega
-                  _tabItem('IELTS', _activeTrack.toUpperCase() == 'IELTS'),
-                  const SizedBox(width: 10),
-                  _tabItem('PTE', _activeTrack.toUpperCase() == 'PTE'),
-                ],
-              )
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Overall Progress',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryText(context),
+                  ),
+                ),
+                Text(
+                  "Keep going, you're doing great!",
+                  style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 13),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    // Tab automatically highlight ho jayenge jo backend track data return karega
+                    _tabItem(context, 'IELTS', _activeTrack.toUpperCase() == 'IELTS'),
+                    const SizedBox(width: 10),
+                    _tabItem(context, 'PTE', _activeTrack.toUpperCase() == 'PTE'),
+                  ],
+                )
+              ],
+            ),
           ),
           Stack(
             alignment: Alignment.center,
@@ -91,25 +104,29 @@ class _ProgressCardState extends State<ProgressCard> {
                 height: 80, width: 80,
                 child: _isLoading
                     ? CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade100),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.tagBg(context)),
                   strokeWidth: 4,
                 )
                     : CircularProgressIndicator(
                   value: _overallProgress,
                   strokeWidth: 8,
-                  backgroundColor: Colors.blue.shade50,
-                  color: Colors.blue,
+                  backgroundColor: AppTheme.tagBg(context),
+                  color: AppTheme.tagText(context),
                 ),
               ),
               _isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue)
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.tagText(context))
               )
                   : Text(
                   '$percentageDisplay%',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16)
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.tagText(context),
+                    fontSize: 16,
+                  )
               ),
             ],
           )
@@ -118,16 +135,16 @@ class _ProgressCardState extends State<ProgressCard> {
     );
   }
 
-  Widget _tabItem(String label, bool isActive) => Container(
+  Widget _tabItem(BuildContext context, String label, bool isActive) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     decoration: BoxDecoration(
-      color: isActive ? Colors.blue.shade50 : Colors.transparent,
+      color: isActive ? AppTheme.tagBg(context) : Colors.transparent,
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
         label,
         style: TextStyle(
-            color: isActive ? Colors.blue : Colors.grey,
+            color: isActive ? AppTheme.tagText(context) : AppTheme.secondaryText(context),
             fontWeight: FontWeight.bold,
             fontSize: 12
         )

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "298829936456",
+    "project_id": "testivafyp",
+    "storage_bucket": "testivafyp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:298829936456:android:114edb3a7c7bd036ef657d",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "298829936456-8tquaegaoag315ot820m4529241qct3e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.frontend",
+            "certificate_hash": "40ae10ae6da84716192367f9ce51027d2b8b3373"
+          }
+        },
+        {
+          "client_id": "298829936456-ftno9o41s987ca986oek9hrmjst0odfo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIImVloEv8mUPG1dMOF5hRYt_zgR9vVuk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "298829936456-ftno9o41s987ca986oek9hrmjst0odfo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 
 class PremiumModal extends StatefulWidget {
   const PremiumModal({super.key});
@@ -16,9 +17,9 @@ class _PremiumModalState extends State<PremiumModal> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      decoration: BoxDecoration(
+        color: AppTheme.dialogBg(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: const EdgeInsets.all(24),
       child: AnimatedSwitcher(
@@ -34,7 +35,7 @@ class _PremiumModalState extends State<PremiumModal> {
       key: const ValueKey(0),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(child: _buildHandle()),
+        Center(child: _buildHandle(context)),
         const SizedBox(height: 24),
         _buildHeader('🚀 Unlock Premium', 'Choose a plan that fits your prep journey'),
         const SizedBox(height: 24),
@@ -53,7 +54,7 @@ class _PremiumModalState extends State<PremiumModal> {
       key: const ValueKey(1),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(child: _buildHandle()),
+        Center(child: _buildHandle(context)),
         const SizedBox(height: 24),
         _buildHeader('💳 Payment', 'Premium Package - Rs699'),
         const SizedBox(height: 20),
@@ -61,7 +62,7 @@ class _PremiumModalState extends State<PremiumModal> {
         // Tab Switcher (Debit vs Digital Wallet)
         Container(
           padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: AppTheme.inputFill(context), borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
               _buildTab('Debit/Credit', Icons.credit_card, !_isDigitalWallet, () => setState(() => _isDigitalWallet = false)),
@@ -79,7 +80,7 @@ class _PremiumModalState extends State<PremiumModal> {
         Center(
           child: TextButton(
             onPressed: () => setState(() => _currentStep = 0),
-            child: const Text('← Back to plans', style: TextStyle(color: Colors.grey)),
+            child: Text('← Back to plans', style: TextStyle(color: AppTheme.secondaryText(context))),
           ),
         ),
       ],
@@ -119,45 +120,90 @@ class _PremiumModalState extends State<PremiumModal> {
   }
 
   // --- HELPER WIDGETS ---
-  Widget _buildHandle() => Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)));
+  Widget _buildHandle(BuildContext context) => Container(
+    width: 40,
+    height: 4,
+    decoration: BoxDecoration(
+      color: AppTheme.borderColor(context),
+      borderRadius: BorderRadius.circular(2),
+    ),
+  );
 
   Widget _buildHeader(String title, String sub) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryText(context),
+          ),
+        ),
+        IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.close, color: AppTheme.iconColor(context)),
+        ),
       ]),
-      Text(sub, style: const TextStyle(color: Colors.grey)),
+      Text(sub, style: TextStyle(color: AppTheme.secondaryText(context))),
     ],
   );
 
-  Widget _buildTab(String label, IconData icon, bool active, VoidCallback onTap) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(color: active ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(10), boxShadow: active ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : []),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 18, color: active ? const Color(0xFF007BFF) : Colors.grey),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: active ? Colors.black : Colors.grey)),
-        ]),
+  Widget _buildTab(String label, IconData icon, bool active, VoidCallback onTap) {
+    final isDark = AppTheme.isDark(context);
+    final activeBg = isDark ? const Color(0xFF333333) : Colors.white;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: active ? activeBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: active ? [BoxShadow(color: isDark ? Colors.black26 : Colors.black12, blurRadius: 4)] : [],
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(
+              icon,
+              size: 18,
+              color: active ? (isDark ? Colors.blueAccent : const Color(0xFF007BFF)) : AppTheme.secondaryText(context),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: active ? AppTheme.primaryText(context) : AppTheme.secondaryText(context),
+              ),
+            ),
+          ]),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildTextField(String label, String hint, IconData? icon) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+          color: AppTheme.primaryText(context),
+        ),
+      ),
       const SizedBox(height: 8),
       TextField(
+        style: TextStyle(color: AppTheme.primaryText(context)),
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+          hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
+          prefixIcon: icon != null ? Icon(icon, size: 20, color: AppTheme.secondaryText(context)) : null,
           filled: true,
-          fillColor: Colors.grey[50],
+          fillColor: AppTheme.inputFill(context),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
       ),
@@ -171,26 +217,65 @@ class _PremiumModalState extends State<PremiumModal> {
     child: Center(child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
   );
 
-  Widget _buildButton(String text, VoidCallback onPressed) => SizedBox(
-    width: double.infinity,
-    height: 55,
-    child: ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF007BFF), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-      child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-    ),
-  );
+  Widget _buildButton(String text, VoidCallback onPressed) {
+    final isDark = AppTheme.isDark(context);
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark ? Colors.blueAccent : const Color(0xFF007BFF),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+      ),
+    );
+  }
 
-  Widget _packageCard({required String title, required String price, required List<String> features, bool isSelected = false}) => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[200]!, width: 2)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(price, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF007BFF))),
+  Widget _packageCard({required String title, required String price, required List<String> features, bool isSelected = false}) {
+    final isDark = AppTheme.isDark(context);
+    final accentColor = isDark ? Colors.blueAccent : const Color(0xFF007BFF);
+    final selectedBorder = isDark ? Colors.blueAccent : const Color(0xFF8B5CF6);
+    final defaultBorder = AppTheme.borderColor(context);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isSelected ? selectedBorder : defaultBorder, width: 2),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryText(context),
+            ),
+          ),
+          Text(
+            price,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: accentColor,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        ...features.map((f) => Padding(
+          padding: const EdgeInsets.only(bottom: 6.0),
+          child: Row(children: [
+            Icon(Icons.check_circle, size: 16, color: accentColor),
+            const SizedBox(width: 8),
+            Text(
+              f,
+              style: TextStyle(fontSize: 13, color: AppTheme.secondaryText(context)),
+            ),
+          ]),
+        )),
       ]),
-      const SizedBox(height: 12),
-      ...features.map((f) => Row(children: [const Icon(Icons.check_circle, size: 16, color: Color(0xFF007BFF)), const SizedBox(width: 8), Text(f, style: const TextStyle(fontSize: 13))])),
-    ]),
-  );
+    );
+  }
 }

@@ -1,5 +1,6 @@
   import 'package:flutter/material.dart';
   import 'package:frontend/core/constants/app_colors.dart';
+  import 'package:frontend/widgets/app_theme.dart';
 
   class PrepHeader extends StatelessWidget implements PreferredSizeWidget {
     final GlobalKey<ScaffoldState> scaffoldKey;
@@ -9,7 +10,7 @@
     @override
     Widget build(BuildContext context) {
       return Container(
-        color: Colors.white,
+        color: AppTheme.appBarBg(context),
 
         padding: const EdgeInsets.only(top: 20, left: 20, right: 20, bottom: 10),
         child: SafeArea(
@@ -22,10 +23,10 @@
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: AppTheme.surfaceBg(context),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.menu, color: Colors.grey.shade800, size: 24),
+                  child: Icon(Icons.menu, color: AppTheme.iconColor(context), size: 24),
                 ),
               ),
               Row(
@@ -39,10 +40,10 @@
                     child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Testiva',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: AppTheme.primaryText(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import '../../features/settings/presentation/feedback_screen.dart';
 
 class SupportSection extends StatelessWidget {
@@ -6,20 +7,11 @@ class SupportSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          if (isLight)
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 5)
-            )
-        ],
+        boxShadow: AppTheme.cardShadow(context),
       ),
       child: Column(
         children: [
@@ -27,16 +19,16 @@ class SupportSection extends StatelessWidget {
             context,
             Icons.feedback_outlined,
             'Feedback & Suggestions',
-                () {
+            () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const FeedbackScreen()),
               );
             },
           ),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Divider(height: 1, color: AppTheme.dividerColor(context)),
           _actionTile(context, Icons.help_outline, 'Help Center & FAQ', () {}),
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Divider(height: 1, color: AppTheme.dividerColor(context)),
           _actionTile(context, Icons.shield_outlined, 'Privacy & Security', () {}),
         ],
       ),
@@ -45,9 +37,12 @@ class SupportSection extends StatelessWidget {
 
   Widget _actionTile(BuildContext context, IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: Colors.grey[600]),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
+      leading: Icon(icon, color: AppTheme.secondaryText(context)),
+      title: Text(
+        title,
+        style: TextStyle(fontSize: 14, color: AppTheme.primaryText(context)),
+      ),
+      trailing: Icon(Icons.arrow_forward_ios, color: AppTheme.secondaryText(context), size: 14),
       dense: true,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/widgets/app_theme.dart';
 
 class ProgressGraph extends StatefulWidget {
   const ProgressGraph({super.key});
@@ -86,16 +87,12 @@ class _ProgressGraphState extends State<ProgressGraph> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 15, 20, 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: isDarkMode ? Colors.grey[800]! : const Color(0xFFF1F5F9)
-        ),
+        border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: Column(
         children: [
@@ -107,7 +104,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : const Color(0xFF1E293B)
+                    color: AppTheme.primaryText(context)
                 ),
               ),
               _isLoading
@@ -166,7 +163,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
                   drawVerticalLine: false,
                   horizontalInterval: 1,
                   getDrawingHorizontalLine: (value) => FlLine(
-                      color: isDarkMode ? Colors.grey[800]! : const Color(0xFFE2E8F0),
+                      color: AppTheme.borderColor(context),
                       strokeWidth: 1
                   ),
                 ),
@@ -225,7 +222,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
                       getDotPainter: (spot, percent, barData, index) =>
                           FlDotCirclePainter(
                             radius: 5,
-                            color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+                            color: AppTheme.cardBg(context),
                             strokeWidth: 2,
                             strokeColor: const Color(0xFF007BFF),
                           ),

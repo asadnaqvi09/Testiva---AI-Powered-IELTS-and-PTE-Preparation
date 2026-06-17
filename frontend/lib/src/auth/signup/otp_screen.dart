@@ -8,9 +8,8 @@ import 'package:frontend/widgets/app_button.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
-  final String? preference;
 
-  const OtpScreen({required this.email, this.preference, super.key});
+  const OtpScreen({required this.email, super.key});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -121,10 +120,6 @@ class _OtpScreenState extends State<OtpScreen> {
         'otp': otpCode,
         'type': 'register',
       };
-      
-      if (widget.preference != null) {
-        requestBody['preference'] = widget.preference;
-      }
 
       final response = await ApiService.post('/auth/verify-otp', requestBody);
 
@@ -145,8 +140,15 @@ class _OtpScreenState extends State<OtpScreen> {
             const SnackBar(content: Text('Account Verified Successfully! Welcome to Testiva.'), backgroundColor: Colors.green),
           );
 
-          // Account verify ho gya aur session token save hai, ab seedha dashboard screen par push kar dein
-          Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
+          final userMap = responseData['user'] as Map<String, dynamic>? ?? {};
+          final userName = userMap['full_name'] ?? userMap['name'] ?? 'User';
+
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/email-verified',
+            (route) => false,
+            arguments: userName,
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(responseData['message'] ?? 'Invalid OTP code'), backgroundColor: Colors.red),

@@ -5,7 +5,9 @@ import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import 'package:frontend/src/auth/login/widgets/google_button.dart';
+import 'package:frontend/core/services/google_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../otp_screen.dart';
 
@@ -24,8 +26,6 @@ class _SignupFormState extends State<SignupForm> {
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
   bool _autoSaveCredentials = true;
-  String _selectedPreference = 'IELTS';
-
   bool _obscurePass = true;
   bool _obscureConfirmPass = true;
 
@@ -65,7 +65,7 @@ class _SignupFormState extends State<SignupForm> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (c) => OtpScreen(email: enteredEmail, preference: _selectedPreference),
+              builder: (c) => OtpScreen(email: enteredEmail),
             ),
           );
         } else {
@@ -163,30 +163,7 @@ class _SignupFormState extends State<SignupForm> {
             },
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedPreference,
-            decoration: InputDecoration(
-              labelText: 'Exam Preference',
-              prefixIcon: const Icon(Icons.school_outlined, color: AppColors.textGrey),
-              filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C2C2C) : Colors.grey[100],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 18),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'IELTS', child: Text('IELTS')),
-              DropdownMenuItem(value: 'PTE', child: Text('PTE')),
-            ],
-            onChanged: (val) {
-              if (val != null) {
-                setState(() => _selectedPreference = val);
-              }
-            },
-          ),
-          const SizedBox(height: 12),
+
           Row(
             children: [
               SizedBox(
@@ -227,7 +204,7 @@ class _SignupFormState extends State<SignupForm> {
               ],
             ),
           ),
-          Center(child: GoogleButton(onTap: () {})),
+          Center(child: GoogleButton(onTap: () => GoogleAuthService.handleGoogleSignIn(context))),
         ],
       ),
     );

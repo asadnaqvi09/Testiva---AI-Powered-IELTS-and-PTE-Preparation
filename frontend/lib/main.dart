@@ -9,6 +9,8 @@ import 'package:frontend/src/profile/profile_screen.dart';
 import 'package:frontend/src/features/settings/presentation/feedback_screen.dart';
 import 'package:frontend/src/prep/prep_screen.dart';
 import 'package:frontend/src/mocks/mocks_screen.dart';
+import 'package:frontend/src/auth/signup/email_verified_screen.dart';
+import 'package:frontend/src/auth/signup/preference_selection_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +71,14 @@ class TestivaApp extends StatelessWidget {
             '/profile': (context) => const ProfileScreen(),
             '/settings': (context) => const ProfileScreen(),
             '/feedback': (context) => const FeedbackScreen(),
+            '/email-verified': (context) {
+              final userName = ModalRoute.of(context)!.settings.arguments as String? ?? 'User';
+              return EmailVerifiedScreen(userName: userName);
+            },
+            '/select-preference': (context) {
+              final userName = ModalRoute.of(context)!.settings.arguments as String? ?? 'User';
+              return PreferenceSelectionScreen(userName: userName);
+            },
           },
         );
       },

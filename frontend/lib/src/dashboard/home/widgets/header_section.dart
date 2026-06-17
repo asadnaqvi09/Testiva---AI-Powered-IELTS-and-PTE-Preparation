@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import '../../../profile/profile_screen.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/user_notifier.dart';
@@ -64,16 +65,11 @@ class _HeaderSectionState extends State<HeaderSection> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.cardBg(context),
                   borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                    )
-                  ],
+                  boxShadow: AppTheme.cardShadow(context),
                 ),
-                child: const Icon(Icons.menu, size: 20),
+                child: Icon(Icons.menu, size: 20, color: AppTheme.iconColor(context)),
               ),
             ),
             Row(children: [
@@ -86,7 +82,14 @@ class _HeaderSectionState extends State<HeaderSection> {
                 child: const Icon(Icons.auto_stories, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 8),
-              const Text('Testiva', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                'Testiva',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryText(context),
+                ),
+              ),
             ]),
             GestureDetector(
               onTap: () {
@@ -110,46 +113,61 @@ class _HeaderSectionState extends State<HeaderSection> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(dateString, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            Text(dateString, style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 13)),
             const SizedBox(height: 4),
             Row(
               children: [
                 Text(
                   'Hello, $firstName!',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryText(context),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const Text('👋', style: TextStyle(fontSize: 20)),
               ],
             ),
-            const Text('Keep up the great work!', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            Text(
+              'Keep up the great work!',
+              style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
+            ),
           ],
         ),
         const SizedBox(height: 20),
-        _premiumBanner(),
+        _premiumBanner(context),
       ],
     );
   }
 
-  Widget _premiumBanner() => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFF9E7),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFFFE58F)),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.workspace_premium_outlined, color: Color(0xFFD48806), size: 20),
-        SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Unlock IELTS & PTE - Get Premium',
-            style: TextStyle(color: Color(0xFF874D00), fontWeight: FontWeight.w600),
+  Widget _premiumBanner(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final bgColor = isDark ? const Color(0xFF2C2410) : const Color(0xFFFFF9E7);
+    final borderColor = isDark ? const Color(0xFF5C4D26) : const Color(0xFFFFE58F);
+    final textColor = isDark ? const Color(0xFFFFD591) : const Color(0xFF874D00);
+    final iconColor = isDark ? const Color(0xFFE8B339) : const Color(0xFFD48806);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.workspace_premium_outlined, color: iconColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Unlock IELTS & PTE - Get Premium',
+              style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+            ),
           ),
-        ),
-        Icon(Icons.chevron_right, color: Color(0xFFD48806)),
-      ],
-    ),
-  );
+          Icon(Icons.chevron_right, color: iconColor),
+        ],
+      ),
+    );
+  }
 }
