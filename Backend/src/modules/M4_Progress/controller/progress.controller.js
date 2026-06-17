@@ -18,10 +18,19 @@ export const submitTest = async (req, res) => {
       await addSyncJob({ userId, testData: value });
       return res.status(202).json({ success: true, message: "Offline data queued for sync" });
     }
-    const hasSubjectiveSection = value.responses.some(resp => 
-      resp.audio_response_url || 
-      resp.audio_url || 
-      (resp.user_answer && resp.user_answer.trim().split(/\s+/).length > 15)
+    const subjectiveWordCount = (ans) => {
+      if (ans == null) return 0;
+      if (typeof ans === "string") return ans.trim().split(/\s+/).filter(Boolean).length;
+      if (typeof ans === "object" && ans.text_essay) {
+        return String(ans.text_essay).trim().split(/\s+/).filter(Boolean).length;
+      }
+      return 0;
+    };
+    const hasSubjectiveSection = value.responses.some(
+      (resp) =>
+        resp.audio_response_url ||
+        resp.audio_url ||
+        subjectiveWordCount(resp.user_answer) > 15,
     );
 
     const client = await pool.connect();

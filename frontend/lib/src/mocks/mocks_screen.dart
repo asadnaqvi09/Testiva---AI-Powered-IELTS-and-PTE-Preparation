@@ -8,6 +8,7 @@ import '../../data/models/mock_test_model.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/custom_drawer.dart';
 import 'test_overview_screen.dart';
+import 'widgets/mock_test_card.dart';
 
 class MocksScreen extends StatefulWidget {
   final VoidCallback onStartTestRequested;
@@ -26,32 +27,17 @@ class _MocksScreenState extends State<MocksScreen> {
   List<MockTest> _mocks = [];
   bool _isLoading = false;
   String _errorMessage = '';
-
-  String? _currentExamType;
+  String _filter = 'All';
 
   @override
   void initState() {
     super.initState();
     UserNotifier.notifier.addListener(_onUserChanged);
-    final pref = UserNotifier.notifier.value['preference'];
-    if (pref != null) {
-      _currentExamType = pref;
-    } else {
-      _currentExamType = 'IELTS';
-    }
     _fetchMocks();
   }
 
   void _onUserChanged() {
-    if (mounted) {
-      final pref = UserNotifier.notifier.value['preference'];
-      if (pref != null && pref != _currentExamType) {
-        setState(() {
-          _currentExamType = pref;
-        });
-        _fetchMocks();
-      }
-    }
+    if (mounted) _fetchMocks();
   }
 
   @override
@@ -60,181 +46,181 @@ class _MocksScreenState extends State<MocksScreen> {
     super.dispose();
   }
 
+  String? get _examQuery {
+    if (_filter == 'IELTS') return 'IELTS';
+    if (_filter == 'PTE') return 'PTE';
+    return UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS';
+  }
+
   Future<void> _fetchMocks() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
     try {
-      final examType = UserNotifier.notifier.value['preference'] ?? 'IELTS';
+      final examType = _examQuery;
       final response = await ApiService.get('/content/test/mobile/dashboard?exam_type=$examType');
 
       if (kDebugMode) {
-        debugPrint('Status Code: ${response.statusCode}');
-        debugPrint('Response Body: ${response.body}');
+        debugPrint('Mocks dashboard: ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         if (body['success'] == true) {
           final List list = body['data'] as List;
-          setState(() {
-            _mocks = list.map<MockTest>((item) => MockTest.fromJson(item as Map<String, dynamic>)).toList();
-          });
+          var items = list.map<MockTest>((item) => MockTest.fromJson(item as Map<String, dynamic>)).toList();
+          if (_filter == 'IELTS') {
+            items = items.where((m) => m.examType == 'IELTS').toList();
+          } else if (_filter == 'PTE') {
+            items = items.where((m) => m.examType == 'PTE').toList();
+          }
+          setState(() => _mocks = items);
           if (_mocks.isEmpty) {
-            setState(() {
-              _errorMessage = 'Backend connected successfully, but Database has 0 tests inserted.';
-            });
+            _errorMessage = 'No published mock tests yet. Create one in the Admin panel.';
           }
         } else {
-          setState(() {
-            _errorMessage = 'API Error: success flag is false';
-          });
+          _errorMessage = 'Could not load mock tests.';
         }
       } else {
-        setState(() {
-          _errorMessage = 'Server Error Code: ${response.statusCode}';
-        });
+        _errorMessage = 'Server error (${response.statusCode})';
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Parsing / Connection Error: $e';
-      });
+      _errorMessage = 'Connection error: $e';
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _openMock(MockTest mock) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TestOverviewScreen(
+          testId: mock.id,
+          testTitle: mock.title,
+          examType: mock.examType,
+          testCategory: mock.testCategory,
+          questionCount: mock.totalQuestions,
+          duration: mock.totalDuration,
+          difficulty: mock.difficultyLevel,
+          minBand: mock.minRequiredBand,
+          questionTypes: mock.subQuestionTypeIndicators,
+        ),
+      ),
+    ).then((value) {
+      _fetchMocks();
+      if (value == 'switch_to_mocks') widget.onStartTestRequested();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final pref = UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS';
+
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppTheme.scaffoldBg(context),
+      backgroundColor: const Color(0xFFF8FAFC),
       drawer: const CustomDrawer(),
       appBar: AppHeader(
         scaffoldKey: _scaffoldKey,
-        titleWidget: Text(
-          '${UserNotifier.notifier.value['preference'] ?? 'IELTS'} Mock Tests',
-          style: TextStyle(
-            color: AppTheme.primaryText(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+        titleWidget: const Text(
+          'Mock Tests',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _fetchMocks,
-                child: const Text('Retry Connection'),
-              )
-            ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: Text(
+              _isLoading ? 'Loading tests…' : '${_mocks.length} test${_mocks.length == 1 ? '' : 's'} available',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+            ),
           ),
-        ),
-      )
-          : RefreshIndicator(
-        onRefresh: _fetchMocks,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: _mocks.length,
-          itemBuilder: (context, index) {
-            final mock = _mocks[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.cardBg(context),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: AppTheme.cardShadow(context),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mock.title,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context)),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Test ID: ${mock.displayId}',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.secondaryText(context)),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${mock.difficultyLevel} — ${mock.totalQuestions} Questions — ${mock.totalDuration} Min',
-                          style: TextStyle(fontSize: 12, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
-                        ),
-                        if (mock.lastAttemptScore != null) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0x1A4CAF50).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Last Band Score: ${mock.lastAttemptScore}',
-                              style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TestOverviewScreen(
-                            testId: mock.id,
-                            testTitle: mock.title,
-                            questionCount: mock.totalQuestions,
-                            duration: mock.totalDuration,
-                            difficulty: mock.difficultyLevel,
-                            minBand: mock.minRequiredBand,
-                            questionTypes: mock.subQuestionTypeIndicators,
-                          ),
-                        ),
-                      ).then((value) {
-                        _fetchMocks();
-                        if (value == 'switch_to_mocks') {
-                          widget.onStartTestRequested();
-                        }
-                      });
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: ['All', 'IELTS', 'PTE'].map((f) {
+                final active = _filter == f;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(f),
+                    selected: active,
+                    onSelected: (_) {
+                      setState(() => _filter = f);
+                      _fetchMocks();
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF007BFF),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    selectedColor: const Color(0xFF007BFF),
+                    labelStyle: TextStyle(
+                      color: active ? Colors.white : Colors.grey.shade700,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Text(mock.cta == 'retake' ? 'Retake' : 'Open', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: active ? const Color(0xFF007BFF) : Colors.grey.shade300),
                   ),
-                ],
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_mocks.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                pref.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: Colors.grey.shade500,
+                ),
               ),
-            );
-          },
+            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
+                    ? _errorView()
+                    : RefreshIndicator(
+                        onRefresh: _fetchMocks,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _mocks.length,
+                          itemBuilder: (context, index) => MockTestCard(
+                            mock: _mocks[index],
+                            onTap: () => _openMock(_mocks[index]),
+                          ),
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cloud_off_outlined, color: Colors.grey.shade400, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context)),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _fetchMocks, child: const Text('Retry')),
+          ],
         ),
       ),
     );

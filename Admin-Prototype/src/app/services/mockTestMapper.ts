@@ -60,6 +60,31 @@ const QUESTION_TYPE_MAP: Record<string, { question_type: string; sub_question_ty
   'Two-Part Question': { question_type: 'writing', sub_question_type: 'two_part_question' },
 };
 
+const WRITING_UI_TYPES = new Set([
+  "Chart Description",
+  "Request Information",
+  "Explain Situation",
+  "Provide Opinion",
+  "Opinion",
+  "Discussion",
+  "Problem & Solution",
+  "Advantages & Disadvantages",
+  "Two-Part Question",
+  "Task 1 Essay",
+  "Task 2 Essay",
+]);
+
+function isWritingUiType(type: string): boolean {
+  if (WRITING_UI_TYPES.has(type)) return true;
+  const mapped = QUESTION_TYPE_MAP[type];
+  return mapped?.question_type === "writing" || mapped?.question_type === "essay";
+}
+
+function isTask2WritingQuestion(q: BuilderQuestion, section: BuilderSection): boolean {
+  if (section.writingTask === "Task 2") return isWritingUiType(q.type);
+  return q.type === "Task 2 Essay";
+}
+
 const REVERSE_QUESTION_TYPE: Record<string, string> = {
   mcq: 'MCQ',
   multi_select: 'Multi-select',
@@ -136,8 +161,8 @@ export function expandSectionsForApi(state: BuilderState): BuilderSection[] {
   const out: BuilderSection[] = [];
   for (const sec of sections) {
     if (sec.moduleType === 'Speaking & Writing') {
-      const speakingQs = sec.questions.filter(q => q.type.startsWith('Part'));
-      const writingQs = sec.questions.filter(q => q.type.includes('Essay'));
+      const speakingQs = sec.questions.filter(q => q.type.startsWith("Part"));
+      const writingQs = sec.questions.filter(q => isWritingUiType(q.type));
       out.push({
         ...sec,
         id: isUuid(sec.id) ? `${sec.id}-speaking` : `${sec.id}_speak`,
@@ -213,9 +238,11 @@ export function mapQuestionToApi(
     passage_text: section.passage || null,
     question_text: q.text || '(No question text)',
     word_limit_instruction:
-      q.type === 'Task 2 Essay' && section.minWordLimit
+      isTask2WritingQuestion(q, section) && section.minWordLimit
         ? `Write at least ${section.minWordLimit} words.`
-        : null,
+        : section.writingTask === "Task 1" && section.minWordLimit
+          ? `Write at least ${section.minWordLimit} words.`
+          : null,
     options: q.options.filter(o => o !== undefined),
     correct_answer: buildCorrectAnswer(q),
     content: {},
@@ -224,7 +251,11 @@ export function mapQuestionToApi(
     order_number: order,
     marks: 1,
     difficulty: toApiDifficulty('medium'),
-    min_words: q.type === 'Task 2 Essay' ? section.minWordLimit || 250 : 0,
+    min_words: isWritingUiType(q.type)
+      ? isTask2WritingQuestion(q, section)
+        ? section.minWordLimit || 250
+        : section.minWordLimit || 150
+      : 0,
     max_words: q.wordLimit || 0,
     prep_time_seconds: q.prepTime || 0,
     record_time_seconds: q.recordingLimit || 0,

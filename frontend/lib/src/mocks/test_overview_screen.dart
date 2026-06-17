@@ -3,11 +3,14 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/app_theme.dart';
 import 'package:frontend/widgets/app_header.dart';
-import 'reading_test_screen.dart';
+import 'dynamic_test_screen.dart';
+import 'models/runtime_question.dart';
 
 class TestOverviewScreen extends StatelessWidget {
   final String testId;
   final String testTitle;
+  final String examType;
+  final String testCategory;
   final int questionCount;
   final int duration;
   final String difficulty;
@@ -15,20 +18,37 @@ class TestOverviewScreen extends StatelessWidget {
   final List<String> questionTypes;
 
   const TestOverviewScreen({
-    key,
+    super.key,
     required this.testId,
     required this.testTitle,
+    this.examType = 'IELTS',
+    this.testCategory = 'full_mock',
     required this.questionCount,
     required this.duration,
     required this.difficulty,
     required this.minBand,
     required this.questionTypes,
-  }) : super(key: key);
+  });
+
+  String get _subtitle {
+    if (testCategory == 'singular_module') {
+      return '$examType Module — $questionCount Questions';
+    }
+    return '$examType Full Mock — $questionCount Questions';
+  }
+
+  List<String> get _instructions {
+    return [
+      'Navigate freely between questions using Next and Prev.',
+      'Listening sections include audio — use headphones for best results.',
+      'Writing responses are evaluated by Testiva AI after submission.',
+      'Speaking sections are configured in admin but skipped in the mobile app for now.',
+      'Submit when finished — results appear after scoring completes.',
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppHeader(
@@ -55,7 +75,7 @@ class TestOverviewScreen extends StatelessWidget {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Icon(Icons.menu_book_outlined, color: Colors.white, size: 40),
+                    child: const Icon(Icons.assignment_outlined, color: Colors.white, size: 40),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -65,7 +85,7 @@ class TestOverviewScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Academic Module — $questionCount Questions',
+                    _subtitle,
                     style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 24),
@@ -84,24 +104,24 @@ class TestOverviewScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _buildQuestionTypesSection(context),
+                  if (questionTypes.isNotEmpty) _buildQuestionTypesSection(context),
                   const SizedBox(height: 20),
                   _buildInstructionsSection(context),
                   const SizedBox(height: 24),
                   AppButton(
-                    text: '🚀 Start Test',
+                    text: 'Start Test',
                     onPressed: () async {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ReadingTestScreen(
+                          builder: (context) => DynamicTestScreen(
                             testId: testId,
                             testTitle: testTitle,
                             totalDurationMinutes: duration,
                           ),
                         ),
                       );
-                      if (result == 'switch_to_mocks') {
+                      if (result == 'switch_to_mocks' && context.mounted) {
                         Navigator.pop(context, 'switch_to_mocks');
                       }
                     },
@@ -153,6 +173,7 @@ class TestOverviewScreen extends StatelessWidget {
   }
 
   Widget _buildQuestionTypesSection(BuildContext context) {
+    final chips = questionTypes.map((t) => TestRuntimeParser.chipLabel(t)).toSet().toList();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -172,7 +193,7 @@ class TestOverviewScreen extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: questionTypes.map((type) => Container(
+            children: chips.map((type) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppTheme.tagBg(context),
@@ -190,15 +211,6 @@ class TestOverviewScreen extends StatelessWidget {
   }
 
   Widget _buildInstructionsSection(BuildContext context) {
-    final instructions = [
-      'Read each passage carefully before answering',
-      'Questions may refer to specific paragraphs — check labels',
-      'True/False/Not Given: only answer "Not Given" if information is completely absent',
-      'Yes/No/Not Given tests the writer\'s opinions — not general facts',
-      'For Matching tasks, each option can only be used once unless stated',
-      'You can navigate freely between questions during the test'
-    ];
-
     final isDark = AppTheme.isDark(context);
     final bgColor = isDark ? Colors.blue.withValues(alpha: 0.12) : const Color(0xFFEEF7FF);
     final borderColor = isDark ? Colors.blue.withValues(alpha: 0.25) : const Color(0xFFD0E8FF);
@@ -226,32 +238,25 @@ class TestOverviewScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: instructions.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10.0),
+          ..._instructions.map((text) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(top: 2.0),
+                      padding: const EdgeInsets.only(top: 2),
                       child: Icon(Icons.check_circle, color: linkColor, size: 16),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        instructions[index],
+                        text,
                         style: TextStyle(fontSize: 13, color: AppTheme.primaryText(context).withValues(alpha: 0.8), height: 1.4, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],
                 ),
-              );
-            },
-          ),
+              )),
         ],
       ),
     );
