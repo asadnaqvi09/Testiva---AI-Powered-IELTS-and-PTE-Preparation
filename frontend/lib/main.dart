@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/providers/theme_provider.dart';
 import 'package:frontend/providers/feedback_provider.dart';
+import 'package:frontend/providers/notification_provider.dart';
 import 'package:frontend/src/onboarding/onboarding_screen.dart';
 import 'package:frontend/src/dashboard/dashboard_screen.dart';
 import 'package:frontend/src/profile/profile_screen.dart';
@@ -11,6 +12,7 @@ import 'package:frontend/src/prep/prep_screen.dart';
 import 'package:frontend/src/mocks/mocks_screen.dart';
 import 'package:frontend/src/auth/signup/email_verified_screen.dart';
 import 'package:frontend/src/auth/signup/preference_selection_screen.dart';
+import 'package:frontend/src/features/notifications/presentation/notifications_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +21,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => FeedbackProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: const TestivaApp(),
     ),
@@ -71,6 +74,7 @@ class TestivaApp extends StatelessWidget {
             '/profile': (context) => const ProfileScreen(),
             '/settings': (context) => const ProfileScreen(),
             '/feedback': (context) => const FeedbackScreen(),
+            '/notifications': (context) => const NotificationsScreen(),
             '/email-verified': (context) {
               final userName = ModalRoute.of(context)!.settings.arguments as String? ?? 'User';
               return EmailVerifiedScreen(userName: userName);

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/providers/notification_provider.dart';
 import 'package:frontend/widgets/app_theme.dart';
 import 'package:frontend/widgets/logout_dialog.dart';
 
@@ -201,7 +203,11 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   context,
                   icon: Icons.notifications_none,
                   text: 'Notifications',
-                  onTap: () => Navigator.pop(context),
+                  badgeCount: context.watch<NotificationProvider>().unreadCount,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/notifications');
+                  },
                 ),
               ],
             ),
@@ -251,6 +257,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     required String text,
     required VoidCallback onTap,
     bool isSelected = false,
+    int badgeCount = 0,
   }) {
     final theme = Theme.of(context);
     return Container(
@@ -280,8 +287,23 @@ class _CustomDrawerState extends State<CustomDrawer> {
             fontSize: 14,
           ),
         ),
-        trailing:
-            const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+        trailing: badgeCount > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badgeCount > 99 ? '99+' : '$badgeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
         onTap: onTap,
       ),
     );

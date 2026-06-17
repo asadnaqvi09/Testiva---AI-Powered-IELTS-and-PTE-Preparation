@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home/home_page.dart';
 import '../../widgets/custom_drawer.dart';
 import '../profile/profile_screen.dart';
@@ -8,6 +9,7 @@ import '../prep/prep_screen.dart';
 import '../features/community/presentation/community_screen.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:frontend/providers/notification_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,11 +21,38 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  NotificationProvider? _notificationProvider;
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfileAndCheckPreference();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<NotificationProvider>().initialize();
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _notificationProvider?.removeListener(_handlePendingNavigation);
+    _notificationProvider = context.read<NotificationProvider>();
+    _notificationProvider!.addListener(_handlePendingNavigation);
+  }
+
+  @override
+  void dispose() {
+    _notificationProvider?.removeListener(_handlePendingNavigation);
+    super.dispose();
+  }
+
+  void _handlePendingNavigation() {
+    final tab = _notificationProvider?.pendingDashboardTab;
+    if (tab == null || !mounted) return;
+    setState(() => _selectedIndex = tab);
+    _notificationProvider?.clearPendingNavigation();
   }
 
   Future<void> _fetchUserProfileAndCheckPreference() async {
