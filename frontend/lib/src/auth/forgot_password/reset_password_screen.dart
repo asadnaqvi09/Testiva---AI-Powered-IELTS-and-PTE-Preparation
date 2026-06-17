@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/services/api_service.dart'; // ApiService ka sahi path check kar lein
+import 'package:frontend/core/services/api_service.dart';
 import '../../../widgets/app_button.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  final String email; // FIX: Pichli screen ka error khatam karne ke liye field add kar di
+  final String email;
 
   const ResetPasswordScreen({super.key, required this.email});
 
@@ -16,7 +16,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _pass = TextEditingController();
   final _confirm = TextEditingController();
   bool _canUpdate = false;
-  bool _isLoading = false; // Senior Touch: Loader control variable
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -38,7 +38,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Backend router mapping ke mutabiq payload bhej rahe hain
+
       final response = await ApiService.post('/auth/reset-password', {
         'email': widget.email,
         'new_password': _pass.text.trim(),
@@ -56,7 +56,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ),
         );
 
-        // Sahi tarika: Password badal gaya, ab user ko seedha login page par wapas phenk dein
+
         Navigator.popUntil(context, (r) => r.isFirst);
       } else {
         if (!mounted) return;
@@ -113,7 +113,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
                   : AppButton(
                 text: 'Update Password',
-                // Button disable logic barkarar hai aur click par API function map kar diya
+
                 onPressed: _canUpdate ? _updatePassword : null,
               )
           ),

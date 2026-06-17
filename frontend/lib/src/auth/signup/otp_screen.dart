@@ -8,8 +8,7 @@ import 'package:frontend/widgets/app_button.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
-  // Password is passed from signup so we can auto-login after OTP verification
-  // to obtain an accessToken before navigating to SelectPreference
+
   final String? password;
 
   const OtpScreen({required this.email, this.password, super.key});
@@ -134,15 +133,13 @@ class _OtpScreenState extends State<OtpScreen> {
 
       if ((response.statusCode == 200 || response.statusCode == 201) &&
           responseData['success'] == true) {
-        // Get user name from verification response
+
         final userMap =
             responseData['user'] as Map<String, dynamic>? ?? {};
         final userName =
             userMap['full_name'] ?? userMap['name'] ?? 'User';
 
-        // ── Auto-login to obtain accessToken ──────────────────────────────
-        // verify-otp for register does NOT return a token, so we login
-        // automatically with the password passed from the signup form.
+
         if (widget.password != null && widget.password!.isNotEmpty) {
           try {
             final loginResp = await ApiService.post('/auth/login', {
@@ -172,12 +169,11 @@ class _OtpScreenState extends State<OtpScreen> {
               }
             }
           } catch (_) {
-            // Auto-login failed — user will be redirected to preference screen
-            // which requires auth; preference screen handles 401 gracefully.
+
           }
         }
 
-        // Navigate directly to SelectPreference — no intermediate screen
+
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
             context,

@@ -13,7 +13,7 @@ class StatsRow extends StatefulWidget {
 class _StatsRowState extends State<StatsRow> {
   bool _isLoading = true;
 
-  // Real-time server state variables (Defaults set hain taake server error par UI kharab na ho)
+
   String _dayStreak = '3';
   String _estBand = '6.5';
   String _testsDone = '5';

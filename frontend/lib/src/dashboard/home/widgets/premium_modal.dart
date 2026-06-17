@@ -29,7 +29,7 @@ class _PremiumModalState extends State<PremiumModal> {
     );
   }
 
-  // --- STEP 1: PLANS SCREEN ---
+
   Widget _buildPlansStep() {
     return Column(
       key: const ValueKey(0),
@@ -48,7 +48,7 @@ class _PremiumModalState extends State<PremiumModal> {
     );
   }
 
-  // --- STEP 2: PAYMENT SCREEN ---
+
   Widget _buildPaymentStep() {
     return Column(
       key: const ValueKey(1),
@@ -59,7 +59,7 @@ class _PremiumModalState extends State<PremiumModal> {
         _buildHeader('💳 Payment', 'Premium Package - Rs699'),
         const SizedBox(height: 20),
 
-        // Tab Switcher (Debit vs Digital Wallet)
+
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(color: AppTheme.inputFill(context), borderRadius: BorderRadius.circular(12)),
@@ -72,7 +72,7 @@ class _PremiumModalState extends State<PremiumModal> {
         ),
         const SizedBox(height: 24),
 
-        // Dynamic Form based on selection
+
         _isDigitalWallet ? _buildDigitalWalletView() : _buildCardView(),
 
         const Spacer(),
@@ -87,7 +87,7 @@ class _PremiumModalState extends State<PremiumModal> {
     );
   }
 
-  // Card Input View
+
   Widget _buildCardView() {
     return Column(
       children: [
@@ -106,7 +106,7 @@ class _PremiumModalState extends State<PremiumModal> {
     );
   }
 
-  // Digital Wallet View
+
   Widget _buildDigitalWalletView() {
     return Column(
       children: [
@@ -119,7 +119,7 @@ class _PremiumModalState extends State<PremiumModal> {
     );
   }
 
-  // --- HELPER WIDGETS ---
+
   Widget _buildHandle(BuildContext context) => Container(
     width: 40,
     height: 4,
