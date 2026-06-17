@@ -32,7 +32,7 @@ export const sendBulkNotifications = async (params) => {
   const { io, recipientIds = [], senderId = null, type, title, message, postId = null, commentId = null } = params;
   if (!recipientIds.length) return [];
   const notifications = await createBulkNotifications({
-    recipientIds, senderId, type, title, message, postId, commentId
+    recipientIds, senderId, type, title, message, post_id: postId, comment_id: commentId
   });
   setImmediate(() => {
     notifications.forEach(notif => {

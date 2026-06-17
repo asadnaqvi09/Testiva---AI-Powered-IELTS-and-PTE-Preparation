@@ -122,51 +122,69 @@ export const loginUser = async (req, res) => {
 
 export const verifyOTP = async (req, res) => {
   const client = await pool.connect();
+
   try {
     const { error, value } = authValidator.otpSchema.validate(req.body);
+
     if (error) {
       return res
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
+
     const { email, otp, type } = value;
+
     await client.query("BEGIN");
+
     const { rows } = await client.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type=$2 FOR UPDATE`,
       [email, type],
     );
+
     const temp = rows[0];
+
     if (!temp) {
       await client.query("ROLLBACK");
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
+
     if (temp.attempts >= 5) {
       await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [
         email,
         type,
       ]);
+
       await client.query("COMMIT");
+
       return res
         .status(400)
         .json({ success: false, message: "Too many attempts" });
     }
+
     const match = await bcrypt.compare(String(otp), temp.otp_code);
+
     if (!match) {
       await client.query(
         `UPDATE temp_users SET attempts = attempts + 1 WHERE email=$1 AND type=$2`,
         [email, type],
       );
+
       await client.query("COMMIT");
+
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
+
     if (new Date(temp.expires_at) < new Date()) {
       await client.query(`DELETE FROM temp_users WHERE email=$1 AND type=$2`, [
         email,
         type,
       ]);
+
       await client.query("COMMIT");
+
       return res.status(400).json({ success: false, message: "OTP expired" });
     }
+
     if (type === "register") {
       const { rows: userRows } = await client.query(
         `INSERT INTO users (full_name,email,password_hash,auth_provider,is_email_verified,subscription,preference)
@@ -174,35 +192,46 @@ export const verifyOTP = async (req, res) => {
          RETURNING *`,
         [temp.full_name, temp.email, temp.password_hash],
       );
+
       const user = userRows[0];
+
+      await client.query(
+        `DELETE FROM temp_users WHERE email=$1 AND type='register'`,
+        [email],
+      );
+
+      await client.query("COMMIT");
+
       try {
         await handleAdminNewUserNotification(req.io, user);
       } catch (e) {
         console.error(e);
       }
-      await client.query(
-        `DELETE FROM temp_users WHERE email=$1 AND type='register'`,
-        [email],
-      );
-      await client.query("COMMIT");
+
       return res.status(201).json({
         success: true,
         message: "Account verified",
-        user: user,
+        user,
       });
     }
+
     if (type === "reset") {
       await client.query(
         `UPDATE temp_users SET is_verified=true WHERE email=$1 AND type='reset'`,
         [email],
       );
+
       await client.query("COMMIT");
+
       return res.json({ success: true, message: "OTP verified" });
     }
+
     await client.query("ROLLBACK");
   } catch (err) {
     console.error("DEBUG verifyOTP error:", err);
+
     await client.query("ROLLBACK");
+
     return res
       .status(500)
       .json({ success: false, message: "Verification failed" });

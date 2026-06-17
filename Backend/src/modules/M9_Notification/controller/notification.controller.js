@@ -1,5 +1,3 @@
-// src/modules/M9_Notification/controller/notification.controller.js
-
 import {
   getUserNotifications,
   getUnreadNotificationCount,

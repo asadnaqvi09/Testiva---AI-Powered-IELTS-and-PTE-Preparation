@@ -3,7 +3,7 @@
  * Maps directly to Router: M9_Notification/routes/notification.routes.js
  */
 
-const BASE_URL = '/api/notifications';
+const BASE_URL = '/api/v1/notifications';
 
 // Helper to get headers with Auth token
 const getHeaders = () => {
