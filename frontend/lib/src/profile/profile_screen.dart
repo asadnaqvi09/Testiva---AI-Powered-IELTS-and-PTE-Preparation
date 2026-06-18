@@ -500,9 +500,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: MaterialButton(
         onPressed: () {
+          final hostContext = context;
           showDialog(
-            context: context,
-            builder: (context) => const LogoutDialog(),
+            context: hostContext,
+            builder: (dialogContext) => LogoutDialog(hostContext: hostContext),
           );
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

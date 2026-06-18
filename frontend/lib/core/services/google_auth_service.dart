@@ -15,6 +15,7 @@ class GoogleAuthService {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (_) => const PopScope(
         canPop: false,
         child: Center(
@@ -42,15 +43,22 @@ class GoogleAuthService {
     }
   }
 
+  static Future<GoogleSignInAccount?> _resolveGoogleUser() async {
+    GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+    googleUser ??= await _googleSignIn.signIn();
+    return googleUser;
+  }
+
   static Future<void> handleGoogleSignIn(BuildContext context) async {
+    if (!context.mounted) return;
+    await _showLoadingOverlay(context);
+
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _resolveGoogleUser();
       if (googleUser == null) {
+        if (context.mounted) _hideLoadingOverlay(context);
         return;
       }
-
-      if (!context.mounted) return;
-      await _showLoadingOverlay(context);
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;

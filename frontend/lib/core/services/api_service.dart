@@ -95,6 +95,13 @@ class ApiService {
         !endpoint.startsWith('/auth/verify-otp');
   }
 
+  static Duration _timeoutFor(String endpoint) {
+    if (endpoint.startsWith('/auth/') || endpoint.startsWith('/ai/')) {
+      return const Duration(seconds: 20);
+    }
+    return const Duration(seconds: 10);
+  }
+
   static Future<http.Response> _request(
     String method,
     String endpoint, {
@@ -104,7 +111,7 @@ class ApiService {
   }) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final headers = await _getHeaders();
-    const timeout = Duration(seconds: 10);
+    final timeout = _timeoutFor(endpoint);
     late http.Response response;
     switch (method) {
       case 'POST':

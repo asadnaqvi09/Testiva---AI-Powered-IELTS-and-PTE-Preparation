@@ -14,6 +14,14 @@ import { sendError, buildPagination } from '../../../utils/helpers.js';
 const USER_PAGE_LIMIT = 10;
 const ADMIN_PAGE_LIMIT = 8;
 
+const buildCommentTree = (comments, parentId = null) =>
+  comments
+    .filter((comment) => (comment.parent_id ?? null) === parentId)
+    .map((comment) => ({
+      ...comment,
+      replies: buildCommentTree(comments, comment.id),
+    }));
+
 export const createPost = async (req, res) => {
   try {
     const body = validateCreatePost(req.body);
@@ -101,7 +109,7 @@ export const createComment = async (req, res) => {
     let parentComment = null;
     if (body.parent_id) {
       parentComment = await CommentModel.getParentCommentPostId(body.parent_id);
-      if (!parentComment || parentComment.post_id !== postId || parentComment.parent_id) {
+      if (!parentComment || parentComment.post_id !== postId) {
         return res.status(400).json({ success: false, message: 'Invalid parent comment' });
       }
     }
@@ -111,18 +119,22 @@ export const createComment = async (req, res) => {
     const fullComment = await CommentModel.getCommentById(comment.id);
     const post = await PostModel.getPostById(postId);
     emitCommentCreated(req.io, { comment: fullComment, topic_tag: post.topic_tag });
-    if (body.parent_id && parentComment) {
-      await handleReplyNotification(req.io, {
-        actorId: req.user.id,
-        actorName: req.user.full_name,
-        parentCommentOwnerId: parentComment.user_id,
-        postId,
-        commentId: comment.id,
-      });
-    } else {
-      await handleCommentNotification(req.io, {
-        actorId: req.user.id, actorName: req.user.full_name, postOwnerId: post.user_id, postId
-      });
+    try {
+      if (body.parent_id && parentComment) {
+        await handleReplyNotification(req.io, {
+          actorId: req.user.id,
+          actorName: req.user.full_name,
+          parentCommentOwnerId: parentComment.user_id,
+          postId,
+          commentId: comment.id,
+        });
+      } else {
+        await handleCommentNotification(req.io, {
+          actorId: req.user.id, actorName: req.user.full_name, postOwnerId: post.user_id, postId
+        });
+      }
+    } catch (notificationErr) {
+      console.error("Comment notification error:", notificationErr.message);
     }
     return res.status(201).json({ success: true, data: fullComment });
   } catch (err) { return sendError(res, err); }
@@ -141,12 +153,7 @@ export const getComments = async (req, res) => {
       postId,
       userId: req.user.id
     });
-    const nestedComments = comments
-      .filter((c) => !c.parent_id)
-      .map((parent) => ({
-        ...parent,
-        replies: comments.filter((r) => r.parent_id === parent.id),
-      }));
+    const nestedComments = buildCommentTree(comments);
     return res.json({ success: true, data: nestedComments });
   } catch (err) {
     console.error("getComments error:", err);

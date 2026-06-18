@@ -1,24 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:frontend/core/services/api_service.dart';
-import 'package:frontend/providers/notification_provider.dart';
+import 'package:frontend/core/services/logout_helper.dart';
 import 'app_theme.dart';
 
 class LogoutDialog extends StatelessWidget {
-  const LogoutDialog({super.key});
+  final BuildContext hostContext;
 
-  Future<void> _handleSecureLogout(BuildContext context) async {
-    try {
-      context.read<NotificationProvider>().reset();
-      await ApiService.logout();
-    } catch (e) {
-      debugPrint("Local cache tracking flush error: ${e.toString()}");
-    } finally {
-      if (context.mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-      }
-    }
-  }
+  const LogoutDialog({
+    super.key,
+    required this.hostContext,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,9 +42,9 @@ class LogoutDialog extends StatelessWidget {
           child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             Navigator.pop(context);
-            _handleSecureLogout(context);
+            await LogoutHelper.performLogout(hostContext);
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,

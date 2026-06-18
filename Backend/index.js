@@ -1,8 +1,8 @@
+import "./src/config/env.js";
 import http from "http";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import morgan from "morgan";
 import { Server } from "socket.io";
 import authRoutes from './src/modules/M1_Identity/auth/routes/auth.routes.js';
@@ -19,8 +19,6 @@ import { initSocketIO } from './src/modules/M9_Notification/socketIO/index.js';
 import { setSocketServer } from './src/config/socket.js';
 import './src/modules/M5_Offline/sync.worker.js';
 import { errorHandler } from './src/middleware/error.middleware.js';
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);

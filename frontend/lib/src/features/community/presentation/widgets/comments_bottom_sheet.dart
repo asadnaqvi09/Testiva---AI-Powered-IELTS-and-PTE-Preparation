@@ -63,10 +63,11 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     });
 
     try {
-      final response = await ApiService.post('/community/${widget.postId}/comments', {
-        'content': text,
-        'parent_id': parentId,
-      });
+      final body = <String, dynamic>{'content': text};
+      if (parentId != null) {
+        body['parent_id'] = parentId;
+      }
+      final response = await ApiService.post('/community/${widget.postId}/comments', body);
       if (response.statusCode == 201) {
         _fetchComments();
       }
@@ -91,89 +92,102 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     return parts[0][0].toUpperCase();
   }
 
-  int get _totalCommentsCount {
-    int count = 0;
-    for (var c in _comments) {
-      count++;
-      count += c.replies.length;
+  int _countComments(List<CommentModel> comments) {
+    var count = 0;
+    for (final comment in comments) {
+      count += 1;
+      count += _countComments(comment.replies);
     }
     return count;
   }
 
-  Widget _buildCommentTile(CommentModel comment, {bool isReply = false}) {
+  int get _totalCommentsCount => _countComments(_comments);
+
+  void _startReply(CommentModel comment) {
+    setState(() {
+      _replyToCommentId = comment.id;
+      _replyToName = comment.fullName;
+    });
+  }
+
+  Widget _buildCommentTile(CommentModel comment, {double indent = 0}) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: const Color(0xFF007BFF),
-              backgroundImage: comment.profileImage != null ? NetworkImage(comment.profileImage!) : null,
-              child: comment.profileImage == null
-                  ? Text(
-                      _getInitials(comment.fullName),
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(16)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(comment.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    Text(comment.content, style: const TextStyle(fontSize: 13, height: 1.4)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
         Padding(
-          padding: const EdgeInsets.only(left: 42, top: 8, bottom: 16),
-          child: Row(
+          padding: EdgeInsets.only(left: indent),
+          child: Column(
             children: [
-              Text(comment.timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-              const SizedBox(width: 16),
-              GestureDetector(
-                onTap: () => _toggleCommentLike(comment.id),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: const Color(0xFF007BFF),
+                    backgroundImage: comment.profileImage != null ? NetworkImage(comment.profileImage!) : null,
+                    child: comment.profileImage == null
+                        ? Text(
+                            _getInitials(comment.fullName),
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(16)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(comment.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 4),
+                          Text(comment.content, style: const TextStyle(fontSize: 13, height: 1.4)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 42, top: 8, bottom: 8),
                 child: Row(
                   children: [
-                    Icon(
-                      comment.likedByMe ? Icons.favorite : Icons.favorite_border,
-                      size: 14,
-                      color: comment.likedByMe ? Colors.red : Colors.grey,
+                    Text(comment.timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      onTap: () => _toggleCommentLike(comment.id),
+                      child: Row(
+                        children: [
+                          Icon(
+                            comment.likedByMe ? Icons.favorite : Icons.favorite_border,
+                            size: 14,
+                            color: comment.likedByMe ? Colors.red : Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${comment.likeCount}',
+                            style: const TextStyle(color: Colors.grey, fontSize: 11),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${comment.likeCount}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      onTap: () => _startReply(comment),
+                      child: const Text(
+                        'Reply',
+                        style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
               ),
-              if (!isReply) ...[
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _replyToCommentId = comment.id;
-                      _replyToName = comment.fullName;
-                    });
-                  },
-                  child: const Text(
-                    'Reply',
-                    style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
             ],
           ),
+        ),
+        ...comment.replies.map(
+          (reply) => _buildCommentTile(reply, indent: indent + 24),
         ),
       ],
     );
@@ -230,22 +244,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _comments.length,
                         itemBuilder: (context, index) {
-                          final comment = _comments[index];
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCommentTile(comment),
-                              if (comment.replies.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 40),
-                                  child: Column(
-                                    children: comment.replies.map((reply) {
-                                      return _buildCommentTile(reply, isReply: true);
-                                    }).toList(),
-                                  ),
-                                ),
-                            ],
-                          );
+                          return _buildCommentTile(_comments[index]);
                         },
                       ),
           ),

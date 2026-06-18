@@ -101,13 +101,13 @@ export const loginUser = async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     const accessToken = generateAccessToken(buildToken(user));
     const refreshToken = generateRefreshToken(user.id);
-    await pool.query(
-      `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
-      [user.id, refreshToken],
-    );
-    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [
-      user.id,
+    await Promise.all([
+      pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]),
+      pool.query(
+        `INSERT INTO refresh_tokens (user_id, token, expires_at)
+         VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
+        [user.id, refreshToken],
+      ),
     ]);
     return res.json({
       success: true,
@@ -500,16 +500,16 @@ export const googleAuth = async (req, res) => {
         console.error(e);
       }
     }
-    await pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [
-      user.id,
-    ]);
     const accessToken = generateAccessToken(buildToken(user));
     const refreshToken = generateRefreshToken(user.id);
-    await pool.query(
-      `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
-      [user.id, refreshToken],
-    );
+    await Promise.all([
+      pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]),
+      pool.query(
+        `INSERT INTO refresh_tokens (user_id, token, expires_at)
+         VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
+        [user.id, refreshToken],
+      ),
+    ]);
     return res.json({
       success: true,
       accessToken,

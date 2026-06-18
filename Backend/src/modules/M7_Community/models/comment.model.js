@@ -118,7 +118,7 @@ export const flagComment = async ({ commentId, flaggedBy, flagReason }) => {
 
 export const getParentCommentPostId = async (commentId) => {
   const result = await pool.query(
-    `SELECT post_id, parent_id
+    `SELECT post_id, parent_id, user_id
      FROM comments
      WHERE id = $1 AND deleted_at IS NULL`,
     [commentId]

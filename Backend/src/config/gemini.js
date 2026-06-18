@@ -1,7 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
-
-dotenv.config();
+import "./env.js";
 
 export const GEMINI_MODEL_ID = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 

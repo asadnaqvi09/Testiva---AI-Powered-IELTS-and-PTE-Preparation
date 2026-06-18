@@ -227,10 +227,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     style: TextStyle(
                         color: Colors.red, fontWeight: FontWeight.bold)),
                 onTap: () {
+                  final hostContext =
+                      Navigator.of(context, rootNavigator: true).overlay!.context;
                   Navigator.pop(context);
                   showDialog(
-                    context: context,
-                    builder: (context) => const LogoutDialog(),
+                    context: hostContext,
+                    builder: (dialogContext) => LogoutDialog(hostContext: hostContext),
                   );
                 },
               ),
