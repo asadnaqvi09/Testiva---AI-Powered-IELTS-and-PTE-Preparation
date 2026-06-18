@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_header.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/socket_service.dart';
 import '../../../../data/models/community_post_model.dart';
 import 'widgets/community_post_card.dart';
 import 'widgets/community_filter_chips.dart';
@@ -26,6 +27,108 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _initSocket();
+  }
+
+  @override
+  void dispose() {
+    _detachSocketListeners();
+    socketService.removeConnectListener(_attachSocketListeners);
+    super.dispose();
+  }
+
+  Future<void> _initSocket() async {
+    await socketService.connect();
+    _attachSocketListeners();
+    socketService.onConnect(_attachSocketListeners);
+  }
+
+  void _attachSocketListeners() {
+    socketService.off('post_created', _handlePostCreated);
+    socketService.off('post_like_updated', _handlePostLikeUpdated);
+    socketService.off('comment_created', _handleCommentCreated);
+    socketService.off('post:removed', _handlePostRemoved);
+    socketService.off('online_count', _handleOnlineCount);
+    socketService.on('post_created', _handlePostCreated);
+    socketService.on('post_like_updated', _handlePostLikeUpdated);
+    socketService.on('comment_created', _handleCommentCreated);
+    socketService.on('post:removed', _handlePostRemoved);
+    socketService.on('online_count', _handleOnlineCount);
+  }
+
+  void _detachSocketListeners() {
+    socketService.off('post_created', _handlePostCreated);
+    socketService.off('post_like_updated', _handlePostLikeUpdated);
+    socketService.off('comment_created', _handleCommentCreated);
+    socketService.off('post:removed', _handlePostRemoved);
+    socketService.off('online_count', _handleOnlineCount);
+  }
+
+  bool _matchesFilter(String topicTag) {
+    if (_selectedFilter == 'All') return true;
+    return _selectedFilter == topicTag;
+  }
+
+  void _handlePostCreated(dynamic data) {
+    if (data is! Map) return;
+    try {
+      final post = CommunityPostModel.fromJson(Map<String, dynamic>.from(data));
+      if (!_matchesFilter(post.tag)) return;
+      if (_posts.any((p) => p.id == post.id)) return;
+      if (!mounted) return;
+      setState(() {
+        _posts = [post, ..._posts];
+      });
+    } catch (e) {
+      debugPrint('[Community] post_created parse error: $e');
+    }
+  }
+
+  void _handlePostLikeUpdated(dynamic data) {
+    if (data is! Map) return;
+    final postId = data['postId']?.toString();
+    final likeCount = data['likeCount'];
+    if (postId == null || likeCount is! int) return;
+    final index = _posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    if (!mounted) return;
+    setState(() {
+      _posts[index] = _posts[index].copyWith(likes: likeCount);
+    });
+  }
+
+  void _handleCommentCreated(dynamic data) {
+    if (data is! Map) return;
+    final comment = data['comment'];
+    if (comment is! Map) return;
+    final postId = comment['post_id']?.toString();
+    if (postId == null) return;
+    final index = _posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+    if (!mounted) return;
+    setState(() {
+      _posts[index] = _posts[index].copyWith(comments: _posts[index].comments + 1);
+    });
+  }
+
+  void _handlePostRemoved(dynamic data) {
+    if (data is! Map) return;
+    final postId = data['postId']?.toString();
+    if (postId == null) return;
+    if (!mounted) return;
+    setState(() {
+      _posts.removeWhere((p) => p.id == postId);
+    });
+  }
+
+  void _handleOnlineCount(dynamic data) {
+    if (data is! Map) return;
+    final count = data['count'];
+    if (count is! int) return;
+    if (!mounted) return;
+    setState(() {
+      _onlineCount = count;
+    });
   }
 
   Future<void> _loadData() async {
@@ -209,7 +312,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const SnackBar(content: Text('Post created successfully!')),
             );
           }
-          _fetchPosts();
+          if (body['data'] is Map) {
+            _handlePostCreated(body['data']);
+          } else {
+            _fetchPosts();
+          }
         }
       } else {
         final body = jsonDecode(response.body);
@@ -224,7 +331,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         }
       }
     } catch (e) {
-      debugPrint("Error creating post: $e");
+      debugPrint('Error creating post: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connection error: Failed to reach server'), backgroundColor: Colors.red),
@@ -311,8 +418,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           itemBuilder: (context, index) {
                             final post = _posts[index];
                             return CommunityPostCard(
+                              key: ValueKey(post.id),
                               post: post,
-                              onLikeToggled: _fetchPosts,
                             );
                           },
                         ),

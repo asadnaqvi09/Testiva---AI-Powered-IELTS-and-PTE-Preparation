@@ -65,7 +65,7 @@ app.use(`${API_V1}/community`, communityRoutes);
 app.use(`${API_V1}/notifications`, notificationRoutes);
 
 app.use(errorHandler);
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`
   🚀 Testiva Engine Online

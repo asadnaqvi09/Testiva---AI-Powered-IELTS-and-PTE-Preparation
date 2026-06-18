@@ -2,7 +2,6 @@ import express from 'express';
 import * as authController from '../controller/auth.controller.js';
 import * as rateLimiter from '../../../../middleware/rateLimiter.middleware.js';
 import { authenticate } from '../../../../middleware/auth.middleware.js';
-import {onboardingMiddleware} from '../../../../middleware/onBoarding.middleware.js';
 
 const Router = express.Router();
 

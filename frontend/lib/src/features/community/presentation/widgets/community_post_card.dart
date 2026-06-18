@@ -7,12 +7,10 @@ import 'comments_bottom_sheet.dart';
 
 class CommunityPostCard extends StatefulWidget {
   final CommunityPostModel post;
-  final VoidCallback onLikeToggled;
 
   const CommunityPostCard({
     super.key,
     required this.post,
-    required this.onLikeToggled,
   });
 
   @override
@@ -69,9 +67,7 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
         _revertLike();
       } else {
         final body = jsonDecode(response.body);
-        if (body['success'] == true) {
-          widget.onLikeToggled();
-        } else {
+        if (body['success'] != true) {
           _revertLike();
         }
       }
@@ -109,7 +105,7 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => CommentsBottomSheet(postId: widget.post.id, postTitle: widget.post.title),
-    ).then((_) => widget.onLikeToggled());
+    );
   }
 
   @override

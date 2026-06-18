@@ -13,8 +13,12 @@ class SocketService {
   Future<void> connect() async {
     final token = await ApiService.getToken();
     if (token == null || token.isEmpty) return;
+    if (_socket?.connected == true) return;
 
-    disconnect();
+    if (_socket != null) {
+      _socket!.dispose();
+      _socket = null;
+    }
 
     _socket = io.io(
       '${ApiService.socketBaseUrl}/community',

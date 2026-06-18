@@ -38,7 +38,7 @@ const BASE = '/api/v1';
     try {
       res = await fetch(`${BASE}${endpoint}`, { ...options, headers });
     } catch (fetchErr) {
-      throw new Error('Backend unreachable. Make sure the server is running on port 3000.');
+      throw new Error('Backend unreachable. Make sure the server is running on port 5000.');
     }
 
     if (res.status === 401) {

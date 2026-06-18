@@ -29,7 +29,7 @@ class CommunityPostModel {
     return CommunityPostModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      authorName: json['full_name'] as String,
+      authorName: json['full_name'] as String? ?? 'User',
       authorAvatar: json['avatar_url'] as String?,
       tag: json['topic_tag'] as String,
       title: json['title'] as String,
@@ -38,6 +38,26 @@ class CommunityPostModel {
       comments: json['comment_count'] as int? ?? 0,
       likedByMe: json['liked_by_me'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  CommunityPostModel copyWith({
+    int? likes,
+    int? comments,
+    bool? likedByMe,
+  }) {
+    return CommunityPostModel(
+      id: id,
+      userId: userId,
+      authorName: authorName,
+      authorAvatar: authorAvatar,
+      tag: tag,
+      title: title,
+      content: content,
+      likes: likes ?? this.likes,
+      comments: comments ?? this.comments,
+      likedByMe: likedByMe ?? this.likedByMe,
+      createdAt: createdAt,
     );
   }
 
