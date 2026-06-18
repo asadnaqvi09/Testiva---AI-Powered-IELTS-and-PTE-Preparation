@@ -258,3 +258,13 @@ export const getUserHistoricalResults = async (userId) => {
   );
   return result.rows;
 };
+
+export const createAppFeedback = async ({ userId, rating, category, comment }) => {
+  const result = await pool.query(
+    `INSERT INTO user_app_feedback (user_id, rating, category, comment)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, user_id, rating, category, comment, created_at`,
+    [userId, rating, category, comment],
+  );
+  return result.rows[0];
+};

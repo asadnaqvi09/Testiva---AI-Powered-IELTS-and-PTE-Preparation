@@ -76,7 +76,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void _showCreatePostSheet() {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
-    String selectedTag = 'GENERAL';
+    String selectedTag = 'General';
 
     showModalBottomSheet(
       context: context,
@@ -138,7 +138,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         const SizedBox(width: 8),
                         DropdownButton<String>(
                           value: selectedTag,
-                          items: ['GENERAL', 'IELTS', 'PTE'].map((tag) {
+                          items: ['General', 'IELTS', 'PTE'].map((tag) {
                             return DropdownMenuItem<String>(
                               value: tag,
                               child: Text(tag),

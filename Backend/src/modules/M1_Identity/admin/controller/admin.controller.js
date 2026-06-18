@@ -54,13 +54,14 @@ export const getAllUsers = async (req, res) => {
         }
         const totalCountRes = await pool.query(countQuery, countParams);
         const totalUsers = parseInt(totalCountRes.rows[0].count);
+        const totalPages = Math.ceil(totalUsers / limit);
         return res.status(200).json({
             success: true,
             message: "All Users Fetched Successfully",
             count: users.length,
             totalUsers,
             page,
-            totalPage: Math.ceil(totalUsers/limit),
+            totalPages,
             data: users
         })
     } catch (error) {

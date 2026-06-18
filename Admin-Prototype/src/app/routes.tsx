@@ -10,7 +10,6 @@ import { Analytics } from './pages/Analytics';
 import { Community } from './pages/Community';
 import { Subscriptions } from './pages/Subscriptions';
 import { Settings } from './pages/Settings';
-import { Institutes } from './pages/Institutes';
 import { TestBuilder } from './pages/TestBuilder';
 
 export const router = createBrowserRouter([
@@ -25,7 +24,6 @@ export const router = createBrowserRouter([
       { index: true, Component: () => <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', Component: Dashboard },
       { path: 'users', Component: Users },
-      { path: 'institutes', Component: Institutes },
       { path: 'mocks', Component: Mocks },
       { path: 'preparation', Component: Preparation },
       { path: 'analytics', Component: Analytics },

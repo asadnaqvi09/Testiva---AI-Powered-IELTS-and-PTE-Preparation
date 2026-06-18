@@ -7,10 +7,13 @@ import { MocksProvider } from '../../context/MocksContext';
 import { Toaster } from 'sonner';
 
 export function DashboardLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#F5F7FA' }}>

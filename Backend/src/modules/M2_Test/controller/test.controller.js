@@ -1,6 +1,7 @@
 import pool from "../../../config/db.js";
 import cloudinary from "../../../config/cloudinary.js";
 import { cacheGetJson, cacheSetJson, cacheDelMany, cacheDelByPrefix } from "../../../utils/redisCache.js";
+import { findUserById } from "../../M1_Identity/user.model.js";
 import * as testModel from "../models/test.model.js";
 import {
   createTestSchema,
@@ -9,6 +10,17 @@ import {
   updateQuestionSchema,
   addQuestionSchema,
 } from "../validator/test.validator.js";
+
+async function resolveTestUserAccess(req) {
+  const user = await findUserById(req.user.id);
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    subscription: user.subscription || "free",
+    preference: user.preference ?? null,
+  };
+}
 
 function pteSingleGuard(exam_type, test_category) {
   return exam_type === "PTE" && test_category === "singular_module";
@@ -77,14 +89,13 @@ export const fetchAdminMocksDashboard = async (req, res) => {
 
 export const fetchMobileMocksDashboard = async (req, res) => {
   try {
-    const subscription = req.user.subscription || "free";
-    const userPreference = req.user.preference;
-    const role = req.user.role;
-    
+    const access = await resolveTestUserAccess(req);
+    if (!access) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const { subscription, preference: userPreference, role } = access;
     let examTypes = ["IELTS", "PTE"];
     const filter = req.query.exam_type;
-
-    // Enforce isolation for non-premium/non-admin users
     if (role !== "admin" && subscription !== "premium") {
       if (!userPreference) {
         return res.status(403).json({ success: false, message: "Please select your learning preference to continue" });
@@ -94,12 +105,11 @@ export const fetchMobileMocksDashboard = async (req, res) => {
       if (filter === "IELTS") examTypes = ["IELTS"];
       else if (filter === "PTE") examTypes = ["PTE"];
     }
-
-    const cacheKey = `test:mobile:${req.user.id}:${filter || "ALL"}:${subscription}`;
+    const cacheKey = `test:mobile:${access.id}:${filter || "ALL"}:${subscription}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) return res.status(200).json({ success: true, cached: true, data: cached });
     
-    const rows = await testModel.listMobilePublished(req.user.id, examTypes);
+    const rows = await testModel.listMobilePublished(access.id, examTypes);
     const data = rows.map((r) => ({
       id: r.id,
       display_id: r.display_id,
@@ -129,28 +139,28 @@ export const fetchMobileMocksDashboard = async (req, res) => {
 
 export const getTestPreview = async (req, res) => {
   try {
+    const access = await resolveTestUserAccess(req);
+    if (!access) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     const { id } = req.params;
     const cacheKey = `test:preview:${id}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
-      // Validate track access on cache hit
-      if (req.user.role !== "admin" && req.user.subscription !== "premium") {
-        if (cached.exam_type !== req.user.preference) {
+      if (access.role !== "admin" && access.subscription !== "premium") {
+        if (cached.exam_type !== access.preference) {
           return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
         }
       }
       return res.status(200).json({ success: true, data: cached });
     }
-
     const t = await testModel.getPreviewPayload(id);
     if (!t) return res.status(404).json({ success: false, message: "Test not found" });
-    
-    if (req.user.role !== "admin") {
+    if (access.role !== "admin") {
       if (!t.is_published) {
         return res.status(403).json({ success: false, message: "Not available" });
       }
-      // Track isolation validation logic
-      if (req.user.subscription !== "premium" && t.exam_type !== req.user.preference) {
+      if (access.subscription !== "premium" && t.exam_type !== access.preference) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
       }
     }
@@ -164,29 +174,28 @@ export const getTestPreview = async (req, res) => {
 
 export const getTestRuntime = async (req, res) => {
   try {
+    const access = await resolveTestUserAccess(req);
+    if (!access) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     const { id } = req.params;
-    const subscription = req.user.subscription || "free";
-    const adminReview = req.user.role === "admin" && req.query.admin_review === "true";
+    const subscription = access.subscription;
+    const adminReview = access.role === "admin" && req.query.admin_review === "true";
     const cacheKey = adminReview ? `test:admin:${id}` : `test:runtime:${id}:${subscription}`;
-    
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
       if (!adminReview && subscription !== "premium") {
-        if (cached.exam_type !== req.user.preference) {
+        if (cached.exam_type !== access.preference) {
           return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
         }
       }
       return res.status(200).json({ success: true, data: cached });
     }
-
     const data = await testModel.getStructuredTest(id, { includeCorrect: adminReview });
     if (!data) return res.status(404).json({ success: false, message: "Test not found" });
-    
-    if (req.user.role !== "admin") {
+    if (access.role !== "admin") {
       if (!data.is_published) return res.status(403).json({ success: false, message: "Not available" });
-      
-      // Track isolation validation logic
-      if (subscription !== "premium" && data.exam_type !== req.user.preference) {
+      if (subscription !== "premium" && data.exam_type !== access.preference) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
       }
 
@@ -403,7 +412,11 @@ export const upsertTestNested = async (req, res) => {
 
 export const fetchAvailableTests = async (req, res) => {
   try {
-    const { subscription, role, preference } = req.user;
+    const access = await resolveTestUserAccess(req);
+    if (!access) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const { subscription, role, preference } = access;
     if (role === "admin") {
       const tests = await testModel.getAllTests(100, 0);
       return res.status(200).json({ success: true, data: tests });
@@ -434,25 +447,27 @@ export const fetchTests = async (req, res) => {
 
 export const getTestById = async (req, res) => {
   try {
-    const subscription = req.user.subscription || "free";
-    const cacheKey = req.user.role === "admin" ? `test:admin:${req.params.id}` : `test:runtime:${req.params.id}:${subscription}`;
+    const access = await resolveTestUserAccess(req);
+    if (!access) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const subscription = access.subscription;
+    const cacheKey = access.role === "admin" ? `test:admin:${req.params.id}` : `test:runtime:${req.params.id}:${subscription}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
-      if (req.user.role !== "admin" && subscription !== "premium") {
-        if (cached.exam_type !== req.user.preference) {
+      if (access.role !== "admin" && subscription !== "premium") {
+        if (cached.exam_type !== access.preference) {
           return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
         }
       }
       return res.status(200).json({ success: true, data: cached });
     }
-    
-    const includeCorrect = req.user.role === "admin";
+    const includeCorrect = access.role === "admin";
     let testDetails = await testModel.getStructuredTest(req.params.id, { includeCorrect });
     if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
-    
-    if (req.user.role !== "admin") {
+    if (access.role !== "admin") {
       if (!testDetails.is_published) return res.status(403).json({ success: false, message: "Not available" });
-      if (subscription !== "premium" && testDetails.exam_type !== req.user.preference) {
+      if (subscription !== "premium" && testDetails.exam_type !== access.preference) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
       }
       if (subscription === "free") {

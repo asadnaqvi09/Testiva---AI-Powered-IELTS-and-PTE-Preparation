@@ -70,9 +70,7 @@ class GoogleAuthService {
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 && responseData['success'] == true) {
-        if (responseData['accessToken'] != null) {
-          await ApiService.setToken(responseData['accessToken'].toString());
-        }
+        await ApiService.persistAuthResponse(responseData);
 
         if (!context.mounted) return;
 

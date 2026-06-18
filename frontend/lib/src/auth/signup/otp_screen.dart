@@ -148,9 +148,9 @@ class _OtpScreenState extends State<OtpScreen> {
             });
             if (loginResp.statusCode == 200) {
               final loginData = jsonDecode(loginResp.body);
-              if (loginData['accessToken'] != null) {
-                await ApiService.setToken(loginData['accessToken']);
-              }
+              await ApiService.persistAuthResponse(
+                Map<String, dynamic>.from(loginData as Map),
+              );
               if (loginData['user'] != null) {
                 UserNotifier.notifier.value = {
                   'name': loginData['user']['full_name'] ??

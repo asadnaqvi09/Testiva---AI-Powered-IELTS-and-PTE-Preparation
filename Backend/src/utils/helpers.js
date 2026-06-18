@@ -26,7 +26,13 @@ export const sendError = (res, err) => res.status(err.statusCode || 500).json({
   errors: err.errors || [],
 });
 
-export const buildPagination = ({ page, limit, total }) => ({
-  page, limit, total,
-  pages: Math.ceil(total / limit),
-});
+export const buildPagination = ({ page, limit, total }) => {
+  const totalPages = Math.ceil(total / limit) || 1;
+  return {
+    page,
+    limit,
+    total,
+    pages: totalPages,
+    totalPages,
+  };
+};

@@ -1,5 +1,5 @@
 import pool from "../../../../config/db.js";
-import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken, getUserHistoricalResults } from "../../user.model.js";
+import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken, getUserHistoricalResults, createAppFeedback } from "../../user.model.js";
 import { processAndUploadAvatar } from "../services/image.service.js";
 import { handleAdminPreferenceChangeNotification } from "../../../M9_Notification/engine/notification.engine.js";
 import { sendPreferenceChangeEmail } from "../../../../email_templates/email.service.js";
@@ -135,5 +135,28 @@ export const requestPreferenceChangeController = async (req,res)=> {
       success: false,
       message: 'Internal Server Error'
     });
+  }
+};
+
+export const submitAppFeedbackController = async (req, res) => {
+  try {
+    const { error, value } = userValidator.submitAppFeedbackSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+    const feedback = await createAppFeedback({
+      userId: req.user.id,
+      rating: value.rating,
+      category: value.category,
+      comment: value.comment,
+    });
+    return res.status(201).json({
+      success: true,
+      message: "Feedback submitted successfully",
+      data: feedback,
+    });
+  } catch (err) {
+    console.log("Error in submitAppFeedbackController:", err.message);
+    return res.status(500).json({ success: false, message: "Failed to submit feedback" });
   }
 };

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/providers/notification_provider.dart';
 import 'app_theme.dart';
@@ -11,10 +10,7 @@ class LogoutDialog extends StatelessWidget {
   Future<void> _handleSecureLogout(BuildContext context) async {
     try {
       context.read<NotificationProvider>().reset();
-      await ApiService.clearToken();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('token');
-      await prefs.remove('user_data');
+      await ApiService.logout();
     } catch (e) {
       debugPrint("Local cache tracking flush error: ${e.toString()}");
     } finally {

@@ -35,9 +35,7 @@ class _PreferenceSelectionScreenState extends State<PreferenceSelectionScreen> {
 
       if (mounted) {
         if (response.statusCode == 200 && responseData['success'] == true) {
-          if (responseData['accessToken'] != null) {
-            await ApiService.setToken(responseData['accessToken']);
-          }
+          await ApiService.persistAuthResponse(responseData);
 
           final user = Map<String, dynamic>.from(
             (responseData['user'] as Map<String, dynamic>?) ??

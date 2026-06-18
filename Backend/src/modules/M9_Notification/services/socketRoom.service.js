@@ -1,10 +1,12 @@
+import { normalizeTopicTag } from "../../../utils/topicTag.js";
+
 const USER_ROOM_PREFIX = "user:";
 const COMMUNITY_ROOM_PREFIX = "community:";
 const ADMIN_ROOM = "admin:room";
 
 export const getUserRoom = (userId) => `${USER_ROOM_PREFIX}${userId}`;
 
-export const getCommunityRoom = (tag) => `${COMMUNITY_ROOM_PREFIX}${tag || "GENERAL"}`;
+export const getCommunityRoom = (tag) => `${COMMUNITY_ROOM_PREFIX}${normalizeTopicTag(tag)}`;
 
 export const getAdminRoom = () => ADMIN_ROOM;
 
@@ -13,7 +15,7 @@ export const resolveUserRooms = (user) => {
   if (user.preferences === "ALL") {
     rooms.push(getCommunityRoom("IELTS"), getCommunityRoom("PTE"));
   } else {
-    rooms.push(getCommunityRoom(user.preferences || "GENERAL"));
+    rooms.push(getCommunityRoom(user.preferences));
   }
   if (user.role === "admin") rooms.push(getAdminRoom());
   return rooms;
@@ -28,6 +30,6 @@ export const switchUserCommunityRoom = (socket, newPreference) => {
   if (newPreference === "ALL") {
     socket.join([getCommunityRoom("IELTS"), getCommunityRoom("PTE")]);
   } else {
-    socket.join(getCommunityRoom(newPreference || "GENERAL"));
+    socket.join(getCommunityRoom(newPreference));
   }
 };

@@ -7,6 +7,7 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import authRoutes from './src/modules/M1_Identity/auth/routes/auth.routes.js';
 import userRoutes from './src/modules/M1_Identity/user/routes/user.routes.js';
+import feedbackRoutes from './src/modules/M1_Identity/user/routes/feedback.routes.js';
 import adminRoutes from './src/modules/M1_Identity/admin/routes/admin.routes.js';
 import testRoutes from './src/modules/M2_Test/routes/test.routes.js';
 import prepRoutes from './src/modules/M3_Preparation/preparation/routes/preparation.routes.js';
@@ -54,6 +55,7 @@ app.get("/", (req, res) => {
 const API_V1 = "/api/v1";
 app.use(`${API_V1}/auth`, authRoutes);
 app.use(`${API_V1}/user`, userRoutes);
+app.use(`${API_V1}/feedback`, feedbackRoutes);
 app.use(`${API_V1}/admin`, adminRoutes);
 app.use(`${API_V1}/content/test`, testRoutes);
 app.use(`${API_V1}/content/preparations`, prepRoutes);

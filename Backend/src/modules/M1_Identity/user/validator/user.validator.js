@@ -17,3 +17,18 @@ export const changePasswordSchema = Joi.object({
   new_password: passwordSchema,
   confirm_password: Joi.string().valid(Joi.ref("new_password")).required()
 });
+
+const FEEDBACK_CATEGORIES = [
+  "Overall Experience",
+  "Mock Tests",
+  "Prep Content",
+  "Community",
+  "UI/Design",
+  "Performance",
+];
+
+export const submitAppFeedbackSchema = Joi.object({
+  rating: Joi.number().integer().min(1).max(5).required(),
+  category: Joi.string().valid(...FEEDBACK_CATEGORIES).required(),
+  comment: Joi.string().trim().min(10).max(2000).required(),
+});

@@ -12,15 +12,6 @@ export const dummyUsers = [
   { id: 'USR110', name: 'Maryam Iqbal', email: 'maryam.i@example.com', role: 'registered', subscription: 'premium', lastActive: '2026-03-04', status: 'active', score: 88, assignedTest: 'IELTS', institute: 'INS1' },
 ];
 
-// ─── Institutes (B2B) ─────────────────────────────────────────────────────────
-export const dummyInstitutes = [
-  { id: 'INS1', slug: 'INS1-ABB', name: 'Abbottabad Academy', adminEmail: 'instituteadmin@example.com', students: 45, plan: 'Premium', status: 'active', fee: 25000, joinDate: '2025-09-01' },
-  { id: 'INS2', slug: 'INS2-KHI', name: 'Karachi Prep Center', adminEmail: 'khi.admin@example.com', students: 62, plan: 'Basic', status: 'active', fee: 15000, joinDate: '2025-10-15' },
-  { id: 'INS3', slug: 'INS3-LHR', name: 'Lahore Language Hub', adminEmail: 'lhr.admin@example.com', students: 38, plan: 'Premium', status: 'active', fee: 25000, joinDate: '2025-11-01' },
-  { id: 'INS4', slug: 'INS4-ISL', name: 'Islamabad English Center', adminEmail: 'isl.admin@example.com', students: 28, plan: 'Basic', status: 'inactive', fee: 15000, joinDate: '2025-08-20' },
-  { id: 'INS5', slug: 'INS5-PES', name: 'Peshawar Test Hub', adminEmail: 'pes.admin@example.com', students: 19, plan: 'Basic', status: 'active', fee: 15000, joinDate: '2026-01-10' },
-];
-
 // ─── Mock Tests ────────────────────────────────────────────────────────────────
 export const dummyMocks = [
   {
@@ -183,14 +174,4 @@ export const subscriptionPieData = [
 export const revenueData = [
   { month: 'Oct', revenue: 28000 }, { month: 'Nov', revenue: 34000 }, { month: 'Dec', revenue: 41000 },
   { month: 'Jan', revenue: 45000 }, { month: 'Feb', revenue: 50000 }, { month: 'Mar', revenue: 58000 },
-];
-
-// ─── AI Usage ─────────────────────────────────────────────────────────────────
-export const dummyAILogs = [
-  { id: 'AI001', type: 'Essay Feedback', user: 'ahmed.raza@example.com', timestamp: '2026-03-05 10:32', result: 'Band 7.5 – Good coherence, minor grammar issues...', status: 'success', cost: 0.02 },
-  { id: 'AI002', type: 'Audio Transcription', user: 'fatima.noor@example.com', timestamp: '2026-03-05 09:15', result: 'Transcription complete – 98% accuracy.', status: 'success', cost: 0.05 },
-  { id: 'AI003', type: 'Question Generation', user: 'System', timestamp: '2026-03-04 14:20', result: '10 MCQ questions generated for IELTS Reading Mock #3.', status: 'success', cost: 0.03 },
-  { id: 'AI004', type: 'Content Moderation', user: 'System', timestamp: '2026-03-04 08:00', result: '2 posts flagged as toxic/spam.', status: 'success', cost: 0.01 },
-  { id: 'AI005', type: 'Essay Feedback', user: 'bilal.s@example.com', timestamp: '2026-03-03 16:45', result: 'Band 8.0 – Excellent argument structure...', status: 'success', cost: 0.02 },
-  { id: 'AI006', type: 'Audio Transcription', user: 'zaid.h@example.com', timestamp: '2026-03-03 11:00', result: 'Error: Audio quality too low.', status: 'error', cost: 0.00 },
 ];

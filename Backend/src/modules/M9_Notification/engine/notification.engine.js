@@ -1,10 +1,11 @@
 import pool from "../../../config/db.js";
+import { isGeneralTopicTag } from "../../../utils/topicTag.js";
 import { sendNotification, sendBulkNotifications } from "../services/notification.service.js";
 import { emitPostRemovedFromFeed } from "../socketIO/event.engine.js";
 
 export const handlePostCreatedNotification = async (io, post) => {
     const { topic_tag, user_id: authorId, id: postId, title: postTitle } = post;
-    if (!topic_tag || topic_tag.toUpperCase() === "GENERAL") return;
+    if (!topic_tag || isGeneralTopicTag(topic_tag)) return;
 
     const result = await pool.query(
         `SELECT id FROM users

@@ -29,6 +29,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const ADMIN_ROLES = new Set(['admin', 'super_admin']);
+
+const isAdminRole = (role: string) => ADMIN_ROLES.has(role);
+
+const clearAdminSession = () => {
+  socketService.disconnect();
+  clearTokens();
+  localStorage.removeItem('authUser');
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,15 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializeAuth = () => {
     const stored = localStorage.getItem('authUser');
     const token = getAccessToken();
-
     if (stored && token) {
       try {
-        const parsedUser = JSON.parse(stored);
-        setUser(parsedUser);
-        socketService.connect(token);
+        const parsedUser = JSON.parse(stored) as AuthUser;
+        if (!isAdminRole(parsedUser.role)) {
+          clearAdminSession();
+          setUser(null);
+        } else {
+          setUser(parsedUser);
+          socketService.connect(token);
+        }
       } catch {
-        clearTokens();
-        localStorage.removeItem('authUser');
+        clearAdminSession();
+        setUser(null);
       }
     }
     setLoading(false);
@@ -57,10 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const res = await loginAPI(email, password);
-      
       if (res.success && res.accessToken) {
+        if (!isAdminRole(res.user.role)) {
+          clearAdminSession();
+          return { success: false, message: 'Admin access only. This account does not have admin privileges.' };
+        }
         setTokens(res.accessToken, res.refreshToken);
-        
         const authUser: AuthUser = {
           id: res.user.id,
           name: res.user.full_name,
@@ -71,19 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           preference: res.user.preference,
           bio: res.user.bio,
         };
-
         setUser(authUser);
         localStorage.setItem('authUser', JSON.stringify(authUser));
-        
         socketService.connect(res.accessToken);
-        
         return { success: true };
       }
       return { success: false, message: 'Invalid server response' };
     } catch (err: any) {
       return {
         success: false,
-        message: err?.response?.data?.message || err?.message || 'Login failed',
+        message: err?.data?.message || err?.message || 'Login failed',
       };
     }
   };
@@ -93,9 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refresh = getRefreshToken();
       if (refresh) await logoutAPI(refresh).catch(() => {});
     } finally {
-      socketService.disconnect();
-      clearTokens();
-      localStorage.removeItem('authUser');
+      clearAdminSession();
       setUser(null);
     }
   };
@@ -110,13 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      updateUser, 
-      isAuthenticated: !!user, 
-      loading 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      updateUser,
+      isAuthenticated: !!user,
+      loading,
     }}>
       {!loading && children}
     </AuthContext.Provider>

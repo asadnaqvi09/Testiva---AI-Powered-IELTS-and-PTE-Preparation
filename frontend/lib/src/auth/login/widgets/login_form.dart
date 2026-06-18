@@ -68,14 +68,9 @@ class _LoginFormState extends State<LoginForm> {
       if (mounted) {
         if (response.statusCode == 200 || response.statusCode == 201) {
           final resData = jsonDecode(response.body);
-
-          if (resData['accessToken'] != null) {
-            await ApiService.setToken(resData['accessToken'].toString());
-          } else if (resData['data'] != null && resData['data']['token'] != null) {
-            await ApiService.setToken(resData['data']['token'].toString());
-          } else if (resData['token'] != null) {
-            await ApiService.setToken(resData['token'].toString());
-          }
+          await ApiService.persistAuthResponse(
+            Map<String, dynamic>.from(resData as Map),
+          );
 
           final prefs = await SharedPreferences.getInstance();
           if (_rememberMe) {

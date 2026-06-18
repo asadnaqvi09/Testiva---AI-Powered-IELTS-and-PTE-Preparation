@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router';
 import {
-  LayoutDashboard, Users, Building2, FileText, BookOpen,
-  BarChart3, MessageSquare, CreditCard, Bot, Settings,
+  LayoutDashboard, Users, FileText, BookOpen,
+  BarChart3, MessageSquare, CreditCard, Settings,
   LogOut, ChevronLeft, ChevronRight, GraduationCap, X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -20,13 +20,11 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
   { label: 'Users', icon: <Users size={20} />, path: '/users', roles: ['admin', 'super_admin'] },
   { label: 'Students', icon: <GraduationCap size={20} />, path: '/users', roles: ['institute_admin'] },
-  { label: 'Institutes', icon: <Building2 size={20} />, path: '/institutes', roles: ['super_admin'] },
   { label: 'Mock Tests', icon: <FileText size={20} />, path: '/mocks' },
   { label: 'Preparation', icon: <BookOpen size={20} />, path: '/preparation' },
   { label: 'Analytics', icon: <BarChart3 size={20} />, path: '/analytics' },
   { label: 'Community', icon: <MessageSquare size={20} />, path: '/community', roles: ['admin', 'super_admin'] },
   { label: 'Subscriptions', icon: <CreditCard size={20} />, path: '/subscriptions', roles: ['admin', 'super_admin'] },
-  { label: 'AI Management', icon: <Bot size={20} />, path: '/ai-management', roles: ['admin'] },
   { label: 'Settings', icon: <Settings size={20} />, path: '/settings' },
 ];
 
