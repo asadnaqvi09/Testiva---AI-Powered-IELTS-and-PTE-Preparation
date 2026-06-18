@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../widgets/app_theme.dart';
 import 'models/runtime_question.dart';
 
 class TestResultsScreen extends StatefulWidget {
@@ -224,17 +225,27 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.appBarBg(context),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: AppTheme.primaryText(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Test Results', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(
+          'Test Results',
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchResults),
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppTheme.iconColor(context)),
+            onPressed: _fetchResults,
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -306,14 +317,21 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: AppTheme.borderColor(context)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Performance Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(
+                    'Performance Breakdown',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: AppTheme.primaryText(context),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   if (totalQuestions > 0) _buildBreakdownRow('Accuracy', accuracyValue, accuracyString, Colors.blue),
                   if (rScore > 0 || totalQuestions > 0) _buildBreakdownRow('Reading', rScore / 9.0, 'Band $rScore', Colors.purple),
@@ -327,9 +345,15 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFEDF5FF),
+                color: AppTheme.isDark(context)
+                    ? const Color(0xFF1A2A40)
+                    : const Color(0xFFEDF5FF),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD0E4FF)),
+                border: Border.all(
+                  color: AppTheme.isDark(context)
+                      ? const Color(0xFF2563EB).withValues(alpha: 0.3)
+                      : const Color(0xFFD0E4FF),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,13 +366,27 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(aiFeedback, style: const TextStyle(color: Color(0xFF334155), fontSize: 13, height: 1.4)),
+                  Text(
+                    aiFeedback,
+                    style: TextStyle(
+                      color: AppTheme.primaryText(context),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
             if (reviewList.isNotEmpty) ...[
-              const Text('Question Review', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                'Question Review',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppTheme.primaryText(context),
+                ),
+              ),
               const SizedBox(height: 12),
               ListView.separated(
                 shrinkWrap: true,
@@ -366,9 +404,9 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                   return Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppTheme.cardBg(context),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(color: AppTheme.borderColor(context)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,17 +434,40 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      Text('Q${q['q_no'] ?? index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      Text(
+                                        'Q${q['q_no'] ?? index + 1}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: AppTheme.primaryText(context),
+                                        ),
+                                      ),
                                       const SizedBox(width: 8),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
-                                        child: Text(typeLabel, style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.surfaceBg(context),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          typeLabel,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppTheme.secondaryText(context),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(q['question'] as String? ?? '', style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                                  Text(
+                                    q['question'] as String? ?? '',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.primaryText(context),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -447,12 +508,18 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                     height: 52,
                     child: OutlinedButton.icon(
                       onPressed: widget.onRetake,
-                      icon: const Icon(Icons.refresh, color: Colors.black87, size: 18),
-                      label: const Text('Retake', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                      icon: Icon(Icons.refresh, color: AppTheme.primaryText(context), size: 18),
+                      label: Text(
+                        'Retake',
+                        style: TextStyle(
+                          color: AppTheme.primaryText(context),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        side: BorderSide(color: AppTheme.borderColor(context)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        backgroundColor: Colors.white,
+                        backgroundColor: AppTheme.cardBg(context),
                       ),
                     ),
                   ),

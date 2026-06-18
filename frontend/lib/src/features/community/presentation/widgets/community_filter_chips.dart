@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 
 class CommunityFilterChips extends StatelessWidget {
   final String selectedFilter;
@@ -25,13 +26,14 @@ class CommunityFilterChips extends StatelessWidget {
               margin: const EdgeInsets.only(right: 10),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF007BFF) : const Color(0xFFF1F5F9),
+                color: isSelected ? const Color(0xFF007BFF) : AppTheme.surfaceBg(context),
                 borderRadius: BorderRadius.circular(25),
+                border: isSelected ? null : Border.all(color: AppTheme.borderColor(context)),
               ),
               child: Text(
                 filter,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black54,
+                  color: isSelected ? Colors.white : AppTheme.secondaryText(context),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   fontSize: 13,
                 ),

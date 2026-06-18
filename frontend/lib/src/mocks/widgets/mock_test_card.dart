@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_theme.dart';
 import '../../../data/models/mock_test_model.dart';
 import '../models/runtime_question.dart';
 
@@ -55,15 +56,9 @@ class MockTestCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: AppTheme.cardShadow(context),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -120,12 +115,12 @@ class MockTestCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _stat(Icons.timer_outlined, '${mock.totalDuration} min'),
+                    _stat(context, Icons.timer_outlined, '${mock.totalDuration} min'),
                     const SizedBox(width: 16),
-                    _stat(Icons.help_outline, '${mock.totalQuestions} questions'),
+                    _stat(context, Icons.help_outline, '${mock.totalQuestions} questions'),
                     if (mock.lastAttemptScore != null) ...[
                       const Spacer(),
-                      _stat(Icons.signal_cellular_alt, 'Band ${mock.lastAttemptScore}', green: true),
+                      _stat(context, Icons.signal_cellular_alt, 'Band ${mock.lastAttemptScore}', green: true),
                     ],
                   ],
                 ),
@@ -133,7 +128,7 @@ class MockTestCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'ID: ${mock.displayId}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 11, color: AppTheme.secondaryText(context)),
                   ),
                 ],
                 if (chips.isNotEmpty) ...[
@@ -145,15 +140,15 @@ class MockTestCard extends StatelessWidget {
                         .map((c) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
+                                color: AppTheme.tagBg(context),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 c,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2563EB),
+                                  color: AppTheme.tagText(context),
                                 ),
                               ),
                             ))
@@ -187,18 +182,18 @@ class MockTestCard extends StatelessWidget {
     );
   }
 
-  Widget _stat(IconData icon, String text, {bool green = false}) {
+  Widget _stat(BuildContext context, IconData icon, String text, {bool green = false}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: green ? Colors.green : Colors.grey.shade600),
+        Icon(icon, size: 16, color: green ? Colors.green : AppTheme.secondaryText(context)),
         const SizedBox(width: 4),
         Text(
           text,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: green ? Colors.green.shade700 : Colors.grey.shade700,
+            color: green ? Colors.green.shade400 : AppTheme.secondaryText(context),
           ),
         ),
       ],

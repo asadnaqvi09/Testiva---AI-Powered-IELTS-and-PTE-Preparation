@@ -337,11 +337,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  bool get _hasFullTestAccess {
+    final role = _userData['role']?.toString().toLowerCase();
+    final sub = _userData['subscription']?.toString().toLowerCase();
+    return role == 'admin' || sub == 'premium';
+  }
+
   Widget _buildPreferenceTile() {
     final pref = _userData['preference']?.toString();
-    final displayPref = (pref != null && pref.isNotEmpty) ? pref : 'Not Set';
-    final prefColor =
-        displayPref == 'IELTS' ? const Color(0xFF007BFF) : const Color(0xFF10B981);
+    final displayPref = _hasFullTestAccess
+        ? 'All Tests'
+        : ((pref != null && pref.isNotEmpty) ? pref : 'Not Set');
+    final prefColor = _hasFullTestAccess
+        ? const Color(0xFF6366F1)
+        : displayPref == 'IELTS'
+            ? const Color(0xFF007BFF)
+            : const Color(0xFF10B981);
 
     return Container(
       decoration: BoxDecoration(
@@ -377,7 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         dense: true,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        onTap: pref != null ? _showPreferenceChangeDialog : null,
+        onTap: (!_hasFullTestAccess && pref != null) ? _showPreferenceChangeDialog : null,
       ),
     );
   }

@@ -221,13 +221,14 @@ class _LoginFormState extends State<LoginForm> {
       border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
     ),
     child: Column(children: [
-      _demoTile('Free User', 's23-0385@student.uoh.pk', Icons.person_outline, AppColors.primary),
-      _demoTile('Premium', 'premiumuser@example.com', Icons.star_outline, Colors.orange),
+      _demoTile('Free User', 's23-0385@student.uoh.pk', 'aksa12345@sk', Icons.person_outline, AppColors.primary),
+      _demoTile('Premium', 'premiumuser@example.com', 'aksa12345@sk', Icons.star_outline, Colors.orange),
+      _demoTile('Admin', 'ragesr56@gmail.com', 'TestFlow12345@sk', Icons.admin_panel_settings_outlined, Colors.deepPurple),
     ]),
   );
 
-  Widget _demoTile(String l, String e, IconData i, Color c) => GestureDetector(
-    onTap: () => _fill(e, 'aksa12345@sk'),
+  Widget _demoTile(String l, String e, String password, IconData i, Color c) => GestureDetector(
+    onTap: () => _fill(e, password),
     child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(children: [

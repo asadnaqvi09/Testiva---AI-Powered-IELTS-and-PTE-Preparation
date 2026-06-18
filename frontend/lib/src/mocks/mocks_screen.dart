@@ -48,9 +48,17 @@ class _MocksScreenState extends State<MocksScreen> {
     super.dispose();
   }
 
+  bool _hasFullTestAccess() {
+    final user = UserNotifier.notifier.value;
+    final role = user['role']?.toString().toLowerCase();
+    final sub = user['subscription']?.toString().toLowerCase();
+    return role == 'admin' || sub == 'premium';
+  }
+
   String? get _examQuery {
     if (_filter == 'IELTS') return 'IELTS';
     if (_filter == 'PTE') return 'PTE';
+    if (_hasFullTestAccess()) return 'ALL';
     return UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS';
   }
 
@@ -65,9 +73,10 @@ class _MocksScreenState extends State<MocksScreen> {
 
       if (online) {
         try {
-          final response = await ApiService.get(
-            '/content/test/mobile/dashboard?exam_type=$examType',
-          );
+          final endpoint = examType == 'ALL'
+              ? '/content/test/mobile/dashboard'
+              : '/content/test/mobile/dashboard?exam_type=$examType';
+          final response = await ApiService.get(endpoint);
 
           if (kDebugMode) {
             debugPrint('Mocks dashboard: ${response.statusCode}');
@@ -151,13 +160,17 @@ class _MocksScreenState extends State<MocksScreen> {
     });
   }
 
+  String get _sectionLabel {
+    if (_filter != 'All') return _filter.toUpperCase();
+    if (_hasFullTestAccess()) return 'ALL EXAMS';
+    return (UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS').toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pref = UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS';
-
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
       appBar: AppHeader(
         scaffoldKey: _scaffoldKey,
@@ -173,7 +186,7 @@ class _MocksScreenState extends State<MocksScreen> {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: Text(
               _isLoading ? 'Loading tests…' : '${_mocks.length} test${_mocks.length == 1 ? '' : 's'} available',
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
             ),
           ),
           const SizedBox(height: 12),
@@ -195,11 +208,13 @@ class _MocksScreenState extends State<MocksScreen> {
                     },
                     selectedColor: const Color(0xFF007BFF),
                     labelStyle: TextStyle(
-                      color: active ? Colors.white : Colors.grey.shade700,
+                      color: active ? Colors.white : AppTheme.primaryText(context),
                       fontWeight: FontWeight.w600,
                     ),
-                    backgroundColor: Colors.white,
-                    side: BorderSide(color: active ? const Color(0xFF007BFF) : Colors.grey.shade300),
+                    backgroundColor: AppTheme.cardBg(context),
+                    side: BorderSide(
+                      color: active ? const Color(0xFF007BFF) : AppTheme.borderColor(context),
+                    ),
                   ),
                 );
               }).toList(),
@@ -210,12 +225,12 @@ class _MocksScreenState extends State<MocksScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                pref.toUpperCase(),
+                _sectionLabel,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
-                  color: Colors.grey.shade500,
+                  color: AppTheme.secondaryText(context),
                 ),
               ),
             ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_header.dart';
+import '../../../../widgets/app_theme.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/socket_service.dart';
 import '../../../../data/models/community_post_model.dart';
@@ -193,9 +194,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBg(context),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -205,39 +206,65 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Create Post',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryText(context),
+                          ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
+                          icon: Icon(Icons.close, color: AppTheme.iconColor(context)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: titleController,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: AppTheme.primaryText(context)),
+                      decoration: InputDecoration(
                         labelText: 'Title',
                         hintText: 'What is your question or tip?',
-                        border: OutlineInputBorder(),
+                        labelStyle: TextStyle(color: AppTheme.secondaryText(context)),
+                        hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
+                        filled: true,
+                        fillColor: AppTheme.inputFill(context),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppTheme.borderColor(context)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: contentController,
                       maxLines: 4,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: AppTheme.primaryText(context)),
+                      decoration: InputDecoration(
                         labelText: 'Content',
                         hintText: 'Provide details about your question or tip...',
-                        border: OutlineInputBorder(),
+                        labelStyle: TextStyle(color: AppTheme.secondaryText(context)),
+                        hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
+                        filled: true,
+                        fillColor: AppTheme.inputFill(context),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppTheme.borderColor(context)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Text('Topic Tag: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          'Topic Tag: ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryText(context),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         DropdownButton<String>(
                           value: selectedTag,
@@ -348,7 +375,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
       body: SafeArea(
         child: Column(
@@ -363,9 +390,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Community',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryText(context),
+                        ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -387,9 +418,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Share tips, ask questions, find study partners',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                    style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
                   ),
                 ],
               ),
@@ -410,7 +441,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _posts.isEmpty
-                      ? const Center(child: Text('No posts found'))
+                      ? Center(
+                          child: Text(
+                            'No posts found',
+                            style: TextStyle(color: AppTheme.secondaryText(context)),
+                          ),
+                        )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: _posts.length,

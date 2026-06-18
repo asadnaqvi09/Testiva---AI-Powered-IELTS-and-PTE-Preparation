@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../../../../data/models/community_post_model.dart';
+import '../../../../../widgets/app_theme.dart';
 import 'comments_bottom_sheet.dart';
 
 class CommunityPostCard extends StatefulWidget {
@@ -114,15 +115,9 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: AppTheme.cardShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,35 +136,58 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.post.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text(widget.post.timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text(
+                    widget.post.authorName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppTheme.primaryText(context),
+                    ),
+                  ),
+                  Text(
+                    widget.post.timeAgo,
+                    style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 11),
+                  ),
                 ],
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0F2FE),
+                  color: AppTheme.tagBg(context),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   widget.post.tag,
-                  style: const TextStyle(color: Color(0xFF0369A1), fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppTheme.tagText(context),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.more_horiz, color: Colors.grey, size: 20),
+              Icon(Icons.more_horiz, color: AppTheme.secondaryText(context), size: 20),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             widget.post.title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.3),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              height: 1.3,
+              color: AppTheme.primaryText(context),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             widget.post.content,
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, height: 1.5),
+            style: TextStyle(
+              color: AppTheme.secondaryText(context),
+              fontSize: 13,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 16),
           if (widget.post.comments > 0) ...[
@@ -184,7 +202,7 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
                         left: index * 14.0,
                         child: CircleAvatar(
                           radius: 12,
-                          backgroundColor: Colors.white,
+                          backgroundColor: AppTheme.cardBg(context),
                           child: CircleAvatar(
                             radius: 10,
                             backgroundColor: Colors.primaries[(index + 5) % Colors.primaries.length],
@@ -195,21 +213,27 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text('${widget.post.comments} comments', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(
+                  '${widget.post.comments} comments',
+                  style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 12),
+                ),
               ],
             ),
           ] else ...[
-            const Row(
+            Row(
               children: [
-                Icon(Icons.chat_bubble_outline, size: 14, color: Colors.grey),
-                SizedBox(width: 6),
-                Text('No comments yet', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Icon(Icons.chat_bubble_outline, size: 14, color: AppTheme.secondaryText(context)),
+                const SizedBox(width: 6),
+                Text(
+                  'No comments yet',
+                  style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 12),
+                ),
               ],
             ),
           ],
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(color: Color(0xFFF1F5F9), height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Divider(color: AppTheme.dividerColor(context), height: 1),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -217,19 +241,19 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
               _action(
                 isLiked ? Icons.favorite : Icons.favorite_border,
                 '$likeCount',
-                isLiked ? Colors.red : Colors.grey,
+                isLiked ? Colors.red : AppTheme.secondaryText(context),
                 _toggleLike,
               ),
               _action(
                 Icons.chat_bubble_outline,
                 '${widget.post.comments}',
-                Colors.grey,
+                AppTheme.secondaryText(context),
                 _showComments,
               ),
               _action(
                 Icons.share_outlined,
                 'Share',
-                Colors.grey,
+                AppTheme.secondaryText(context),
                 _onShare,
               ),
               IconButton(
@@ -238,7 +262,7 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
                 onPressed: () => setState(() => isBookmarked = !isBookmarked),
                 icon: Icon(
                   isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                  color: isBookmarked ? const Color(0xFF007BFF) : Colors.grey,
+                  color: isBookmarked ? const Color(0xFF007BFF) : AppTheme.secondaryText(context),
                   size: 20,
                 ),
               ),
@@ -256,7 +280,7 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
         children: [
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(label, style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 13)),
         ],
       ),
     );

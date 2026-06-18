@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../../../../data/models/comment_model.dart';
+import '../../../../../widgets/app_theme.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
@@ -136,13 +137,30 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceBg(context),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(comment.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          Text(
+                            comment.fullName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppTheme.primaryText(context),
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(comment.content, style: const TextStyle(fontSize: 13, height: 1.4)),
+                          Text(
+                            comment.content,
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.4,
+                              color: AppTheme.primaryText(context),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -153,7 +171,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 padding: const EdgeInsets.only(left: 42, top: 8, bottom: 8),
                 child: Row(
                   children: [
-                    Text(comment.timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    Text(comment.timeAgo, style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 11)),
                     const SizedBox(width: 16),
                     GestureDetector(
                       onTap: () => _toggleCommentLike(comment.id),
@@ -162,12 +180,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                           Icon(
                             comment.likedByMe ? Icons.favorite : Icons.favorite_border,
                             size: 14,
-                            color: comment.likedByMe ? Colors.red : Colors.grey,
+                            color: comment.likedByMe ? Colors.red : AppTheme.secondaryText(context),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '${comment.likeCount}',
-                            style: const TextStyle(color: Colors.grey, fontSize: 11),
+                            style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 11),
                           ),
                         ],
                       ),
@@ -175,9 +193,13 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     const SizedBox(width: 16),
                     GestureDetector(
                       onTap: () => _startReply(comment),
-                      child: const Text(
+                      child: Text(
                         'Reply',
-                        style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: AppTheme.secondaryText(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -197,41 +219,62 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.80,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
       ),
       child: Column(
         children: [
           const SizedBox(height: 12),
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppTheme.borderColor(context),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey),
+                Icon(Icons.chat_bubble_outline, size: 18, color: AppTheme.secondaryText(context)),
                 const SizedBox(width: 8),
-                Text('COMMENTS • $_totalCommentsCount', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12)),
+                Text(
+                  'COMMENTS • $_totalCommentsCount',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryText(context),
+                    fontSize: 12,
+                  ),
+                ),
                 const Spacer(),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-                    child: const Icon(Icons.close, size: 18),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceBg(context),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close, size: 18, color: AppTheme.iconColor(context)),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: AppTheme.dividerColor(context)),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 widget.postTitle,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppTheme.primaryText(context),
+                ),
               ),
             ),
           ),
@@ -239,7 +282,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             child: _isLoading && _comments.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : _comments.isEmpty
-                    ? const Center(child: Text('No comments yet'))
+                    ? Center(
+                        child: Text(
+                          'No comments yet',
+                          style: TextStyle(color: AppTheme.secondaryText(context)),
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _comments.length,
@@ -251,12 +299,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           if (_replyToName != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.grey[100],
+              color: AppTheme.surfaceBg(context),
               child: Row(
                 children: [
                   Text(
                     'Replying to @$_replyToName',
-                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                    style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 12),
                   ),
                   const Spacer(),
                   GestureDetector(
@@ -266,12 +314,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         _replyToName = null;
                       });
                     },
-                    child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                    child: Icon(Icons.close, size: 16, color: AppTheme.secondaryText(context)),
                   ),
                 ],
               ),
             ),
-          const Divider(height: 1),
+          Divider(height: 1, color: AppTheme.dividerColor(context)),
           Padding(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom + 16,
@@ -284,11 +332,15 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 Expanded(
                   child: TextField(
                     controller: _commentController,
+                    style: TextStyle(color: AppTheme.primaryText(context)),
                     decoration: InputDecoration(
                       hintText: _replyToName != null ? 'Write a reply...' : 'Add a comment...',
+                      hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
+                      filled: true,
+                      fillColor: AppTheme.inputFill(context),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
+                        borderSide: BorderSide(color: AppTheme.borderColor(context)),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
