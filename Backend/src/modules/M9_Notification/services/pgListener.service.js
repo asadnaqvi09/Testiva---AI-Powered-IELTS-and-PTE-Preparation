@@ -17,15 +17,15 @@ export const initPgListener = async (io) => {
     console.log('[PG Listener] Connected and listening to subscription_changes');
     listenerClient.on('end', () => {
       console.log('[PG Listener] Connection lost, reconnecting...');
-      setTimeout(() => initPgListener(io), 5000);
+      setTimeout(() => initPgListener(io), 30000);
     });
     listenerClient.on('error', (err) => {
-      console.error('[PG Listener] Database error:', err);
+      console.error('[PG Listener] Database error:', err.message || err);
       try { listenerClient.release(); } catch(e) {}
-      setTimeout(() => initPgListener(io), 5000);
+      setTimeout(() => initPgListener(io), 30000);
     });
   } catch (err) {
-    console.error('[PG Listener] Initialization failed:', err);
-    setTimeout(() => initPgListener(io), 5000);
+    console.error('[PG Listener] Initialization failed:', err.message || err);
+    setTimeout(() => initPgListener(io), 30000);
   }
 };

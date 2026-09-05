@@ -5,6 +5,7 @@ import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/providers/feedback_provider.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import 'package:frontend/widgets/app_header.dart';
 import 'widgets/rating_section.dart';
 import 'widgets/category_chips.dart';
 import 'widgets/feedback_input.dart';
@@ -134,11 +135,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBg(context),
-      appBar: AppBar(
-        title: const Text('Feedback & Suggestions'),
-        backgroundColor: AppTheme.appBarBg(context),
-        elevation: 0,
-        foregroundColor: AppTheme.primaryText(context),
+      appBar: AppHeader(
+        titleWidget: Text(
+          'Feedback',
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: Stack(
         children: [

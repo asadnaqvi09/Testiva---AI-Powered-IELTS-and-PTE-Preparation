@@ -6,6 +6,7 @@ import '../../core/database/local_db.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/services/user_notifier.dart';
+import '../../data/demo/demo_mock_catalog.dart';
 import '../../data/models/mock_test_model.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/custom_drawer.dart';
@@ -55,11 +56,37 @@ class _MocksScreenState extends State<MocksScreen> {
     return role == 'admin' || sub == 'premium';
   }
 
-  String? get _examQuery {
+  String _normalizedPreference() {
+    final raw = UserNotifier.notifier.value['preference']?.toString().toUpperCase().trim();
+    if (raw == 'PTE') return 'PTE';
+    return 'IELTS';
+  }
+
+  String get _examQuery {
     if (_filter == 'IELTS') return 'IELTS';
     if (_filter == 'PTE') return 'PTE';
     if (_hasFullTestAccess()) return 'ALL';
-    return UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS';
+    return _normalizedPreference();
+  }
+
+  String? _messageFromBody(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map && decoded['message'] != null) {
+        return decoded['message'].toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  List<dynamic> _extractList(dynamic body) {
+    if (body is List) return body;
+    if (body is Map) {
+      final data = body['data'];
+      if (data is List) return data;
+      if (data is Map && data['data'] is List) return data['data'] as List;
+    }
+    return const [];
   }
 
   Future<void> _fetchMocks() async {
@@ -67,8 +94,8 @@ class _MocksScreenState extends State<MocksScreen> {
       _isLoading = true;
       _errorMessage = '';
     });
+    final examType = _examQuery;
     try {
-      final examType = _examQuery ?? 'IELTS';
       final online = await ConnectivityService.instance.checkOnline();
 
       if (online) {
@@ -84,58 +111,112 @@ class _MocksScreenState extends State<MocksScreen> {
 
           if (response.statusCode == 200) {
             final body = jsonDecode(response.body);
-            if (body['success'] == true) {
-              final List list = body['data'] as List;
-              await LocalDb.instance.cacheMockDashboard(
-                examType: examType,
-                items: list,
-              );
-              _applyMockList(list);
-              return;
+            if (body is Map && body['success'] == true) {
+              final list = _extractList(body);
+              if (list.isNotEmpty) {
+                await LocalDb.instance.cacheMockDashboard(
+                  examType: examType,
+                  items: list,
+                );
+                _applyMockList(
+                  list,
+                  notice: body['demo'] == true
+                      ? (body['message']?.toString() ??
+                          'Showing demo mock tests (database unavailable).')
+                      : '',
+                );
+                return;
+              }
             }
-            _errorMessage = 'Could not load mock tests.';
+            final apiMessage = body is Map ? body['message']?.toString() : null;
+            await _showFallback(
+              examType,
+              apiMessage ??
+                  'No published mock tests from the server. Showing demo tests for preview.',
+            );
             return;
           }
-          _errorMessage = 'Server error (${response.statusCode})';
+
+          await _showFallback(
+            examType,
+            _messageFromBody(response.body) ??
+                'Could not load mock tests (${response.statusCode}).',
+          );
+          return;
         } catch (e) {
           final loaded = await _loadCachedMocks(examType);
-          if (loaded) return;
-          _errorMessage = 'Connection error: $e';
+          if (loaded) {
+            setState(() {
+              _errorMessage =
+                  'Could not refresh from server. Showing cached mock tests.';
+            });
+            return;
+          }
+          await _showFallback(examType, 'Connection error: $e');
         }
       } else {
         final loaded = await _loadCachedMocks(examType);
         if (!loaded) {
-          _errorMessage =
-              'You are offline. Open mock tests once while online to cache them.';
+          await _showFallback(
+            examType,
+            'You are offline. Showing demo mock tests until you reconnect.',
+          );
         }
       }
     } catch (e) {
-      _errorMessage = 'Connection error: $e';
+      await _showFallback(examType, 'Connection error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _applyMockList(List list) {
-    var items = list
-        .map<MockTest>((item) => MockTest.fromJson(item as Map<String, dynamic>))
-        .toList();
-    if (_filter == 'IELTS') {
-      items = items.where((m) => m.examType == 'IELTS').toList();
-    } else if (_filter == 'PTE') {
-      items = items.where((m) => m.examType == 'PTE').toList();
+  Future<void> _showFallback(String examType, String message) async {
+    final loaded = await _loadCachedMocks(examType);
+    if (loaded) {
+      if (mounted) {
+        setState(() => _errorMessage = message);
+      } else {
+        _errorMessage = message;
+      }
+      return;
     }
-    setState(() => _mocks = items);
-    if (_mocks.isEmpty) {
+    _applyMockList(DemoMockCatalog.forExamType(examType), notice: message);
+  }
+
+  void _applyMockList(List list, {String notice = ''}) {
+    final items = <MockTest>[];
+    for (final item in list) {
+      if (item is! Map) continue;
+      try {
+        items.add(MockTest.fromJson(Map<String, dynamic>.from(item)));
+      } catch (e) {
+        debugPrint('Skipping mock parse error: $e');
+      }
+    }
+    var filtered = items;
+    if (_filter == 'IELTS') {
+      filtered = items.where((m) => m.examType == 'IELTS').toList();
+    } else if (_filter == 'PTE') {
+      filtered = items.where((m) => m.examType == 'PTE').toList();
+    }
+    _mocks = filtered;
+    _errorMessage = notice;
+    if (_mocks.isEmpty && _errorMessage.isEmpty) {
       _errorMessage = 'No published mock tests yet. Create one in the Admin panel.';
     }
+    if (mounted) setState(() {});
   }
 
   Future<bool> _loadCachedMocks(String examType) async {
-    final cached = await LocalDb.instance.getCachedMockDashboard(examType);
-    if (cached == null || cached.isEmpty) return false;
-    _applyMockList(cached);
-    return true;
+    try {
+      final cached = await LocalDb.instance.getCachedMockDashboard(examType);
+      if (cached == null || cached.isEmpty) return false;
+      _applyMockList(cached);
+      return _mocks.isNotEmpty;
+    } catch (e) {
+      debugPrint('Cached mocks load failed: $e');
+      return false;
+    }
   }
 
   void _openMock(MockTest mock) {
@@ -163,7 +244,7 @@ class _MocksScreenState extends State<MocksScreen> {
   String get _sectionLabel {
     if (_filter != 'All') return _filter.toUpperCase();
     if (_hasFullTestAccess()) return 'ALL EXAMS';
-    return (UserNotifier.notifier.value['preference']?.toString() ?? 'IELTS').toUpperCase();
+    return _normalizedPreference();
   }
 
   @override
@@ -221,6 +302,11 @@ class _MocksScreenState extends State<MocksScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          if (_errorMessage.isNotEmpty && _mocks.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: _noticeBanner(),
+            ),
           if (_mocks.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -235,9 +321,9 @@ class _MocksScreenState extends State<MocksScreen> {
               ),
             ),
           Expanded(
-            child: _isLoading
+            child: _isLoading && _mocks.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
+                : _mocks.isEmpty
                     ? _errorView()
                     : RefreshIndicator(
                         onRefresh: _fetchMocks,
@@ -256,6 +342,22 @@ class _MocksScreenState extends State<MocksScreen> {
     );
   }
 
+  Widget _noticeBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFDBA74)),
+      ),
+      child: Text(
+        _errorMessage,
+        style: const TextStyle(fontSize: 12, color: Color(0xFF9A3412), height: 1.35),
+      ),
+    );
+  }
+
   Widget _errorView() {
     return Center(
       child: Padding(
@@ -266,7 +368,9 @@ class _MocksScreenState extends State<MocksScreen> {
             Icon(Icons.cloud_off_outlined, color: Colors.grey.shade400, size: 48),
             const SizedBox(height: 12),
             Text(
-              _errorMessage,
+              _errorMessage.isEmpty
+                  ? 'No published mock tests yet. Create one in the Admin panel.'
+                  : _errorMessage,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context)),
             ),

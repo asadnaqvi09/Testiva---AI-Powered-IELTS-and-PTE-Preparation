@@ -45,7 +45,10 @@ class TestivaApp extends StatelessWidget {
         return MaterialApp(
           title: 'Testiva AI',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData.light(useMaterial3: true).copyWith(
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.light,
+            fontFamily: 'Inter',
             colorScheme: ColorScheme.fromSeed(
               seedColor: AppColors.primary,
               brightness: Brightness.light,
@@ -57,8 +60,14 @@ class TestivaApp extends StatelessWidget {
               elevation: 0,
               iconTheme: IconThemeData(color: Colors.black87),
             ),
+            textTheme: ThemeData.light(useMaterial3: true).textTheme.apply(
+              fontFamily: 'Inter',
+            ),
           ),
-          darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            fontFamily: 'Inter',
             colorScheme: ColorScheme.fromSeed(
               seedColor: AppColors.primary,
               brightness: Brightness.dark,
@@ -68,6 +77,9 @@ class TestivaApp extends StatelessWidget {
               backgroundColor: Color(0xFF1E1E1E),
               elevation: 0,
               iconTheme: IconThemeData(color: Colors.white),
+            ),
+            textTheme: ThemeData.dark(useMaterial3: true).textTheme.apply(
+              fontFamily: 'Inter',
             ),
           ),
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,

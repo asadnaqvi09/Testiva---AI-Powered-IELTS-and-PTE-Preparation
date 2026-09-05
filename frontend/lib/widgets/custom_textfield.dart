@@ -31,7 +31,12 @@ class AppTextField extends StatelessWidget {
       obscureText: isPassword,
       keyboardType: keyboardType,
       validator: validator,
-      style: TextStyle(color: AppTheme.primaryText(context)),
+      style: TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 15,
+        height: 22 / 15,
+        color: AppTheme.primaryText(context),
+      ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

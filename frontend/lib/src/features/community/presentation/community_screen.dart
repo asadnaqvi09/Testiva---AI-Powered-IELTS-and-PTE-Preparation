@@ -5,6 +5,7 @@ import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_header.dart';
 import '../../../../widgets/app_theme.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/user_notifier.dart';
 import '../../../../core/services/socket_service.dart';
 import '../../../../data/models/community_post_model.dart';
 import 'widgets/community_post_card.dart';
@@ -373,15 +374,26 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userPref = UserNotifier.notifier.value['preference'] ?? 'IELTS';
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
+      appBar: AppHeader(
+        scaffoldKey: _scaffoldKey,
+        titleWidget: Text(
+          '$userPref Community',
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppHeader(scaffoldKey: _scaffoldKey),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(
@@ -391,9 +403,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Community',
+                        'Study Forum',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryText(context),
                         ),

@@ -104,8 +104,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           };
           UserNotifier.notifier.value = newUserData;
 
-
-          if (user['preference'] == null && mounted) {
+          final pref = user['preference']?.toString().trim();
+          final hasPreference = pref != null &&
+              pref.isNotEmpty &&
+              pref.toUpperCase() != 'NULL';
+          if (!hasPreference && mounted) {
             final userName = user['full_name'] ?? user['name'] ?? 'User';
             Navigator.pushReplacementNamed(
               context,

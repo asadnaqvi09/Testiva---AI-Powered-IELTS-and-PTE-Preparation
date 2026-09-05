@@ -11,14 +11,68 @@ import {
   addQuestionSchema,
 } from "../validator/test.validator.js";
 
-async function resolveTestUserAccess(req) {
-  const user = await findUserById(req.user.id);
-  if (!user) return null;
+function isDemoUserId(id) {
+  return typeof id === "string" && id.startsWith("demo-user-");
+}
+
+function normalizeExamPreference(raw) {
+  const value = String(raw ?? "").toUpperCase().trim();
+  if (value === "PTE") return "PTE";
+  if (value === "IELTS") return "IELTS";
+  return null;
+}
+
+function accessFromJwt(req) {
+  if (!req.user?.id) return null;
   return {
-    id: user.id,
-    role: user.role,
-    subscription: user.subscription || "free",
-    preference: user.preference ?? null,
+    id: req.user.id,
+    role: req.user.role || "user",
+    subscription: req.user.subscription || "free",
+    preference: normalizeExamPreference(req.user.preference),
+  };
+}
+
+async function resolveTestUserAccess(req) {
+  if (isDemoUserId(req.user?.id)) {
+    const demo = accessFromJwt(req);
+    if (!demo) return null;
+    return { ...demo, preference: demo.preference ?? "IELTS" };
+  }
+  try {
+    const user = await findUserById(req.user.id);
+    if (!user) return null;
+    return {
+      id: user.id,
+      role: user.role,
+      subscription: user.subscription || "free",
+      preference: normalizeExamPreference(user.preference),
+    };
+  } catch (error) {
+    console.error("resolveTestUserAccess DB error:", error.message);
+    return accessFromJwt(req);
+  }
+}
+
+function mapMobileMockRow(r) {
+  return {
+    id: r.id,
+    display_id: r.display_id,
+    title: r.title,
+    exam_type: r.exam_type,
+    test_category: r.test_category,
+    difficulty_level: r.difficulty_level,
+    total_duration: r.total_duration,
+    min_required_band: r.min_required_band,
+    total_questions: r.total_questions,
+    sub_question_type_indicators: r.sub_question_types || r.sub_question_type_indicators || [],
+    last_attempt: r.last_attempt_id
+      ? {
+          attempt_id: r.last_attempt_id,
+          overall_band_score: r.last_attempt_score,
+          status: r.last_attempt_status,
+        }
+      : r.last_attempt ?? null,
+    cta: (r.last_attempt_id || r.last_attempt) ? "retake" : (r.cta || "start"),
   };
 }
 
@@ -93,47 +147,47 @@ export const fetchMobileMocksDashboard = async (req, res) => {
     if (!access) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const { subscription, preference: userPreference, role } = access;
+    const { subscription, role } = access;
+    const userPreference = normalizeExamPreference(access.preference) ?? "IELTS";
     let examTypes = ["IELTS", "PTE"];
-    const filter = req.query.exam_type;
+    const filter = String(req.query.exam_type || "").toUpperCase();
     if (role !== "admin" && subscription !== "premium") {
-      if (!userPreference) {
-        return res.status(403).json({ success: false, message: "Please select your learning preference to continue" });
-      }
       examTypes = [userPreference];
-    } else {
-      if (filter === "IELTS") examTypes = ["IELTS"];
-      else if (filter === "PTE") examTypes = ["PTE"];
+    } else if (filter === "IELTS" || filter === "PTE") {
+      examTypes = [filter];
     }
     const cacheKey = `test:mobile:${access.id}:${filter || "ALL"}:${subscription}`;
     const cached = await cacheGetJson(cacheKey);
-    if (cached) return res.status(200).json({ success: true, cached: true, data: cached });
-    
-    const rows = await testModel.listMobilePublished(access.id, examTypes);
-    const data = rows.map((r) => ({
-      id: r.id,
-      display_id: r.display_id,
-      title: r.title,
-      exam_type: r.exam_type,
-      test_category: r.test_category,
-      difficulty_level: r.difficulty_level,
-      total_duration: r.total_duration,
-      min_required_band: r.min_required_band,
-      total_questions: r.total_questions,
-      sub_question_type_indicators: r.sub_question_types || [],
-      last_attempt: r.last_attempt_id
-        ? {
-            attempt_id: r.last_attempt_id,
-            overall_band_score: r.last_attempt_score,
-            status: r.last_attempt_status,
-          }
-        : null,
-      cta: r.last_attempt_id ? "retake" : "start",
-    }));
-    await cacheSetJson(cacheKey, data, 30);
-    res.status(200).json({ success: true, cached: false, data });
+    if (Array.isArray(cached) && cached.length) {
+      return res.status(200).json({ success: true, cached: true, data: cached });
+    }
+
+    try {
+      const rows = await testModel.listMobilePublished(access.id, examTypes);
+      const data = rows.map(mapMobileMockRow);
+      await cacheSetJson(cacheKey, data, 30);
+      return res.status(200).json({ success: true, cached: false, data });
+    } catch (dbError) {
+      console.error("Mobile mocks DB error:", dbError.message);
+      const data = testModel.listDemoPublished(examTypes);
+      return res.status(200).json({
+        success: true,
+        cached: false,
+        demo: true,
+        message: "Database unavailable. Showing demo mock tests for FYP preview.",
+        data,
+      });
+    }
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message || "Error fetching mobile mocks" });
+    console.error("Mobile mocks error:", error.message);
+    const data = testModel.listDemoPublished(["IELTS", "PTE"]);
+    return res.status(200).json({
+      success: true,
+      cached: false,
+      demo: true,
+      message: error.message || "Error fetching mobile mocks",
+      data,
+    });
   }
 };
 

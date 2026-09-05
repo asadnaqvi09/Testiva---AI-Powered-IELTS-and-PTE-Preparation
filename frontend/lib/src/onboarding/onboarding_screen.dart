@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import '../auth/auth_screen.dart';
 import './widgets/onboarding_header.dart';
 import './widgets/onboarding_stats.dart';
@@ -11,23 +12,56 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
+class _OnboardingSlide {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color wash;
+  final Color iconColor;
+  final Color accent;
+
+  const _OnboardingSlide({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.wash,
+    required this.iconColor,
+    required this.accent,
+  });
+}
+
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int _currentPage = 0;
   Timer? _timer;
 
-  final List<Map<String, String>> onboardingData = [
-    {
-      'title': 'Personalized Learning',
-      'subtitle': 'AI-powered study plans tailored to your unique strengths and learning style.',
-    },
-    {
-      'title': 'AI-Powered Mocks',
-      'subtitle': 'Practice with realistic IELTS & PTE mock tests. Get instant AI feedback.',
-    },
-    {
-      'title': 'Start Free Today',
-      'subtitle': 'Join 50,000+ students already improving their scores with Testiva.',
-    },
+  static const List<_OnboardingSlide> _slides = [
+    _OnboardingSlide(
+      title: 'Personalized Learning',
+      subtitle:
+          'AI-powered study plans tailored to your unique strengths and learning style.',
+      icon: Icons.menu_book_outlined,
+      wash: Color(0xFFEFF6FF),
+      iconColor: AppColors.primary,
+      accent: AppColors.primary,
+    ),
+    _OnboardingSlide(
+      title: 'AI Powered Mocks',
+      subtitle:
+          'Practice with realistic IELTS & PTE mock tests. Get instant AI feedback.',
+      icon: Icons.quiz_outlined,
+      wash: Color(0xFFEEF2FF),
+      iconColor: Color(0xFF4F46E5),
+      accent: Color(0xFF4F46E5),
+    ),
+    _OnboardingSlide(
+      title: 'Start Free Today',
+      subtitle:
+          'Join 50,000+ students already improving their scores with Testiva. No credit card needed.',
+      icon: Icons.emoji_events_outlined,
+      wash: Color(0xFFDCFCE7),
+      iconColor: Color(0xFF166534),
+      accent: Color(0xFF147D6C),
+    ),
   ];
 
   @override
@@ -40,7 +74,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
       if (mounted) {
         setState(() {
-          _currentPage = (_currentPage + 1) % onboardingData.length;
+          _currentPage = (_currentPage + 1) % _slides.length;
         });
       }
     });
@@ -52,110 +86,159 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  void _openAuth({required bool startOnLogin}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AuthScreen(startOnLogin: startOnLogin),
+      ),
+    );
+  }
+
+  void _continueAsGuest() {
+    Navigator.pushReplacementNamed(context, '/home');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height;
+    final compact = height < 720;
+    final gap = compact ? 16.0 : 28.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Column(
-            children: [
-              const OnboardingHeader(),
-              const SizedBox(height: 20),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 800),
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-                child: _buildPageContent(_currentPage),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, compact ? 12 : 16, 24, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 36),
+                child: Column(
+                  children: [
+                    const OnboardingHeader(),
+                    SizedBox(height: gap),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 450),
+                      child: _buildPageContent(_currentPage, constraints.maxWidth),
+                    ),
+                    SizedBox(height: gap),
+                    _buildBottomSection(),
+                  ],
+                ),
               ),
-              const SizedBox(height: 40),
-              _buildBottomSection(),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildPageContent(int index) {
+  Widget _buildPageContent(int index, double maxWidth) {
+    final slide = _slides[index];
+    final heroHeight = (maxWidth - 8).clamp(180.0, 260.0);
+
     return Column(
       key: ValueKey<int>(index),
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: 180,
-          width: 180,
+          height: heroHeight,
+          width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(30),
+            color: slide.wash,
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Center(
-            child: Icon(
-              index == 0 ? Icons.psychology : index == 1 ? Icons.bolt_rounded : Icons.shield_outlined,
-              size: 80,
-              color: AppColors.primary,
-            ),
+            child: Icon(slide.icon, size: 72, color: slide.iconColor),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 24),
         Text(
-          onboardingData[index]['title']!,
+          slide.title,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          style: AppTypography.display(),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Text(
-          onboardingData[index]['subtitle']!,
+          slide.subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 16, color: Color(0xFF64748B), height: 1.5),
+          style: AppTypography.body(color: const Color(0xFF64748B)),
         ),
       ],
     );
   }
 
   Widget _buildBottomSection() {
+    final slide = _slides[_currentPage];
+
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) => _buildDot(index)),
+          children: List.generate(_slides.length, (index) => _buildDot(index, slide.accent)),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         const OnboardingStats(),
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AuthScreen()),
-              );
-            },
+            onPressed: () => _openAuth(startOnLogin: false),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              foregroundColor: Colors.white,
               elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
-            child: const Text('Get Started', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Get Started', style: AppTypography.button()),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: OutlinedButton(
+            onPressed: _continueAsGuest,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Continue as Guest (Limited Access)',
+                maxLines: 1,
+                style: AppTypography.button(color: AppColors.primary),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildDot(int index) {
+  Widget _buildDot(int index, Color accent) {
+    final active = _currentPage == index;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: 8,
-      width: _currentPage == index ? 24 : 8,
-      margin: const EdgeInsets.only(right: 6),
+      width: active ? 24 : 8,
+      margin: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
-        color: _currentPage == index ? AppColors.primary : const Color(0xFFCBD5E1),
+        color: active ? accent : const Color(0xFFCBD5E1),
         borderRadius: BorderRadius.circular(4),
       ),
     );

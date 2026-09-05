@@ -21,7 +21,6 @@ class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass = TextEditingController();
-  bool _showDemo = false;
   bool _isLoading = false;
   bool _obscurePass = true;
   bool _rememberMe = false;
@@ -45,11 +44,6 @@ class _LoginFormState extends State<LoginForm> {
       });
     }
   }
-
-  void _fill(String e, String p) => setState(() {
-    _email.text = e;
-    _pass.text = p;
-  });
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -173,7 +167,12 @@ class _LoginFormState extends State<LoginForm> {
                 const SizedBox(width: 8),
                 const Text(
                   'Remember Me',
-                  style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: AppColors.textGrey,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -186,55 +185,45 @@ class _LoginFormState extends State<LoginForm> {
               },
               child: const Text(
                 'Forgot Password?',
-                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : AppButton(
           text: 'Login',
           onPressed: _handleLogin,
         ),
-        const SizedBox(height: 20),
-        const SocialLoginBtns(),
-        Center(
-          child: TextButton.icon(
-            onPressed: () => setState(() => _showDemo = !_showDemo),
-            icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility, size: 18, color: AppColors.textGrey),
-            label: Text('${_showDemo ? 'Hide' : 'Show'} Demo Credentials', style: const TextStyle(color: AppColors.textGrey)),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Row(
+            children: [
+              Expanded(child: Divider()),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  'or continue with',
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(child: Divider()),
+            ],
           ),
         ),
-        if (_showDemo) _demoBox(),
+        const SocialLoginBtns(),
       ]),
     );
   }
-
-  Widget _demoBox() => Container(
-    margin: const EdgeInsets.only(top: 10),
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      color: AppColors.primary.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(15),
-      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-    ),
-    child: Column(children: [
-      _demoTile('Free User', 's23-0385@student.uoh.pk', 'aksa12345@sk', Icons.person_outline, AppColors.primary),
-      _demoTile('Premium', 'premiumuser@example.com', 'aksa12345@sk', Icons.star_outline, Colors.orange),
-      _demoTile('Admin', 'ragesr56@gmail.com', 'TestFlow12345@sk', Icons.admin_panel_settings_outlined, Colors.deepPurple),
-    ]),
-  );
-
-  Widget _demoTile(String l, String e, String password, IconData i, Color c) => GestureDetector(
-    onTap: () => _fill(e, password),
-    child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(children: [
-          Icon(i, size: 16, color: c),
-          const SizedBox(width: 8),
-          Text('$l: $e', style: const TextStyle(fontSize: 12, color: AppColors.primary)),
-        ])),
-  );
 }

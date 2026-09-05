@@ -35,7 +35,11 @@ class AppButton extends StatelessWidget {
             width: 1.5,
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
         ),
       )
           : ElevatedButton.icon(
@@ -48,7 +52,11 @@ class AppButton extends StatelessWidget {
           disabledBackgroundColor: const Color(0xFFB0D4FF),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
         ),
       ),
     );

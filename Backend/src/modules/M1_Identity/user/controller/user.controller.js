@@ -7,13 +7,39 @@ import * as userValidator from "../validator/user.validator.js";
 
 export const getProfileController = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (userId && userId.toString().startsWith('demo-user-')) {
+      const demoUser = {
+        id: userId,
+        full_name: req.user.role === 'admin' ? 'Admin User' : (req.user.subscription === 'premium' ? 'Maw (Demo Premium)' : 'Wasay (Demo Free)'),
+        email: req.user.role === 'admin' ? 'ragesr56@gmail.com' : (req.user.subscription === 'premium' ? 'mawbsds@gmail.com' : 'abdulwasaybaloch5@gmail.com'),
+        role: req.user.role || 'user',
+        subscription: req.user.subscription || 'free',
+        preference: req.user.preference || 'IELTS',
+        bio: 'Demo Mode Profile',
+        avatar_url: null,
+      };
+      return res.status(200).json({ success: true, user: demoUser });
+    }
     const user = await findUserById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     res.status(200).json({ success: true, user });
   } catch (error) {
+    if (req.user?.id?.toString().startsWith('demo-user-')) {
+      return res.status(200).json({
+        success: true,
+        user: {
+          id: req.user.id,
+          full_name: 'Demo User',
+          email: 'demo@testiva.app',
+          role: req.user.role || 'user',
+          subscription: req.user.subscription || 'free',
+          preference: req.user.preference || 'IELTS',
+        }
+      });
+    }
     res.status(500).json({ success: false, message: "Failed to fetch profile" });
   }
 };

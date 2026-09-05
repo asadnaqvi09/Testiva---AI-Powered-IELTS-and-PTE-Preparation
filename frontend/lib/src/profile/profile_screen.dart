@@ -11,6 +11,7 @@ import 'widgets/support_section.dart';
 import 'all_tests_screen.dart';
 
 import '../../widgets/custom_drawer.dart';
+import '../../widgets/app_header.dart';
 import '../../widgets/logout_dialog.dart';
 import '../../widgets/app_theme.dart';
 
@@ -398,16 +399,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: const CustomDrawer(),
-      appBar: AppBar(
-        title: const Text('Profile'),
-        centerTitle: false,
-        elevation: 0,
-        backgroundColor: AppTheme.appBarBg(context),
-        foregroundColor: AppTheme.primaryText(context),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      appBar: AppHeader(
+        scaffoldKey: _scaffoldKey,
+        titleWidget: Text(
+          'Profile',
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
+        showProfileAvatar: false,
       ),
       body: SafeArea(
         child: _isLoading

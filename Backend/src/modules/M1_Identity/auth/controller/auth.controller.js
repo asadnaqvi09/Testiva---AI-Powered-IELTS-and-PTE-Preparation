@@ -125,7 +125,68 @@ export const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.log("Error In Login Controller : ", error.message);
-    return res.status(500).json({ success: false, message: "Login failed" });
+
+    const isDbError =
+      error.code === 'XX000' ||
+      error.code === 'ENOTFOUND' ||
+      error.code === 'ECONNREFUSED' ||
+      (error.message && error.message.includes('tenant/user'));
+
+    // Fallback mode for demo accounts if DB is offline/paused
+    const demoUsers = {
+      'abdulwasaybaloch5@gmail.com': {
+        id: 'demo-user-1',
+        full_name: 'Wasay (Demo Free)',
+        email: 'abdulwasaybaloch5@gmail.com',
+        role: 'user',
+        subscription: 'free',
+        preference: 'IELTS',
+      },
+      'mawbsds@gmail.com': {
+        id: 'demo-user-2',
+        full_name: 'Maw (Demo Premium)',
+        email: 'mawbsds@gmail.com',
+        role: 'user',
+        subscription: 'premium',
+        preference: 'PTE',
+      },
+      'ragesr56@gmail.com': {
+        id: 'demo-user-3',
+        full_name: 'Admin User',
+        email: 'ragesr56@gmail.com',
+        role: 'admin',
+        subscription: 'premium',
+        preference: 'IELTS',
+      },
+    };
+
+    const reqEmail = (req.body.email || '').toLowerCase().trim();
+    if (isDbError && demoUsers[reqEmail]) {
+      const demoUser = demoUsers[reqEmail];
+      const accessToken = generateAccessToken({
+        id: demoUser.id,
+        role: demoUser.role,
+        subscription: demoUser.subscription,
+        tokenVersion: 1,
+        preference: demoUser.preference,
+      });
+      const refreshToken = generateRefreshToken(demoUser.id);
+      return res.json({
+        success: true,
+        accessToken,
+        refreshToken,
+        expiresIn: '15m',
+        user: demoUser,
+        isDemoFallback: true,
+        message: 'Logged in via Demo Fallback Mode (Database Offline)',
+      });
+    }
+
+    const failureMessage = isDbError
+      ? 'Database connection failed. Please restore Supabase database or check .env settings.'
+      : (error.message || 'Login failed');
+
+    return res.status(500).json({ success: false, message: failureMessage });
   }
 };
 
@@ -527,9 +588,28 @@ export const googleAuth = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in googleAuth:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Google auth failed" });
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message || "Google auth failed",
+      });
+    }
+    const isDbError =
+      error.code === "XX000" ||
+      error.code === "ENOTFOUND" ||
+      error.code === "ECONNREFUSED" ||
+      (error.message && error.message.includes("tenant/user"));
+    if (isDbError) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Database connection failed. Please restore Supabase database or check .env settings.",
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Google auth failed",
+    });
   }
 };
 

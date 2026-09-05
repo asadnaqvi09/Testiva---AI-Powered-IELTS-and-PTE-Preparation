@@ -5,14 +5,16 @@ import '../core/services/user_notifier.dart';
 
 class AppHeader extends StatefulWidget implements PreferredSizeWidget {
   final GlobalKey<ScaffoldState>? scaffoldKey;
-  final bool showBackButton;
+  final bool? showBackButton;
   final Widget? titleWidget;
+  final bool showProfileAvatar;
 
   const AppHeader({
     super.key,
     this.scaffoldKey,
-    this.showBackButton = false,
+    this.showBackButton,
     this.titleWidget,
+    this.showProfileAvatar = true,
   });
 
   @override
@@ -56,6 +58,8 @@ class _AppHeaderState extends State<AppHeader> {
     final userData = UserNotifier.notifier.value;
     final fullName = (userData['name'] ?? 'User').toString();
     final initials = _getInitials(fullName);
+    final bool canPop = Navigator.canPop(context);
+    final bool displayBackButton = widget.showBackButton ?? canPop;
 
     return SafeArea(
       child: Padding(
@@ -63,17 +67,17 @@ class _AppHeaderState extends State<AppHeader> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            widget.showBackButton
+            displayBackButton
                 ? GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardBg(context),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: AppTheme.cardShadow(context),
-                      ),
-                      child: Icon(Icons.arrow_back, size: 20, color: AppTheme.iconColor(context)),
+                       padding: const EdgeInsets.all(8),
+                       decoration: BoxDecoration(
+                         color: AppTheme.cardBg(context),
+                         borderRadius: BorderRadius.circular(10),
+                         boxShadow: AppTheme.cardShadow(context),
+                       ),
+                       child: Icon(Icons.arrow_back, size: 20, color: AppTheme.iconColor(context)),
                     ),
                   )
                 : GestureDetector(
@@ -113,22 +117,24 @@ class _AppHeaderState extends State<AppHeader> {
                 ],
               ],
             ),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                );
-              },
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: const Color(0xFF007BFF),
-                child: Text(
-                  initials,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
+            widget.showProfileAvatar
+                ? GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                      );
+                    },
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: const Color(0xFF007BFF),
+                      child: Text(
+                        initials,
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+                : const SizedBox(width: 36),
           ],
         ),
       ),
