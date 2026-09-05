@@ -165,7 +165,17 @@ class _PrepScreenState extends State<PrepScreen> {
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
       drawer: const CustomDrawer(),
-      appBar: AppHeader(scaffoldKey: _scaffoldKey),
+      appBar: AppHeader(
+        scaffoldKey: _scaffoldKey,
+        titleWidget: Text(
+          '$selectedType Prep',
+          style: TextStyle(
+            color: AppTheme.primaryText(context),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _fetchLiveModules,
         color: AppColors.primary,
@@ -175,8 +185,6 @@ class _PrepScreenState extends State<PrepScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Preparation', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context))),
-              const SizedBox(height: 25),
               Row(children: [
                 _buildExamTab(
                   context,

@@ -11,8 +11,8 @@ class GoogleAuthService {
     scopes: ['email', 'profile'],
   );
 
-  static Future<void> _showLoadingOverlay(BuildContext context) {
-    return showDialog<void>(
+  static void _showLoadingOverlay(BuildContext context) {
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       useRootNavigator: true,
@@ -43,22 +43,20 @@ class GoogleAuthService {
     }
   }
 
-  static Future<GoogleSignInAccount?> _resolveGoogleUser() async {
-    GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
-    googleUser ??= await _googleSignIn.signIn();
-    return googleUser;
-  }
-
   static Future<void> handleGoogleSignIn(BuildContext context) async {
     if (!context.mounted) return;
-    await _showLoadingOverlay(context);
+
+    var overlayShown = false;
 
     try {
-      final GoogleSignInAccount? googleUser = await _resolveGoogleUser();
-      if (googleUser == null) {
-        if (context.mounted) _hideLoadingOverlay(context);
-        return;
-      }
+      // Account picker must run first. Awaiting showDialog blocks forever
+      // because that Future only completes when the overlay is dismissed.
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      if (!context.mounted) return;
+      overlayShown = true;
+      _showLoadingOverlay(context);
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -73,7 +71,10 @@ class GoogleAuthService {
       });
 
       if (!context.mounted) return;
-      _hideLoadingOverlay(context);
+      if (overlayShown) {
+        _hideLoadingOverlay(context);
+        overlayShown = false;
+      }
 
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -107,7 +108,7 @@ class GoogleAuthService {
         ),
       );
     } catch (e) {
-      if (context.mounted) {
+      if (context.mounted && overlayShown) {
         _hideLoadingOverlay(context);
       }
 

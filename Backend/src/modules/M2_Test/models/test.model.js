@@ -132,8 +132,69 @@ export async function listAdminMocksDashboard({ search, exam_type, limit, offset
   return rows;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+
+function safeExamTypes(examTypes) {
+  const types = (examTypes || []).filter((t) => t === "IELTS" || t === "PTE");
+  return types.length ? types : ["IELTS", "PTE"];
+}
+
+/** Seed catalog from testiva.sql — used when DB is down (not inserted into production). */
+const DEMO_PUBLISHED_MOCKS = [
+  {
+    id: "d2319e2d-12d4-440a-8af0-75fa93f537eb",
+    display_id: "mck001",
+    title: "IELTS Reading",
+    exam_type: "IELTS",
+    test_category: "singular_module",
+    difficulty_level: "medium",
+    total_duration: 60,
+    min_required_band: 6.0,
+    total_questions: 8,
+    sub_question_type_indicators: ["mcq", "true_false", "yes_no", "short_answer"],
+    last_attempt: null,
+    cta: "start",
+  },
+  {
+    id: "047684a1-5841-4c06-90cc-44dcde456ae5",
+    display_id: "mck002",
+    title: "IELTS Writing",
+    exam_type: "IELTS",
+    test_category: "singular_module",
+    difficulty_level: "medium",
+    total_duration: 60,
+    min_required_band: 6.0,
+    total_questions: 12,
+    sub_question_type_indicators: ["chart_description", "opinion", "request_information"],
+    last_attempt: null,
+    cta: "start",
+  },
+  {
+    id: "b7c1e9a0-4d2f-4a11-9c8e-21f0a6d4e801",
+    display_id: "mck003",
+    title: "PTE Academic Practice",
+    exam_type: "PTE",
+    test_category: "full_mock",
+    difficulty_level: "medium",
+    total_duration: 90,
+    min_required_band: 65,
+    total_questions: 20,
+    sub_question_type_indicators: ["mcq", "short_answer", "sentence_completion"],
+    last_attempt: null,
+    cta: "start",
+  },
+];
+
+export function listDemoPublished(examTypes) {
+  const types = safeExamTypes(examTypes);
+  return DEMO_PUBLISHED_MOCKS.filter((m) => types.includes(m.exam_type));
+}
+
 export async function listMobilePublished(userId, examTypes) {
-  const types = examTypes?.length ? examTypes : ["IELTS", "PTE"];
+  const types = safeExamTypes(examTypes);
+  const attemptUserId = UUID_RE.test(String(userId || "")) ? userId : NIL_UUID;
   const { rows } = await pool.query(
     `SELECT t.id, t.display_id, t.title, t.exam_type, t.test_category, t.difficulty_level,
             t.total_duration, t.min_required_band,
@@ -145,11 +206,12 @@ export async function listMobilePublished(userId, examTypes) {
             la.status AS last_attempt_status
      FROM tests t
      LEFT JOIN LATERAL (
-       SELECT COALESCE(array_agg(DISTINCT q.sub_question_type ORDER BY q.sub_question_type)
-         FILTER (WHERE q.sub_question_type IS NOT NULL), '{}') AS sub_question_types
-       FROM questions q
-       INNER JOIN test_sections ts ON q.section_id = ts.id
-       WHERE ts.test_id = t.id
+       SELECT COALESCE((
+         SELECT array_agg(DISTINCT q.sub_question_type)
+         FROM questions q
+         INNER JOIN test_sections ts ON q.section_id = ts.id
+         WHERE ts.test_id = t.id AND q.sub_question_type IS NOT NULL
+       ), '{}') AS sub_question_types
      ) sq ON true
      LEFT JOIN LATERAL (
        SELECT id, overall_band_score, status FROM test_attempts
@@ -158,7 +220,7 @@ export async function listMobilePublished(userId, examTypes) {
      ) la ON true
      WHERE t.is_published = true AND t.exam_type = ANY($2::public.test_type_enum[])
      ORDER BY t.created_at DESC`,
-    [userId, types],
+    [attemptUserId, types],
   );
   return rows;
 }
@@ -168,7 +230,7 @@ export async function getAllTests(limit, offset, examType = null) {
 }
 
 export async function listPublishedForCatalog(examTypes) {
-  const types = examTypes?.length ? examTypes : ["IELTS", "PTE"];
+  const types = safeExamTypes(examTypes);
   const { rows } = await pool.query(
     `SELECT t.id, t.display_id, t.title, t.exam_type, t.test_category, t.difficulty_level,
             t.total_duration, t.min_required_band,

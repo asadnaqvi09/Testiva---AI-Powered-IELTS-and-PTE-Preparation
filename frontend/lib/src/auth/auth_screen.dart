@@ -1,51 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/brand_mark.dart';
 import 'login/widgets/login_form.dart';
 import 'signup/widgets/signup_form.dart';
 import 'login/widgets/login_header.dart';
 import 'login/widgets/auth_toggle.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final bool startOnLogin;
+
+  const AuthScreen({super.key, this.startOnLogin = true});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  bool isLogin = true;
+  late bool isLogin;
+
+  @override
+  void initState() {
+    super.initState();
+    isLogin = widget.startOnLogin;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Testiva', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(25),
-          child: Column(
-            children: [
-              const LoginHeader(),
-              const SizedBox(height: 20),
-              AuthToggle(
-                isLogin: isLogin,
-                onChanged: (value) {
-                  setState(() {
-                    isLogin = value;
-                  });
-                },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 24, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const BrandMark(markSize: 32, fontSize: 16),
+                ],
               ),
-              const SizedBox(height: 25),
-              isLogin ? const LoginForm() : const SignupForm(),
-            ],
-          ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LoginHeader(isLogin: isLogin),
+                    const SizedBox(height: 24),
+                    AuthToggle(
+                      isLogin: isLogin,
+                      onChanged: (value) {
+                        setState(() {
+                          isLogin = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    isLogin ? const LoginForm() : const SignupForm(),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

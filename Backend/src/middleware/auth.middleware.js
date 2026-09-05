@@ -11,7 +11,17 @@ export const authenticate = async (req, res, next) => {
       });
     }
     const token = authHeader.split(" ")[1];
-    const isBlacklisted = await redisClient.get(`bl:${token}`);
+    let isBlacklisted = null;
+    try {
+      isBlacklisted = await Promise.race([
+        redisClient.get(`bl:${token}`),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("redis timeout")), 500),
+        ),
+      ]);
+    } catch {
+      isBlacklisted = null;
+    }
     if (isBlacklisted) {
       return res.status(401).json({
         success: false,

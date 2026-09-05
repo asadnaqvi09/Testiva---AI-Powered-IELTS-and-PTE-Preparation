@@ -1,58 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
+import 'package:frontend/widgets/brand_mark.dart';
 
 class OnboardingHeader extends StatelessWidget {
   const OnboardingHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return const Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Testiva',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'AI-Powered IELTS\nand PTE Preparation',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF94A3B8),
-                height: 1.3,
-              ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.star, color: Color(0xFF007BFF), size: 16),
-              SizedBox(width: 5),
-              Text(
-                '4.9 Rating',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF007BFF),
-                ),
-              ),
-            ],
+        Expanded(
+          child: BrandMark(
+            markSize: 40,
+            fontSize: 18,
+            showSubtitle: true,
+            subtitle: 'AI-Powered Test Prep',
+            expandText: true,
           ),
         ),
+        SizedBox(width: 8),
+        _RatingChip(),
       ],
+    );
+  }
+}
+
+class _RatingChip extends StatelessWidget {
+  const _RatingChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 14, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(
+            '4.9 Rating',
+            style: AppTypography.caption(
+              color: AppColors.primary,
+              weight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

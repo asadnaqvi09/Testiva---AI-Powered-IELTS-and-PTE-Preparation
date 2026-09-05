@@ -19,7 +19,7 @@ class CommunityFilterChips extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: filters.map((filter) {
-          final isSelected = filter == selectedFilter;
+          final isSelected = filter.toUpperCase() == selectedFilter.toUpperCase();
           return GestureDetector(
             onTap: () => onFilterSelected(filter),
             child: Container(
@@ -28,7 +28,9 @@ class CommunityFilterChips extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFF007BFF) : AppTheme.surfaceBg(context),
                 borderRadius: BorderRadius.circular(25),
-                border: isSelected ? null : Border.all(color: AppTheme.borderColor(context)),
+                border: Border.all(
+                  color: isSelected ? Colors.transparent : AppTheme.borderColor(context),
+                ),
               ),
               child: Text(
                 filter,

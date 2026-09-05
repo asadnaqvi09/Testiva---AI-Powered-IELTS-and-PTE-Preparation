@@ -33,14 +33,36 @@ class MockTest {
 
   bool get hasAttempt => lastAttemptId != null;
 
+  static Map<String, dynamic>? _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
+  }
+
+  static List<String> _asStringList(dynamic value) {
+    if (value is List) {
+      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    }
+    if (value is String && value.isNotEmpty) {
+      return value
+          .replaceAll(RegExp(r'[{}]'), '')
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
   factory MockTest.fromJson(Map<String, dynamic> json) {
-    final lastAttempt = json['last_attempt'] as Map<String, dynamic>?;
+    final lastAttempt = _asMap(json['last_attempt']);
+    final examType = (json['exam_type']?.toString() ?? 'IELTS').toUpperCase();
 
     return MockTest(
       id: json['id']?.toString() ?? '',
       displayId: json['display_id']?.toString() ?? '',
       title: json['title']?.toString() ?? 'IELTS Mock Test',
-      examType: json['exam_type']?.toString() ?? 'IELTS',
+      examType: examType == 'PTE' ? 'PTE' : 'IELTS',
       testCategory: json['test_category']?.toString() ?? 'full_mock',
       difficultyLevel: json['difficulty']?.toString() ??
           json['difficulty_level']?.toString() ?? 'Medium',
@@ -50,9 +72,9 @@ class MockTest {
           double.tryParse(json['min_required_band']?.toString() ?? '') ?? 5.5,
       totalQuestions: int.tryParse(json['questions']?.toString() ?? '') ??
           int.tryParse(json['total_questions']?.toString() ?? '') ?? 0,
-      subQuestionTypeIndicators: (json['sub_question_type_indicators'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ?? const [],
+      subQuestionTypeIndicators: _asStringList(
+        json['sub_question_type_indicators'] ?? json['sub_question_types'],
+      ),
       lastAttemptId: lastAttempt?['attempt_id']?.toString(),
       lastAttemptScore: lastAttempt?['overall_band_score'] != null
           ? double.tryParse(lastAttempt!['overall_band_score'].toString())

@@ -19,7 +19,7 @@ class GoogleButton extends StatelessWidget {
           border: Border.all(color: const Color(0xFFF1F5F9)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -32,9 +32,17 @@ class GoogleButton extends StatelessWidget {
           errorBuilder: (context, error, stackTrace) => const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.g_mobiledata, color: Colors.blue, size: 30),
+              Icon(Icons.g_mobiledata, color: Colors.blue, size: 28),
               SizedBox(width: 8),
-              Text('Continue with Google', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text(
+                'Continue with Google',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
             ],
           ),
         ),

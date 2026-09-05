@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 
 class LoginHeader extends StatelessWidget {
-  const LoginHeader({super.key});
+  final bool isLogin;
+
+  const LoginHeader({super.key, this.isLogin = true});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Welcome Back! 👋',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black),
+        Text(
+          isLogin ? 'Welcome Back' : 'Create Account',
+          style: AppTypography.display(),
         ),
         const SizedBox(height: 8),
         Text(
-          'Sign in to continue your learning journey',
-          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          isLogin
+              ? 'Sign in to continue your learning journey'
+              : 'Start your IELTS and PTE prep with Testiva',
+          style: AppTypography.body(color: const Color(0xFF64748B)),
         ),
       ],
     );

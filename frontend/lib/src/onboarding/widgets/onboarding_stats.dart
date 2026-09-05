@@ -1,5 +1,6 @@
-
 import 'package:flutter/material.dart';
+import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 
 class OnboardingStats extends StatelessWidget {
   const OnboardingStats({super.key});
@@ -7,25 +8,64 @@ class OnboardingStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(15)),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStat('50K+', 'Students'),
-          _buildStat('200+', 'Mocks'),
-          _buildStat('7.5', 'Avg Band'),
+          Expanded(child: _StatItem(value: '50K+', label: 'Students')),
+          const _StatDivider(),
+          Expanded(child: _StatItem(value: '200+', label: 'Mock Tests')),
+          const _StatDivider(),
+          Expanded(child: _StatItem(value: '7.5', label: 'Avg. Band')),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStat(String value, String label) {
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 36,
+      color: const Color(0xFFCBD5E1),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _StatItem({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.title(
+            color: AppColors.primary,
+            weight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.caption(color: const Color(0xFF64748B)),
+        ),
       ],
     );
   }
