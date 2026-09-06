@@ -57,7 +57,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: LOGO_BLUE }}>
               <GraduationCap size={18} color="white" />
             </div>
-            <span className="text-white font-semibold text-sm leading-tight">ACELT<br /><span style={{ color: LOGO_BLUE }} className="text-xs">Admin</span></span>
+            <span className="text-white font-semibold text-sm leading-tight">Testiva<br /><span style={{ color: LOGO_BLUE }} className="text-xs">Admin</span></span>
           </div>
         )}
         {collapsed && (

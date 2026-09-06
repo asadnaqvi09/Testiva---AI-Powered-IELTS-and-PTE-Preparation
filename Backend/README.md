@@ -35,7 +35,7 @@ The Testiva backend is designed using a **Modular Monolith** architecture to ens
 The codebase is structured into distinct domains under `src/modules/`:
 
 - **M1_Identity:** Authentication, Role-based Access Control (Admin, User).
-- **M2_Test:** Mock Tests, Practice Questions, AI Evaluations.
+- **M2_Test:** Mock Tests, Questions, AI Evaluations.
 - **M3_Preparation:** Study materials and curated lessons.
 - **M4_Progress:** Analytics, scoring history, and performance tracking.
 - **M5_Offline:** Synchronization logic for offline study capabilities.

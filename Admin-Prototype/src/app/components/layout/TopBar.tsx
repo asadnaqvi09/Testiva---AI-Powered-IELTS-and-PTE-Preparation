@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Search, Bell, Menu, ChevronDown, Settings, LogOut,
   UserPlus, CreditCard, MessageSquare, FileText, Check, Loader2,
@@ -12,6 +12,18 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin',
   institute_admin: 'Institute Admin',
 };
+
+const NAV_SEARCH_ITEMS: { label: string; path: string; roles?: string[]; keywords: string }[] = [
+  { label: 'Dashboard', path: '/dashboard', keywords: 'home overview' },
+  { label: 'Users', path: '/users', roles: ['admin', 'super_admin'], keywords: 'students accounts subscription unlock' },
+  { label: 'Students', path: '/users', roles: ['institute_admin'], keywords: 'students accounts' },
+  { label: 'Mock Tests', path: '/mocks', keywords: 'tests exams builder' },
+  { label: 'Preparation', path: '/preparation', keywords: 'prep modules content' },
+  { label: 'Analytics', path: '/analytics', keywords: 'stats reports metrics' },
+  { label: 'Community', path: '/community', roles: ['admin', 'super_admin'], keywords: 'posts feed' },
+  { label: 'Subscriptions', path: '/subscriptions', roles: ['admin', 'super_admin'], keywords: 'billing plans unlock' },
+  { label: 'Settings', path: '/settings', keywords: 'profile password theme' },
+];
 
 const NOTIF_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   admin_new_user: { icon: <UserPlus size={14} />, color: '#007BFF', bg: '#007BFF15' },
@@ -47,14 +59,28 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
 
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return NAV_SEARCH_ITEMS.filter(item => {
+      if (item.roles && user && !item.roles.includes(user.role)) return false;
+      const haystack = `${item.label} ${item.keywords} ${item.path}`.toLowerCase();
+      return haystack.includes(q);
+    }).slice(0, 8);
+  }, [searchQuery, user]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSearch(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -95,14 +121,43 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
         <Menu size={20} className="text-gray-900" />
       </button>
 
-      <div className="flex-1 max-w-md">
+      <div className="flex-1 max-w-md" ref={searchRef}>
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search dashboard..."
+            value={searchQuery}
+            onChange={e => {
+              setSearchQuery(e.target.value);
+              setShowSearch(true);
+            }}
+            onFocus={() => setShowSearch(true)}
+            placeholder="Search pages…"
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
           />
+          {showSearch && searchQuery.trim() && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              {searchResults.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-gray-400">No matching pages</p>
+              ) : (
+                searchResults.map(item => (
+                  <button
+                    key={`${item.path}-${item.label}`}
+                    type="button"
+                    onClick={() => {
+                      navigate(item.path);
+                      setSearchQuery('');
+                      setShowSearch(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span className="font-medium text-gray-800">{item.label}</span>
+                    <span className="text-xs text-gray-400">{item.path}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
 

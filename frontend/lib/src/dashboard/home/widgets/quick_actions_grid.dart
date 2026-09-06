@@ -14,15 +14,27 @@ class QuickActionsGrid extends StatelessWidget {
       valueListenable: UserNotifier.notifier,
       builder: (context, user, child) {
         final String preference = user['preference'] ?? 'IELTS';
-        final bool isPremium = user['isPremium'] == true || user['subscription'] == 'premium';
+        final String? unlocked = user['unlocked_exam']?.toString();
+        final bool isPremium = user['isPremium'] == true ||
+            user['subscription'] == 'premium' ||
+            unlocked?.toUpperCase() == 'BOTH';
         final bool isAdmin = user['role'] == 'admin';
         final bool hasAccessAll = isPremium || isAdmin;
 
-        final bool isIeltsActive = preference.toUpperCase() == 'IELTS';
-        
-        // Lock statuses
-        final bool isIeltsLocked = !isIeltsActive && !hasAccessAll;
-        final bool isPteLocked = isIeltsActive && !hasAccessAll;
+        final unlockedUpper = unlocked?.toUpperCase();
+        final bool canIelts = hasAccessAll ||
+            unlockedUpper == 'IELTS' ||
+            (unlockedUpper == null && preference.toUpperCase() == 'IELTS');
+        final bool canPte = hasAccessAll ||
+            unlockedUpper == 'PTE' ||
+            (unlockedUpper == null && preference.toUpperCase() == 'PTE');
+
+        final bool isIeltsLocked = !canIelts;
+        final bool isPteLocked = !canPte;
+        final String primaryTrack = (unlockedUpper == 'IELTS' || unlockedUpper == 'PTE')
+            ? unlockedUpper!
+            : preference.toUpperCase();
+        final bool showIeltsPrimary = primaryTrack == 'IELTS';
 
         return GridView.count(
           shrinkWrap: true,
@@ -32,11 +44,11 @@ class QuickActionsGrid extends StatelessWidget {
           crossAxisSpacing: 15,
           childAspectRatio: 1.1,
           children: [
-            // Start Mock (matches chosen preference, unlocked)
+            // Start Mock (matches unlocked / preference track)
             _actionCard(
               context,
-              isIeltsActive ? 'Start Mock' : 'PTE Mock',
-              isIeltsActive ? 'IELTS Reading' : 'Start Mock Test',
+              showIeltsPrimary ? 'Start Mock' : 'PTE Mock',
+              showIeltsPrimary ? 'IELTS Reading' : 'Start Mock Test',
               Icons.description_outlined,
               Colors.blue,
               isLocked: false,
@@ -69,7 +81,7 @@ class QuickActionsGrid extends StatelessWidget {
             _actionCard(
               context,
               'Community',
-              '3 new replies',
+              'Discuss & learn',
               Icons.people_outline,
               Colors.orange,
               isLocked: false,

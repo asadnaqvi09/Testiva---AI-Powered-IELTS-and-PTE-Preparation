@@ -70,19 +70,5 @@ export const analyzeWeakness = async (userId) => {
         },
         weakSections,
         weakQuestionTypes,
-        practiceStats: await getPracticeWeakness(userId)
     };
-};
-
-const getPracticeWeakness = async (userId) => {
-    const result = await pool.query(
-        `SELECT 
-            section_name,
-            ROUND(AVG(accuracy), 2) as avg_accuracy
-         FROM practice_sessions
-         WHERE user_id = $1 AND status = 'completed'
-         GROUP BY section_name`,
-        [userId]
-    );
-    return result.rows;
 };

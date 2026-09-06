@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/database/local_db.dart';
+import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/auth_gate.dart';
 import 'package:frontend/core/services/connectivity_service.dart';
 import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/theme_provider.dart';
@@ -23,6 +25,8 @@ void main() async {
   await ConnectivityService.instance.initialize();
   await LocalDb.instance.database;
   await OfflineSyncService.instance.initialize();
+  // Clear any legacy plaintext password leftovers
+  await ApiService.clearRememberedPassword();
   runApp(
     MultiProvider(
       providers: [
@@ -85,7 +89,8 @@ class TestivaApp extends StatelessWidget {
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           initialRoute: '/',
           routes: {
-            '/': (context) => const OnboardingScreen(),
+            '/': (context) => const AuthGate(),
+            '/onboarding': (context) => const OnboardingScreen(),
             '/home': (context) => const DashboardScreen(),
             '/dashboard': (context) => const DashboardScreen(),
             '/prep': (context) => const PrepScreen(),

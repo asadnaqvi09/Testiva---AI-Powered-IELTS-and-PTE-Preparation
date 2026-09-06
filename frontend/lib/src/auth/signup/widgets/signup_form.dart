@@ -25,7 +25,7 @@ class _SignupFormState extends State<SignupForm> {
   final _passController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
-  bool _autoSaveCredentials = true;
+  bool _rememberEmail = true;
   bool _obscurePass = true;
   bool _obscureConfirmPass = true;
 
@@ -47,10 +47,10 @@ class _SignupFormState extends State<SignupForm> {
 
       if (mounted) {
         if (response.statusCode == 200 || response.statusCode == 201) {
-          if (_autoSaveCredentials) {
-            final prefs = await SharedPreferences.getInstance();
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('saved_password');
+          if (_rememberEmail) {
             await prefs.setString('saved_email', enteredEmail);
-            await prefs.setString('saved_password', enteredPassword);
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -174,15 +174,15 @@ class _SignupFormState extends State<SignupForm> {
                 width: 24,
                 height: 24,
                 child: Checkbox(
-                  value: _autoSaveCredentials,
+                  value: _rememberEmail,
                   activeColor: AppColors.primary,
-                  onChanged: (val) => setState(() => _autoSaveCredentials = val ?? false),
+                  onChanged: (val) => setState(() => _rememberEmail = val ?? false),
                 ),
               ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'Auto-save credentials for fast login',
+                  'Remember email for next login',
                   style: TextStyle(color: AppColors.textGrey, fontSize: 13),
                 ),
               ),

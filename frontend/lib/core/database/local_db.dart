@@ -223,4 +223,55 @@ class LocalDb {
       where: "sync_status = 'failed'",
     );
   }
+
+  /// Drop cached dashboards / runtimes the user is no longer allowed to access.
+  Future<void> purgeDisallowedCaches({
+    required bool canIelts,
+    required bool canPte,
+  }) async {
+    final db = await database;
+    if (!canIelts) {
+      await db.delete(
+        'cached_mock_dashboard',
+        where: 'exam_type = ?',
+        whereArgs: ['IELTS'],
+      );
+    }
+    if (!canPte) {
+      await db.delete(
+        'cached_mock_dashboard',
+        where: 'exam_type = ?',
+        whereArgs: ['PTE'],
+      );
+    }
+    if (!canIelts || !canPte) {
+      await db.delete(
+        'cached_mock_dashboard',
+        where: 'exam_type = ?',
+        whereArgs: ['ALL'],
+      );
+    }
+  }
+
+  Future<Map<String, int>> getSyncStatusCounts() async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT sync_status, COUNT(*) AS c
+      FROM offline_attempts
+      GROUP BY sync_status
+      ''',
+    );
+    final counts = <String, int>{
+      'pending': 0,
+      'uploaded': 0,
+      'synced': 0,
+      'failed': 0,
+    };
+    for (final row in rows) {
+      final key = row['sync_status']?.toString() ?? '';
+      counts[key] = (row['c'] as int?) ?? 0;
+    }
+    return counts;
+  }
 }

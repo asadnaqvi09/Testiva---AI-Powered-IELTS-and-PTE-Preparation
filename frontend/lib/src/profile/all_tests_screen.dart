@@ -22,6 +22,8 @@ class _AllTestsScreenState extends State<AllTestsScreen> {
   String? _error;
   List<_TestHistoryItem> _items = [];
   int _failedCount = 0;
+  int _pendingCount = 0;
+  int _syncedCount = 0;
   bool _retrying = false;
 
   @override
@@ -114,6 +116,14 @@ class _AllTestsScreenState extends State<AllTestsScreen> {
         setState(() {
           _items = merged;
           _failedCount = failed.length;
+          _pendingCount = localAttempts
+              .where((r) =>
+                  (r['sync_status'] as String?) == 'pending' ||
+                  (r['sync_status'] as String?) == 'uploaded')
+              .length;
+          _syncedCount = localAttempts
+              .where((r) => (r['sync_status'] as String?) == 'synced')
+              .length;
           _loading = false;
         });
         _openInitialAttemptIfNeeded();
@@ -296,21 +306,40 @@ class _AllTestsScreenState extends State<AllTestsScreen> {
                       ),
                     )
                   : RefreshIndicator(
-                      onRefresh: _loadHistory,
+                      onRefresh: () async {
+                        if (ConnectivityService.instance.isOnline) {
+                          await OfflineSyncService.instance.syncPendingAttempts();
+                        }
+                        await _loadHistory();
+                      },
                       child: ListView.separated(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _items.length + (_failedCount > 0 ? 1 : 0),
+                        itemCount: _items.length +
+                            (_failedCount > 0 ? 1 : 0) +
+                            ((_pendingCount > 0 || _syncedCount > 0) ? 1 : 0),
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
-                          if (_failedCount > 0 && index == 0) {
-                            return _FailedUploadBanner(
-                              count: _failedCount,
-                              onRetry: _retrying ? null : _retryFailedUploads,
-                            );
+                          var offset = 0;
+                          if (_failedCount > 0) {
+                            if (index == 0) {
+                              return _FailedUploadBanner(
+                                count: _failedCount,
+                                onRetry: _retrying ? null : _retryFailedUploads,
+                              );
+                            }
+                            offset++;
                           }
-                          final itemIndex =
-                              _failedCount > 0 ? index - 1 : index;
-                          final item = _items[itemIndex];
+                          if (_pendingCount > 0 || _syncedCount > 0) {
+                            if (index == offset) {
+                              return _SyncStatusBanner(
+                                pending: _pendingCount,
+                                synced: _syncedCount,
+                                online: ConnectivityService.instance.isOnline,
+                              );
+                            }
+                            offset++;
+                          }
+                          final item = _items[index - offset];
                           return _HistoryCard(
                             item: item,
                             onTap: () => _openItem(item),
@@ -355,6 +384,54 @@ class _FailedUploadBanner extends StatelessWidget {
   }
 }
 
+class _SyncStatusBanner extends StatelessWidget {
+  final int pending;
+  final int synced;
+  final bool online;
+
+  const _SyncStatusBanner({
+    required this.pending,
+    required this.synced,
+    required this.online,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = <String>[];
+    if (pending > 0) {
+      parts.add('$pending pending sync');
+    }
+    if (synced > 0) {
+      parts.add('$synced synced');
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            online ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+            color: online ? Colors.blue : Colors.grey,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              online
+                  ? parts.join(' · ')
+                  : 'Offline · ${parts.isEmpty ? 'no local uploads' : parts.join(' · ')}',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TestHistoryItem {
   final String id;
   final String? localId;
@@ -384,26 +461,36 @@ class _HistoryCard extends StatelessWidget {
   String get _statusLabel {
     switch (item.status) {
       case 'offline_pending':
-        return 'Saved offline';
+        return 'Pending sync';
       case 'pending':
         return 'Evaluating';
+      case 'uploaded':
+        return 'Uploaded · awaiting results';
       case 'failed':
         return 'Upload failed';
-      default:
+      case 'synced':
+        return 'Synced';
+      case 'completed':
         return 'Completed';
+      default:
+        return item.status;
     }
   }
 
   Color _statusColor(BuildContext context) {
     switch (item.status) {
       case 'offline_pending':
+      case 'uploaded':
         return Colors.orange;
       case 'pending':
         return Colors.blue;
       case 'failed':
         return Colors.red;
-      default:
+      case 'synced':
+      case 'completed':
         return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 

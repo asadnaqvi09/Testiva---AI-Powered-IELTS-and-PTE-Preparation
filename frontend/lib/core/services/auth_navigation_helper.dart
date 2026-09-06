@@ -5,15 +5,19 @@ import 'package:frontend/src/dashboard/dashboard_screen.dart';
 
 class AuthNavigationHelper {
   static void syncUserNotifier(Map<String, dynamic> user) {
+    final unlocked = user['unlocked_exam']?.toString();
+    final subscription = user['subscription'] ?? 'free';
     UserNotifier.notifier.value = {
       'id': user['id'],
       'name': user['full_name'] ?? user['name'] ?? 'User',
       'email': user['email'] ?? '',
       'preference': user['preference'],
+      'unlocked_exam': unlocked,
       'role': user['role'] ?? 'user',
-      'subscription': user['subscription'] ?? 'free',
+      'subscription': subscription,
       'isPremium':
-          (user['subscription'] ?? '').toString().toLowerCase() == 'premium',
+          subscription.toString().toLowerCase() == 'premium' ||
+          unlocked?.toUpperCase() == 'BOTH',
       'avatar_url': user['avatar_url'],
     };
   }

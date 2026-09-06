@@ -2,6 +2,7 @@ import pool from "../../../config/db.js";
 import cloudinary from "../../../config/cloudinary.js";
 import { cacheGetJson, cacheSetJson, cacheDelMany, cacheDelByPrefix } from "../../../utils/redisCache.js";
 import { findUserById } from "../../M1_Identity/user.model.js";
+import { getAllowedExamTypes, canAccessExamType, resolveUnlockedExam } from "../../../utils/helpers.js";
 import * as testModel from "../models/test.model.js";
 import {
   createTestSchema,
@@ -11,69 +12,30 @@ import {
   addQuestionSchema,
 } from "../validator/test.validator.js";
 
-function isDemoUserId(id) {
-  return typeof id === "string" && id.startsWith("demo-user-");
-}
-
-function normalizeExamPreference(raw) {
-  const value = String(raw ?? "").toUpperCase().trim();
-  if (value === "PTE") return "PTE";
-  if (value === "IELTS") return "IELTS";
-  return null;
-}
-
-function accessFromJwt(req) {
-  if (!req.user?.id) return null;
-  return {
-    id: req.user.id,
-    role: req.user.role || "user",
-    subscription: req.user.subscription || "free",
-    preference: normalizeExamPreference(req.user.preference),
-  };
-}
-
 async function resolveTestUserAccess(req) {
-  if (isDemoUserId(req.user?.id)) {
-    const demo = accessFromJwt(req);
-    if (!demo) return null;
-    return { ...demo, preference: demo.preference ?? "IELTS" };
-  }
-  try {
-    const user = await findUserById(req.user.id);
-    if (!user) return null;
-    return {
-      id: user.id,
-      role: user.role,
-      subscription: user.subscription || "free",
-      preference: normalizeExamPreference(user.preference),
-    };
-  } catch (error) {
-    console.error("resolveTestUserAccess DB error:", error.message);
-    return accessFromJwt(req);
-  }
+  const user = await findUserById(req.user.id);
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    subscription: user.subscription || "free",
+    preference: user.preference ?? null,
+    unlocked_exam: resolveUnlockedExam(user),
+    allowedExamTypes: getAllowedExamTypes(user),
+  };
 }
 
-function mapMobileMockRow(r) {
-  return {
-    id: r.id,
-    display_id: r.display_id,
-    title: r.title,
-    exam_type: r.exam_type,
-    test_category: r.test_category,
-    difficulty_level: r.difficulty_level,
-    total_duration: r.total_duration,
-    min_required_band: r.min_required_band,
-    total_questions: r.total_questions,
-    sub_question_type_indicators: r.sub_question_types || r.sub_question_type_indicators || [],
-    last_attempt: r.last_attempt_id
-      ? {
-          attempt_id: r.last_attempt_id,
-          overall_band_score: r.last_attempt_score,
-          status: r.last_attempt_status,
-        }
-      : r.last_attempt ?? null,
-    cta: (r.last_attempt_id || r.last_attempt) ? "retake" : (r.cta || "start"),
-  };
+function assertExamAccess(access, examType) {
+  if (!access || access.role === "admin") return true;
+  return canAccessExamType(
+    {
+      role: access.role,
+      subscription: access.subscription,
+      preference: access.preference,
+      unlocked_exam: access.unlocked_exam,
+    },
+    examType
+  );
 }
 
 function pteSingleGuard(exam_type, test_category) {
@@ -147,47 +109,61 @@ export const fetchMobileMocksDashboard = async (req, res) => {
     if (!access) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const { subscription, role } = access;
-    const userPreference = normalizeExamPreference(access.preference) ?? "IELTS";
-    let examTypes = ["IELTS", "PTE"];
-    const filter = String(req.query.exam_type || "").toUpperCase();
-    if (role !== "admin" && subscription !== "premium") {
-      examTypes = [userPreference];
+    const { subscription, role, allowedExamTypes } = access;
+    let examTypes = [...allowedExamTypes];
+    const filter = req.query.exam_type;
+
+    if (role !== "admin") {
+      if (!examTypes.length) {
+        return res.status(403).json({
+          success: false,
+          message: "Please select your learning preference to continue",
+        });
+      }
+      if (filter === "IELTS" || filter === "PTE") {
+        if (!examTypes.includes(filter)) {
+          return res.status(403).json({
+            success: false,
+            message: `Access denied. Your unlocked track does not include ${filter}.`,
+          });
+        }
+        examTypes = [filter];
+      }
     } else if (filter === "IELTS" || filter === "PTE") {
       examTypes = [filter];
-    }
-    const cacheKey = `test:mobile:${access.id}:${filter || "ALL"}:${subscription}`;
-    const cached = await cacheGetJson(cacheKey);
-    if (Array.isArray(cached) && cached.length) {
-      return res.status(200).json({ success: true, cached: true, data: cached });
+    } else {
+      examTypes = ["IELTS", "PTE"];
     }
 
-    try {
-      const rows = await testModel.listMobilePublished(access.id, examTypes);
-      const data = rows.map(mapMobileMockRow);
-      await cacheSetJson(cacheKey, data, 30);
-      return res.status(200).json({ success: true, cached: false, data });
-    } catch (dbError) {
-      console.error("Mobile mocks DB error:", dbError.message);
-      const data = testModel.listDemoPublished(examTypes);
-      return res.status(200).json({
-        success: true,
-        cached: false,
-        demo: true,
-        message: "Database unavailable. Showing demo mock tests for FYP preview.",
-        data,
-      });
-    }
+    const cacheKey = `test:mobile:${access.id}:${filter || "ALL"}:${subscription}:${access.unlocked_exam || "none"}`;
+    const cached = await cacheGetJson(cacheKey);
+    if (cached) return res.status(200).json({ success: true, cached: true, data: cached });
+    
+    const rows = await testModel.listMobilePublished(access.id, examTypes);
+    const data = rows.map((r) => ({
+      id: r.id,
+      display_id: r.display_id,
+      title: r.title,
+      exam_type: r.exam_type,
+      test_category: r.test_category,
+      difficulty_level: r.difficulty_level,
+      total_duration: r.total_duration,
+      min_required_band: r.min_required_band,
+      total_questions: r.total_questions,
+      sub_question_type_indicators: r.sub_question_types || [],
+      last_attempt: r.last_attempt_id
+        ? {
+            attempt_id: r.last_attempt_id,
+            overall_band_score: r.last_attempt_score,
+            status: r.last_attempt_status,
+          }
+        : null,
+      cta: r.last_attempt_id ? "retake" : "start",
+    }));
+    await cacheSetJson(cacheKey, data, 30);
+    res.status(200).json({ success: true, cached: false, data });
   } catch (error) {
-    console.error("Mobile mocks error:", error.message);
-    const data = testModel.listDemoPublished(["IELTS", "PTE"]);
-    return res.status(200).json({
-      success: true,
-      cached: false,
-      demo: true,
-      message: error.message || "Error fetching mobile mocks",
-      data,
-    });
+    res.status(500).json({ success: false, message: error.message || "Error fetching mobile mocks" });
   }
 };
 
@@ -201,10 +177,8 @@ export const getTestPreview = async (req, res) => {
     const cacheKey = `test:preview:${id}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
-      if (access.role !== "admin" && access.subscription !== "premium") {
-        if (cached.exam_type !== access.preference) {
-          return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
-        }
+      if (!assertExamAccess(access, cached.exam_type)) {
+        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
       return res.status(200).json({ success: true, data: cached });
     }
@@ -214,8 +188,8 @@ export const getTestPreview = async (req, res) => {
       if (!t.is_published) {
         return res.status(403).json({ success: false, message: "Not available" });
       }
-      if (access.subscription !== "premium" && t.exam_type !== access.preference) {
-        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
+      if (!assertExamAccess(access, t.exam_type)) {
+        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
     }
 
@@ -238,10 +212,8 @@ export const getTestRuntime = async (req, res) => {
     const cacheKey = adminReview ? `test:admin:${id}` : `test:runtime:${id}:${subscription}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
-      if (!adminReview && subscription !== "premium") {
-        if (cached.exam_type !== access.preference) {
-          return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
-        }
+      if (!adminReview && !assertExamAccess(access, cached.exam_type)) {
+        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
       return res.status(200).json({ success: true, data: cached });
     }
@@ -249,8 +221,8 @@ export const getTestRuntime = async (req, res) => {
     if (!data) return res.status(404).json({ success: false, message: "Test not found" });
     if (access.role !== "admin") {
       if (!data.is_published) return res.status(403).json({ success: false, message: "Not available" });
-      if (subscription !== "premium" && data.exam_type !== access.preference) {
-        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
+      if (!assertExamAccess(access, data.exam_type)) {
+        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
 
       if (subscription === "free") {
@@ -470,25 +442,25 @@ export const fetchAvailableTests = async (req, res) => {
     if (!access) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const { subscription, role, preference } = access;
+    const { subscription, role, allowedExamTypes } = access;
     if (role === "admin") {
       const tests = await testModel.getAllTests(100, 0);
       return res.status(200).json({ success: true, data: tests });
     }
-    
-    let examTypes = ["IELTS"];
+
+    if (!allowedExamTypes.length) {
+      return res.status(403).json({
+        success: false,
+        message: "Please select your learning preference to continue",
+      });
+    }
+
     let allowedSections = null;
-    
     if (subscription === "free") {
       allowedSections = ["Reading", "Writing"];
-      examTypes = [preference || "IELTS"];
-    } else if (subscription === "basic") {
-      examTypes = [preference || "IELTS"];
-    } else if (subscription === "premium") {
-      examTypes = ["IELTS", "PTE"];
     }
-    
-    const tests = await testModel.getTestsByFilters(examTypes, allowedSections);
+
+    const tests = await testModel.getTestsByFilters(allowedExamTypes, allowedSections);
     res.status(200).json({ success: true, data: tests });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching available tests" });
@@ -509,10 +481,8 @@ export const getTestById = async (req, res) => {
     const cacheKey = access.role === "admin" ? `test:admin:${req.params.id}` : `test:runtime:${req.params.id}:${subscription}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
-      if (access.role !== "admin" && subscription !== "premium") {
-        if (cached.exam_type !== access.preference) {
-          return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
-        }
+      if (!assertExamAccess(access, cached.exam_type)) {
+        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
       return res.status(200).json({ success: true, data: cached });
     }
@@ -521,8 +491,8 @@ export const getTestById = async (req, res) => {
     if (!testDetails) return res.status(404).json({ success: false, message: "Test not found" });
     if (access.role !== "admin") {
       if (!testDetails.is_published) return res.status(403).json({ success: false, message: "Not available" });
-      if (subscription !== "premium" && testDetails.exam_type !== access.preference) {
-        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your selected preference." });
+      if (!assertExamAccess(access, testDetails.exam_type)) {
+        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
       if (subscription === "free") {
         const allowedSections = ["reading", "writing"];

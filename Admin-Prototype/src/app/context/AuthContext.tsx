@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           subscription: res.user.subscription,
           preference: res.user.preference,
           bio: res.user.bio,
+          avatar: res.user.avatar_url,
         };
         setUser(authUser);
         localStorage.setItem('authUser', JSON.stringify(authUser));

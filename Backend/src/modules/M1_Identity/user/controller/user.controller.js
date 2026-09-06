@@ -4,6 +4,7 @@ import { processAndUploadAvatar } from "../services/image.service.js";
 import { handleAdminPreferenceChangeNotification } from "../../../M9_Notification/engine/notification.engine.js";
 import { sendPreferenceChangeEmail } from "../../../../email_templates/email.service.js";
 import * as userValidator from "../validator/user.validator.js";
+import { resolveSubscription, resolveUnlockedExam } from "../../../../utils/helpers.js";
 
 export const getProfileController = async (req, res) => {
   try {
@@ -25,7 +26,23 @@ export const getProfileController = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    res.status(200).json({ success: true, user });
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        bio: user.bio,
+        avatar_url: user.avatar_url,
+        role: user.role,
+        preference: user.preference,
+        subscription: resolveSubscription(user),
+        unlocked_exam: resolveUnlockedExam(user),
+        is_email_verified: user.is_email_verified,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      },
+    });
   } catch (error) {
     if (req.user?.id?.toString().startsWith('demo-user-')) {
       return res.status(200).json({

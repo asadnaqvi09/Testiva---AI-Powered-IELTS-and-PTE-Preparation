@@ -38,17 +38,17 @@ class _ProgressCardState extends State<ProgressCard> {
           return;
         }
       }
-      _loadFallbackData();
+      _setEmptyProgress();
     } catch (e) {
       debugPrint(e.toString());
-      _loadFallbackData();
+      _setEmptyProgress();
     }
   }
 
-  void _loadFallbackData() {
+  void _setEmptyProgress() {
     if (mounted) {
       setState(() {
-        _overallProgress = 0.65;
+        _overallProgress = 0.0;
         _isLoading = false;
       });
     }

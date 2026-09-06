@@ -75,7 +75,7 @@ export const getAllUsers = async (req, res) => {
 
 export const updateUserSubscription = async (req, res) => {
     try {
-        const { targetID, newSubscription } = req.body
+        const { targetID, newSubscription, unlocked_exam } = req.body
         if (!targetID || !newSubscription) {
             return res.status(400).json({
                 success: false,
@@ -95,11 +95,32 @@ export const updateUserSubscription = async (req, res) => {
                 message: "Please Provide Valid Subscription.Select one of these free,basic,premium"
             })
         }
+        let unlockedExam = unlocked_exam;
+        if (unlockedExam === '') unlockedExam = null;
+        if (newSubscription === 'free') unlockedExam = null;
+        else if (newSubscription === 'premium') unlockedExam = 'BOTH';
+        else if (newSubscription === 'basic' && unlockedExam === undefined) {
+            unlockedExam = undefined;
+        }
+        if (unlockedExam !== undefined && unlockedExam !== null) {
+            const allowedUnlock = ['IELTS', 'PTE', 'BOTH'];
+            if (!allowedUnlock.includes(unlockedExam)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "unlocked_exam must be IELTS, PTE, or BOTH"
+                });
+            }
+        }
         const targetUser = await findUserById(targetID)
         if (!targetUser) return res.status(404).json({ success: false, message: "User not found" })
         if (targetUser.role === "admin") return res.status(403).json({ success: false, message: "You cannot update this user subscription" })
-        const updatedUserRole = await updateUserSubscriptionStatus(targetID, newSubscription);
-        const logDetails = JSON.stringify({ message: `Changed subscription to ${newSubscription}` });
+        const updatedUserRole = unlockedExam === undefined
+            ? await updateUserSubscriptionStatus(targetID, newSubscription)
+            : await updateUserSubscriptionStatus(targetID, newSubscription, unlockedExam);
+        const logDetails = JSON.stringify({
+            message: `Changed subscription to ${newSubscription}`,
+            unlocked_exam: unlockedExam ?? targetUser.unlocked_exam ?? null,
+        });
         await pool.query(`INSERT INTO admin_logs (admin_id,action,target_user_id,details,created_at)
         VALUES ($1,$2,$3,$4,NOW())`,
             [req.user.id, "Subscription Change", targetID, logDetails]

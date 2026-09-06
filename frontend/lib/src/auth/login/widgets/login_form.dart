@@ -6,7 +6,6 @@ import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
-import 'package:frontend/src/auth/forgot_password/forgot_password_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'social_login_btns.dart';
 
@@ -21,6 +20,7 @@ class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass = TextEditingController();
+  bool _showDemo = false;
   bool _isLoading = false;
   bool _obscurePass = true;
   bool _rememberMe = false;
@@ -28,22 +28,25 @@ class _LoginFormState extends State<LoginForm> {
   @override
   void initState() {
     super.initState();
-    _loadSavedCredentials();
+    _loadSavedEmail();
   }
 
-  Future<void> _loadSavedCredentials() async {
+  Future<void> _loadSavedEmail() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saved_password');
     final savedEmail = prefs.getString('saved_email') ?? '';
-    final savedPass = prefs.getString('saved_password') ?? '';
-
-    if (savedEmail.isNotEmpty && savedPass.isNotEmpty) {
+    if (savedEmail.isNotEmpty) {
       setState(() {
         _email.text = savedEmail;
-        _pass.text = savedPass;
         _rememberMe = true;
       });
     }
   }
+
+  void _fill(String e, String p) => setState(() {
+        _email.text = e;
+        _pass.text = p;
+      });
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -67,12 +70,11 @@ class _LoginFormState extends State<LoginForm> {
           );
 
           final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('saved_password');
           if (_rememberMe) {
             await prefs.setString('saved_email', emailStr);
-            await prefs.setString('saved_password', passStr);
           } else {
             await prefs.remove('saved_email');
-            await prefs.remove('saved_password');
           }
 
           final user = Map<String, dynamic>.from(
@@ -104,7 +106,8 @@ class _LoginFormState extends State<LoginForm> {
       print('Login Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connection error: Unable to connect to server')),
+          const SnackBar(
+              content: Text('Connection error: Unable to connect to server')),
         );
       }
     } finally {
@@ -144,86 +147,84 @@ class _LoginFormState extends State<LoginForm> {
           validator: AppValidators.validatePassword,
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePass ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscurePass
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               color: AppColors.textGrey,
             ),
             onPressed: () => setState(() => _obscurePass = !_obscurePass),
           ),
         ),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Checkbox(
-                    value: _rememberMe,
-                    activeColor: AppColors.primary,
-                    onChanged: (val) => setState(() => _rememberMe = val ?? false),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Remember Me',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    color: AppColors.textGrey,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (c) => const ForgotPasswordScreen()),
-                );
-              },
-              child: const Text(
-                'Forgot Password?',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: _rememberMe,
+                activeColor: AppColors.primary,
+                onChanged: (val) => setState(() => _rememberMe = val ?? false),
               ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Remember email',
+              style: TextStyle(color: AppColors.textGrey, fontSize: 13),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : AppButton(
-          text: 'Login',
-          onPressed: _handleLogin,
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 20),
-          child: Row(
-            children: [
-              Expanded(child: Divider()),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  'or continue with',
-                  style: TextStyle(
-                    color: AppColors.textGrey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                text: 'Login',
+                onPressed: _handleLogin,
               ),
-              Expanded(child: Divider()),
-            ],
+        const SizedBox(height: 20),
+        const SocialLoginBtns(),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => setState(() => _showDemo = !_showDemo),
+            icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility,
+                size: 18, color: AppColors.textGrey),
+            label: Text('${_showDemo ? 'Hide' : 'Show'} Demo Credentials',
+                style: const TextStyle(color: AppColors.textGrey)),
           ),
         ),
-        const SocialLoginBtns(),
+        if (_showDemo) _demoBox(),
       ]),
     );
   }
+
+  Widget _demoBox() => Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        ),
+        child: Column(children: [
+          _demoTile('Free User', 's23-0385@student.uoh.pk', 'aksa12345@sk',
+              Icons.person_outline, AppColors.primary),
+          _demoTile('Premium', 'premiumuser@example.com', 'aksa12345@sk',
+              Icons.star_outline, Colors.orange),
+          _demoTile('Admin', 'ragesr56@gmail.com', 'TestFlow12345@sk',
+              Icons.admin_panel_settings_outlined, Colors.deepPurple),
+        ]),
+      );
+
+  Widget _demoTile(
+          String l, String e, String password, IconData i, Color c) =>
+      GestureDetector(
+        onTap: () => _fill(e, password),
+        child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(children: [
+              Icon(i, size: 16, color: c),
+              const SizedBox(width: 8),
+              Text('$l: $e',
+                  style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+            ])),
+      );
 }

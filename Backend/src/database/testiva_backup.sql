@@ -204,32 +204,6 @@ CREATE TABLE public.posts (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-CREATE TABLE public.practice_responses (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    question_id uuid NOT NULL,
-    user_answer text,
-    is_correct boolean,
-    marks_obtained integer DEFAULT 0,
-    time_taken_seconds integer,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE public.practice_sessions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    section_name character varying(50) NOT NULL,
-    question_type character varying(50),
-    difficulty_level integer DEFAULT 1,
-    status character varying(20) DEFAULT 'in_progress'::character varying,
-    total_questions integer DEFAULT 0,
-    correct_answers integer DEFAULT 0,
-    accuracy numeric(5,2) DEFAULT 0.00,
-    started_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    completed_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT practice_sessions_difficulty_level_check CHECK (((difficulty_level >= 1) AND (difficulty_level <= 5))),
-    CONSTRAINT practice_sessions_status_check CHECK (((status)::text = ANY ((ARRAY['in_progress'::character varying, 'completed'::character varying])::text[])))
-);
 CREATE TABLE public.prep_media (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     prep_id uuid,
@@ -293,32 +267,6 @@ CREATE SEQUENCE public.refresh_tokens_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-CREATE TABLE public.study_plan_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    plan_id uuid NOT NULL,
-    day_number integer NOT NULL,
-    item_type character varying(20) NOT NULL,
-    item_id uuid NOT NULL,
-    title character varying(255) NOT NULL,
-    estimated_minutes integer DEFAULT 30,
-    is_completed boolean DEFAULT false,
-    completed_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT study_plan_items_item_type_check CHECK (((item_type)::text = ANY ((ARRAY['lesson'::character varying, 'practice'::character varying, 'mock_test'::character varying])::text[])))
-);
-CREATE TABLE public.study_plans (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    title character varying(255) NOT NULL,
-    target_band numeric(3,1) NOT NULL,
-    start_date date NOT NULL,
-    end_date date NOT NULL,
-    status character varying(20) DEFAULT 'active'::character varying,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT study_plans_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'completed'::character varying, 'paused'::character varying])::text[])))
-);
 
 CREATE TABLE public.temp_users (
     id uuid DEFAULT gen_random_uuid() NOT NULL,

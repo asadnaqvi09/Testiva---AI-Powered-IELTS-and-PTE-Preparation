@@ -1,7 +1,7 @@
 import pool from "../../config/db.js";
 import bcrypt from "bcrypt";
 
-const USER_FIELDS = `id,full_name,email,bio,avatar_url,role,subscription,preference,auth_provider,is_email_verified,token_version,last_login_at,created_at,updated_at`;
+const USER_FIELDS = `id,full_name,email,bio,avatar_url,role,subscription,preference,unlocked_exam,auth_provider,is_email_verified,token_version,last_login_at,created_at,updated_at`;
 
 export const findUserByEmail = async (email) => {
   const result = await pool.query(
@@ -125,12 +125,34 @@ export const uploadUserAvatar = async (id, avatar_url) => {
   return result.rows[0] || null;
 };
 
-export const updateUserSubscriptionStatus = async (id, subscription) => {
+export const updateUserSubscriptionStatus = async (id, subscription, unlockedExam = undefined) => {
+  if (unlockedExam !== undefined) {
+    const result = await pool.query(
+      `UPDATE users SET subscription=$2, unlocked_exam=$3, updated_at=NOW()
+       WHERE id=$1
+       RETURNING ${USER_FIELDS}`,
+      [id, subscription, unlockedExam]
+    );
+    return result.rows[0] || null;
+  }
   const result = await pool.query(
     `UPDATE users SET subscription=$2,updated_at=NOW()
      WHERE id=$1
      RETURNING ${USER_FIELDS}`,
     [id, subscription]
+  );
+  return result.rows[0] || null;
+};
+
+export const updateUserPaymentUnlock = async (id, { subscription, unlocked_exam }) => {
+  const result = await pool.query(
+    `UPDATE users
+     SET subscription = COALESCE($2, subscription),
+         unlocked_exam = COALESCE($3, unlocked_exam),
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING ${USER_FIELDS}`,
+    [id, subscription, unlocked_exam]
   );
   return result.rows[0] || null;
 };
@@ -153,7 +175,11 @@ export const getAdminStats = async () => {
       COUNT(*) FILTER (WHERE subscription='free') AS free_users,
       COUNT(*) FILTER (WHERE subscription='basic') AS basic_users,
       COUNT(*) FILTER (WHERE subscription='premium') AS premium_users,
-      COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days') AS active_users
+      COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days') AS active_users,
+      COUNT(*) FILTER (WHERE unlocked_exam = 'IELTS') AS unlocked_ielts,
+      COUNT(*) FILTER (WHERE unlocked_exam = 'PTE') AS unlocked_pte,
+      COUNT(*) FILTER (WHERE unlocked_exam = 'BOTH') AS unlocked_both,
+      COUNT(*) FILTER (WHERE unlocked_exam IS NULL) AS unlocked_none
      FROM users`
   );
   return result.rows[0];
@@ -163,7 +189,7 @@ export const fetchAllUsers = async (limit, offset, search = "", subscription = "
   let query = `
     SELECT 
       'USR-' || LPAD(ROW_NUMBER() OVER(ORDER BY created_at ASC)::text, 3, '0') AS dynamic_id,
-      id, full_name, email, role, subscription, preference, last_login_at, created_at 
+      id, full_name, email, role, subscription, preference, unlocked_exam, last_login_at, created_at 
     FROM users 
     WHERE 1=1
   `;
