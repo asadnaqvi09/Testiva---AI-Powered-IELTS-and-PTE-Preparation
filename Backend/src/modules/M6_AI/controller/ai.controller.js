@@ -3,6 +3,7 @@ import * as progressModel from "../../M4_Progress/models/progress.model.js";
 import { getModuleFocusRecommendation } from "../services/performanceInsight.service.js";
 import { generateJsonFromPrompt } from "../utils/gemini.helper.js";
 import { buildFeedbackSuggestionPrompt } from "../prompts/performanceInsight.prompt.js";
+import { processAudioToText } from "../processors (Input Cleaning)/speaking.processor.js";
 
 export const evaluateSubmission = async (req, res) => {
   try {
@@ -42,19 +43,51 @@ export const evaluateSubmission = async (req, res) => {
 export const evaluateSpeaking = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { attempt_id, transcribedText, durationSeconds } = req.body;
-    if (!attempt_id || !transcribedText) {
-      return res.status(400).json({ success: false, message: "attempt_id and transcribedText required" });
+    const { attempt_id, transcribedText, durationSeconds, audio_url } = req.body;
+    if (!attempt_id || (!transcribedText && !audio_url)) {
+      return res.status(400).json({
+        success: false,
+        message: "attempt_id and either transcribedText or audio_url are required",
+      });
     }
     const att = await progressModel.getAttemptById(attempt_id);
     if (!att || att.user_id !== userId) {
       return res.status(403).json({ success: false, message: "Invalid attempt" });
     }
+
+    let finalTranscript = transcribedText;
+    let finalDuration = durationSeconds;
+    let sttMeta = null;
+
+    if ((!finalTranscript || !String(finalTranscript).trim()) && audio_url) {
+      sttMeta = await processAudioToText(audio_url);
+      finalTranscript = sttMeta.transcribedText;
+      finalDuration = finalDuration ?? sttMeta.durationSeconds;
+    }
+
+    if (!finalTranscript || !String(finalTranscript).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "No speech could be transcribed from the provided audio",
+      });
+    }
+
     const data = await aiService.processEvaluation(userId, attempt_id, "IELTS", "speaking", {
-      transcribedText,
-      durationSeconds,
+      transcribedText: finalTranscript,
+      durationSeconds: finalDuration,
     });
-    return res.status(200).json({ success: true, data });
+    return res.status(200).json({
+      success: true,
+      data,
+      stt: sttMeta
+        ? {
+            transcribedText: sttMeta.transcribedText,
+            confidence: sttMeta.confidence,
+            durationSeconds: sttMeta.durationSeconds,
+            model_used: sttMeta.model_used,
+          }
+        : undefined,
+    });
   } catch (error) {
     console.error("AI Speaking Controller Error:", error);
     return res.status(500).json({ success: false, message: error.message || "Speaking evaluation failed" });

@@ -2,10 +2,18 @@ import express from "express";
 import * as progressController from "../controller/progress.controller.js";
 import { authenticate } from "../../../middleware/auth.middleware.js";
 import { writeLimiter } from "../../../middleware/rateLimiter.middleware.js";
+import { upload } from "../../../middleware/upload.middleware.js";
 
 const router = express.Router();
 
 router.post("/submit-test", writeLimiter, authenticate, progressController.submitTest);
+router.post(
+  "/speaking-audio",
+  writeLimiter,
+  authenticate,
+  upload.single("file"),
+  progressController.uploadSpeakingAudio,
+);
 router.get("/my-stats", authenticate, progressController.getMyStats);
 router.get("/result/:attempt_id", authenticate, progressController.getTestResult);
 

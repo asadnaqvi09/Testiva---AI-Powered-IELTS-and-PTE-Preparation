@@ -1,9 +1,47 @@
 import pool from "../../../config/db.js";
+import cloudinary from "../../../config/cloudinary.js";
 import * as progressModel from "../models/progress.model.js";
 import { addSyncJob } from "../../M5_Offline/sync.queue.js";
 import { submitFullTestSchema } from "../validator/progress.validator.js";
 import { cacheDelByPrefix } from "../../../utils/redisCache.js";
 import { computeAttemptBandScores, sumMarks } from "../../../utils/bandScore.js";
+
+/** Authenticated student upload for speaking mock audio → Cloudinary URL. */
+export const uploadSpeakingAudio = async (req, res) => {
+  try {
+    if (!req.file?.buffer) {
+      return res.status(400).json({ success: false, message: "file required" });
+    }
+    const mime = req.file.mimetype || "";
+    const name = req.file.originalname || "";
+    const looksAudio =
+      mime.startsWith("audio/") ||
+      mime === "application/octet-stream" ||
+      /\.(mp3|wav|m4a|mp4|aac|ogg|webm|flac)$/i.test(name);
+    if (!looksAudio) {
+      return res.status(400).json({ success: false, message: "Audio file required" });
+    }
+    const folder = "testiva/speaking-responses";
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: "video",
+          use_filename: true,
+        },
+        (err, r) => (err ? reject(err) : resolve(r)),
+      );
+      stream.end(req.file.buffer);
+    });
+    return res.status(201).json({
+      success: true,
+      data: { url: result.secure_url, public_id: result.public_id },
+    });
+  } catch (error) {
+    console.error("uploadSpeakingAudio:", error);
+    return res.status(500).json({ success: false, message: error.message || "Upload failed" });
+  }
+};
 
 async function bustUserTestCaches(userId) {
   await cacheDelByPrefix(`test:mobile:${userId}:`);

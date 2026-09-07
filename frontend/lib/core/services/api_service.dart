@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:frontend/core/config/app_config.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -221,5 +222,77 @@ class ApiService {
       print('API Error [DELETE $endpoint]: $e');
       rethrow;
     }
+  }
+
+  /// Multipart upload (speaking audio). Returns response; caller parses JSON.
+  static Future<http.Response> uploadFile(
+    String endpoint,
+    String filePath, {
+    String fieldName = 'file',
+    String? filename,
+    MediaType? contentType,
+  }) async {
+    Future<http.Response> send({required bool retried}) async {
+      final uri = Uri.parse('$baseUrl$endpoint');
+      final request = http.MultipartRequest('POST', uri);
+      final token = await getToken();
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          fieldName,
+          filePath,
+          filename: filename,
+          contentType: contentType,
+        ),
+      );
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      return http.Response.fromStream(streamed);
+    }
+
+    try {
+      var response = await send(retried: false);
+      if (response.statusCode == 401 && _shouldRetryAuth(endpoint)) {
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          response = await send(retried: true);
+        } else {
+          await clearAuthSession();
+        }
+      }
+      return response;
+    } catch (e) {
+      print('API Error [UPLOAD $endpoint]: $e');
+      rethrow;
+    }
+  }
+
+  /// Upload speaking recording; returns Cloudinary URL or null.
+  static Future<String?> uploadSpeakingAudio(String localPath) async {
+    final lower = localPath.toLowerCase();
+    MediaType mime = MediaType('audio', 'mp4');
+    if (lower.endsWith('.wav')) {
+      mime = MediaType('audio', 'wav');
+    } else if (lower.endsWith('.mp3')) {
+      mime = MediaType('audio', 'mpeg');
+    } else if (lower.endsWith('.webm')) {
+      mime = MediaType('audio', 'webm');
+    } else if (lower.endsWith('.aac')) {
+      mime = MediaType('audio', 'aac');
+    }
+    final response = await uploadFile(
+      '/progress/speaking-audio',
+      localPath,
+      contentType: mime,
+    );
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      return null;
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (body['success'] != true) return null;
+    final data = body['data'] as Map<String, dynamic>?;
+    final url = data?['url']?.toString();
+    return (url != null && url.isNotEmpty) ? url : null;
   }
 }

@@ -74,7 +74,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void _handlePostCreated(dynamic data) {
     if (data is! Map) return;
     try {
-      final post = CommunityPostModel.fromJson(Map<String, dynamic>.from(data));
+      final map = Map<String, dynamic>.from(data);
+      // Shadow-flagged posts must not appear in the public feed
+      if (map['is_flagged'] == true) return;
+      final post = CommunityPostModel.fromJson(map);
       if (!_matchesFilter(post.tag)) return;
       if (_posts.any((p) => p.id == post.id)) return;
       if (!mounted) return;
@@ -335,14 +338,30 @@ class _CommunityScreenState extends State<CommunityScreen> {
       if (response.statusCode == 201) {
         final body = jsonDecode(response.body);
         if (body['success'] == true) {
+          final data = body['data'];
+          final moderation = body['moderation'];
+          final isFlagged = (data is Map && data['is_flagged'] == true) ||
+              (moderation is Map && moderation['is_flagged'] == true);
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Post created successfully!')),
+              SnackBar(
+                content: Text(
+                  isFlagged
+                      ? (moderation is Map
+                          ? (moderation['message']?.toString() ??
+                              'Your post is under review and hidden from the feed until approved.')
+                          : 'Your post is under review and hidden from the feed until approved.')
+                      : 'Post created successfully!',
+                ),
+                backgroundColor: isFlagged ? Colors.orange.shade800 : null,
+              ),
             );
           }
-          if (body['data'] is Map) {
-            _handlePostCreated(body['data']);
-          } else {
+
+          if (!isFlagged && data is Map) {
+            _handlePostCreated(data);
+          } else if (!isFlagged) {
             _fetchPosts();
           }
         }
