@@ -10,6 +10,7 @@ import '../prep/prep_screen.dart';
 import '../features/community/presentation/community_screen.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/notification_provider.dart';
 
@@ -94,21 +95,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['user'] != null) {
           final user = data['user'];
-          final newUserData = {
-            'name': user['full_name'] ?? user['name'] ?? 'User Name',
-            'email': user['email'] ?? 'user@email.com',
-            'isPremium': (user['subscription'] ?? '').toString().toLowerCase() == 'premium',
-            'preference': user['preference'],
-            'role': user['role'] ?? 'user',
-            'subscription': user['subscription'] ?? 'free',
-          };
-          UserNotifier.notifier.value = newUserData;
+          AuthNavigationHelper.syncUserNotifier(
+            Map<String, dynamic>.from(user as Map),
+          );
 
-          final pref = user['preference']?.toString().trim();
-          final hasPreference = pref != null &&
-              pref.isNotEmpty &&
-              pref.toUpperCase() != 'NULL';
-          if (!hasPreference && mounted) {
+          if (user['preference'] == null && mounted) {
             final userName = user['full_name'] ?? user['name'] ?? 'User';
             Navigator.pushReplacementNamed(
               context,

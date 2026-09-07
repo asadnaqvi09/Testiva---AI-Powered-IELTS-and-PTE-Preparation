@@ -327,61 +327,6 @@ CREATE TABLE public.user_progress_stats (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE public.practice_sessions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    section_name character varying(50) NOT NULL,
-    question_type character varying(50),
-    difficulty_level integer DEFAULT 1,
-    status character varying(20) DEFAULT 'in_progress',
-    total_questions integer DEFAULT 0,
-    correct_answers integer DEFAULT 0,
-    accuracy numeric(5,2) DEFAULT 0.00,
-    started_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    completed_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT practice_sessions_difficulty_level_check CHECK ((difficulty_level >= 1) AND (difficulty_level <= 5)),
-    CONSTRAINT practice_sessions_status_check CHECK (status = ANY (ARRAY['in_progress', 'completed']))
-);
-
-CREATE TABLE public.practice_responses (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    question_id uuid NOT NULL,
-    user_answer text,
-    is_correct boolean,
-    marks_obtained integer DEFAULT 0,
-    time_taken_seconds integer,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE public.study_plans (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    title character varying(255) NOT NULL,
-    target_band numeric(3,1) NOT NULL,
-    start_date date NOT NULL,
-    end_date date NOT NULL,
-    status character varying(20) DEFAULT 'active',
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT study_plans_status_check CHECK (status = ANY (ARRAY['active', 'completed', 'paused']))
-);
-
-CREATE TABLE public.study_plan_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    plan_id uuid NOT NULL,
-    day_number integer NOT NULL,
-    item_type character varying(20) NOT NULL,
-    item_id uuid NOT NULL,
-    title character varying(255) NOT NULL,
-    estimated_minutes integer DEFAULT 30,
-    is_completed boolean DEFAULT false,
-    completed_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT study_plan_items_item_type_check CHECK (item_type = ANY (ARRAY['lesson', 'practice', 'mock_test']))
-);
-
 CREATE TABLE public.preparations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     title character varying(255) NOT NULL,
@@ -521,15 +466,6 @@ ALTER TABLE ONLY public.ai_feedback ADD CONSTRAINT ai_feedback_pkey PRIMARY KEY 
 
 ALTER TABLE ONLY public.user_progress_stats ADD CONSTRAINT user_progress_stats_pkey PRIMARY KEY (user_id);
 
-ALTER TABLE ONLY public.practice_sessions ADD CONSTRAINT practice_sessions_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.practice_responses ADD CONSTRAINT practice_responses_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.practice_responses ADD CONSTRAINT practice_responses_session_id_question_id_key UNIQUE (session_id, question_id);
-
-ALTER TABLE ONLY public.study_plans ADD CONSTRAINT study_plans_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.study_plan_items ADD CONSTRAINT study_plan_items_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY public.preparations ADD CONSTRAINT preparations_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.prep_parts ADD CONSTRAINT prep_parts_pkey PRIMARY KEY (id);
@@ -576,19 +512,6 @@ CREATE INDEX idx_responses_attempt ON public.user_responses USING btree (attempt
 
 CREATE INDEX idx_feedback_attempt ON public.ai_feedback USING btree (attempt_id);
 CREATE INDEX idx_feedback_user ON public.ai_feedback USING btree (user_id);
-
-CREATE INDEX idx_practice_sessions_user ON public.practice_sessions USING btree (user_id);
-CREATE INDEX idx_practice_sessions_section ON public.practice_sessions USING btree (section_name);
-CREATE INDEX idx_practice_sessions_status ON public.practice_sessions USING btree (status);
-
-CREATE INDEX idx_practice_responses_session ON public.practice_responses USING btree (session_id);
-CREATE INDEX idx_practice_responses_question ON public.practice_responses USING btree (question_id);
-
-CREATE INDEX idx_study_plans_user ON public.study_plans USING btree (user_id);
-CREATE INDEX idx_study_plans_status ON public.study_plans USING btree (status);
-
-CREATE INDEX idx_study_plan_items_plan ON public.study_plan_items USING btree (plan_id);
-CREATE INDEX idx_study_plan_items_day ON public.study_plan_items USING btree (day_number);
 
 CREATE INDEX idx_posts_user_id ON public.posts USING btree (user_id);
 CREATE INDEX idx_posts_topic_tag ON public.posts USING btree (topic_tag);
@@ -643,20 +566,6 @@ ALTER TABLE ONLY public.ai_feedback
 
 ALTER TABLE ONLY public.user_progress_stats
     ADD CONSTRAINT user_progress_stats_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.practice_sessions
-    ADD CONSTRAINT practice_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.practice_responses
-    ADD CONSTRAINT practice_responses_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.practice_sessions(id) ON DELETE CASCADE;
-ALTER TABLE ONLY public.practice_responses
-    ADD CONSTRAINT practice_responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.study_plans
-    ADD CONSTRAINT study_plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.study_plan_items
-    ADD CONSTRAINT study_plan_items_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.study_plans(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.prep_parts
     ADD CONSTRAINT prep_parts_prep_id_fkey FOREIGN KEY (prep_id) REFERENCES public.preparations(id) ON DELETE CASCADE;

@@ -1,11 +1,19 @@
 import pool from '../../../config/db.js';
 
-export const createPost = async ({ userId, topicTag, title, content }) => {
+export const createPost = async ({
+  userId,
+  topicTag,
+  title,
+  content,
+  isFlagged = false,
+  flaggedBy = null,
+  flagReason = null,
+}) => {
   const result = await pool.query(
-    `INSERT INTO posts (user_id, topic_tag, title, content)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, user_id, topic_tag, title, content, is_flagged,created_at`,
-    [userId, topicTag, title, content]
+    `INSERT INTO posts (user_id, topic_tag, title, content, is_flagged, flagged_by, flag_reason)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, user_id, topic_tag, title, content, is_flagged, flagged_by, flag_reason, created_at`,
+    [userId, topicTag, title, content, Boolean(isFlagged), flaggedBy, flagReason]
   );
   return result.rows[0];
 };
@@ -37,6 +45,7 @@ export const getPostById = async (postId) => {
      LEFT JOIN comments c
         ON c.post_id = p.id
         AND c.deleted_at IS NULL
+        AND c.is_flagged = FALSE
      LEFT JOIN post_shares ps
         ON ps.post_id = p.id
      WHERE p.id = $1
@@ -103,7 +112,7 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
        FROM posts p
        JOIN users u ON u.id = p.user_id
        LEFT JOIN post_likes pl   ON pl.post_id = p.id
-       LEFT JOIN comments c      ON c.post_id = p.id AND c.deleted_at IS NULL
+       LEFT JOIN comments c      ON c.post_id = p.id AND c.deleted_at IS NULL AND c.is_flagged = FALSE
        LEFT JOIN post_shares ps  ON ps.post_id = p.id
        WHERE ${where}
        GROUP BY p.id, u.full_name, u.avatar_url, u.email -- FIXED: u.email added here to satisfy Postgres rules
@@ -122,15 +131,42 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
   return { posts: rows.rows, total: countRow.rows[0]?.total || 0 };
 };
 
-export const updatePost = async ({ postId, userId, title, content }) => {
+export const updatePost = async ({
+  postId,
+  userId,
+  title,
+  content,
+  isFlagged,
+  flaggedBy,
+  flagReason,
+}) => {
   const result = await pool.query(
     `UPDATE posts
      SET title = COALESCE($1, title),
          content = COALESCE($2, content),
+         is_flagged = COALESCE($5, is_flagged),
+         flagged_by = CASE
+           WHEN $5 IS TRUE THEN $6::flag_source
+           WHEN $5 IS FALSE THEN NULL
+           ELSE flagged_by
+         END,
+         flag_reason = CASE
+           WHEN $5 IS TRUE THEN $7
+           WHEN $5 IS FALSE THEN NULL
+           ELSE flag_reason
+         END,
          updated_at = NOW()
      WHERE id = $3 AND user_id = $4 AND deleted_at IS NULL
-     RETURNING id, title, content, updated_at`,
-    [title, content, postId, userId]
+     RETURNING id, title, content, is_flagged, flagged_by, flag_reason, updated_at`,
+    [
+      title,
+      content,
+      postId,
+      userId,
+      typeof isFlagged === "boolean" ? isFlagged : null,
+      flaggedBy ?? null,
+      flagReason ?? null,
+    ]
   );
   return result.rows[0] || null;
 };

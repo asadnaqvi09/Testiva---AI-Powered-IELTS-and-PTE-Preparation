@@ -70,6 +70,26 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
       }
       final response = await ApiService.post('/community/${widget.postId}/comments', body);
       if (response.statusCode == 201) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final moderation = decoded['moderation'];
+        final data = decoded['data'];
+        final isFlagged = (data is Map && data['is_flagged'] == true) ||
+            (moderation is Map && moderation['is_flagged'] == true);
+
+        if (isFlagged && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                moderation is Map
+                    ? (moderation['message']?.toString() ??
+                        'Your comment is under review and hidden until approved.')
+                    : 'Your comment is under review and hidden until approved.',
+              ),
+              backgroundColor: Colors.orange.shade800,
+            ),
+          );
+          return;
+        }
         _fetchComments();
       }
     } catch (_) {}

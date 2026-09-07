@@ -29,12 +29,30 @@ export const startNewAttempt = async (data, client = pool) => {
   }
 };
 
-const AI_EVALUATED_TYPES = ["writing", "speaking"];
+const AI_EVALUATED_TYPES = ["writing", "essay", "speaking"];
+const AI_EVALUATED_SUBS = [
+  "writing",
+  "speaking",
+  "part_1",
+  "part_2",
+  "part_3",
+  "chart_description",
+  "opinion",
+  "discussion",
+  "problem_solution",
+  "advantages_disadvantages",
+  "two_part_question",
+  "request_information",
+  "explain_situation",
+  "provide_opinion",
+  "task_1",
+  "task_2",
+];
 
 const isAiEvaluated = (question) => {
   const qType = (question.question_type || "").toLowerCase();
   const sub = (question.sub_question_type || "").toLowerCase();
-  return AI_EVALUATED_TYPES.includes(qType) || AI_EVALUATED_TYPES.includes(sub);
+  return AI_EVALUATED_TYPES.includes(qType) || AI_EVALUATED_SUBS.includes(sub);
 };
 
 const normalize = (v) => {

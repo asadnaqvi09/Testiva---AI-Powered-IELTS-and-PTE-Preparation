@@ -14,6 +14,8 @@ import prepRoutes from './src/modules/M3_Preparation/preparation/routes/preparat
 import progressRoutes from './src/modules/M4_Progress/routes/progress.routes.js';
 import communityRoutes from './src/modules/M7_Community/routes/community.routes.js';
 import notificationRoutes from './src/modules/M9_Notification/routes/notification.routes.js';
+import paymentRoutes from './src/modules/M8_Payment/routes/payment.routes.js';
+import { stripeWebhook } from './src/modules/M8_Payment/controller/payment.controller.js';
 import aiRoutes from './src/modules/M6_AI/routes/ai.routes.js';
 import { initSocketIO } from './src/modules/M9_Notification/socketIO/index.js';
 import { setSocketServer } from './src/config/socket.js';
@@ -37,6 +39,14 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan("dev"));
+
+// Stripe webhook needs raw body (must be before express.json)
+app.post(
+  "/api/v1/payments/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use("/uploads", express.static("uploads"));
@@ -61,6 +71,7 @@ app.use(`${API_V1}/progress`, progressRoutes);
 app.use(`${API_V1}/ai`, aiRoutes);
 app.use(`${API_V1}/community`, communityRoutes);
 app.use(`${API_V1}/notifications`, notificationRoutes);
+app.use(`${API_V1}/payments`, paymentRoutes);
 
 app.use(errorHandler);
 const PORT = process.env.PORT || 5000;

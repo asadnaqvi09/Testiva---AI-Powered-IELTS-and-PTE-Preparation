@@ -64,12 +64,15 @@ class OfflineSyncService {
                   clientStartedAt: row['client_started_at'] as String,
                 ));
               }
+            } else {
+              await LocalDb.instance.markAttemptFailed(localId);
             }
           } else {
             await LocalDb.instance.markAttemptFailed(localId);
           }
         } catch (e) {
           debugPrint('[OfflineSync] Upload failed for $localId: $e');
+          await LocalDb.instance.markAttemptFailed(localId);
         }
       }
     } finally {

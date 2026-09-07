@@ -9,6 +9,7 @@ enum QuestionKind {
   shortAnswer,
   formFill,
   writing,
+  speaking,
   unknown,
 }
 
@@ -28,6 +29,9 @@ class RuntimeQuestion {
   final String? wordLimitInstruction;
   final List<Map<String, String>> matchingKeys;
   final String? cueCard;
+  final String subQuestionType;
+  final int prepTimeSeconds;
+  final int recordTimeSeconds;
 
   const RuntimeQuestion({
     required this.id,
@@ -45,26 +49,56 @@ class RuntimeQuestion {
     this.wordLimitInstruction,
     this.matchingKeys = const [],
     this.cueCard,
+    this.subQuestionType = '',
+    this.prepTimeSeconds = 0,
+    this.recordTimeSeconds = 0,
   });
 
   bool get isWriting => kind == QuestionKind.writing;
-  bool get isObjective => !isWriting;
+  bool get isSpeaking => kind == QuestionKind.speaking;
+  bool get isObjective => !isWriting && !isSpeaking;
   bool get hasPassage => passageText.trim().isNotEmpty;
   bool get hasAudio => audioUrl != null && audioUrl!.isNotEmpty;
   bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
+  bool get hasCueCard => cueCard != null && cueCard!.trim().isNotEmpty;
+
+  /// Effective prep countdown (0 = none).
+  int get effectivePrepSeconds => prepTimeSeconds > 0 ? prepTimeSeconds : 0;
+
+  /// Effective max recording length; sensible defaults by part when admin omits.
+  int get effectiveRecordSeconds {
+    if (recordTimeSeconds > 0) return recordTimeSeconds;
+    if (subQuestionType == 'part_2') return 120;
+    return 60;
+  }
+}
+
+/// Local speaking answer held in [DynamicTestScreen] until submit.
+class SpeakingAnswerState {
+  final String? localPath;
+  final String? audioResponseUrl;
+
+  const SpeakingAnswerState({this.localPath, this.audioResponseUrl});
+
+  bool get hasUpload =>
+      audioResponseUrl != null && audioResponseUrl!.trim().isNotEmpty;
+  bool get hasLocal => localPath != null && localPath!.trim().isNotEmpty;
+
+  SpeakingAnswerState copyWith({String? localPath, String? audioResponseUrl}) {
+    return SpeakingAnswerState(
+      localPath: localPath ?? this.localPath,
+      audioResponseUrl: audioResponseUrl ?? this.audioResponseUrl,
+    );
+  }
 }
 
 class TestRuntimeParser {
-  static const _skipSections = {'speaking'};
-
   static List<RuntimeQuestion> parseRuntimePayload(Map<String, dynamic> data) {
     final sections = data['sections'] as List? ?? [];
     final List<RuntimeQuestion> out = [];
 
     for (final sec in sections) {
       final sectionType = (sec['section_type'] as String? ?? '').toLowerCase();
-      if (_skipSections.contains(sectionType)) continue;
-
       final sectionName = sec['section_name'] as String? ?? sectionType;
       final instructions = sec['instructions'] as String? ?? '';
       final questions = sec['questions'] as List? ?? [];
@@ -74,11 +108,13 @@ class TestRuntimeParser {
         if (qt == 'placeholder') continue;
 
         final sub = (q['sub_question_type'] as String? ?? '').toLowerCase();
-        final kind = _resolveKind(qt, sub);
+        final kind = _resolveKind(qt, sub, sectionType);
         if (kind == QuestionKind.unknown && qt.isEmpty) continue;
 
         final passage = (q['passage_text'] as String? ?? '').trim();
-        final content = q['content'] as Map<String, dynamic>? ?? {};
+        final content = q['content'] is Map
+            ? Map<String, dynamic>.from(q['content'] as Map)
+            : <String, dynamic>{};
         final options = _parseOptions(q['options']);
 
         List<Map<String, String>> matchingKeys = [];
@@ -114,30 +150,56 @@ class TestRuntimeParser {
           maxWords: int.tryParse(q['max_words']?.toString() ?? '') ?? 0,
           wordLimitInstruction: q['word_limit_instruction'] as String?,
           matchingKeys: matchingKeys,
-          cueCard: content['cue_card'] as String?,
+          cueCard: content['cue_card']?.toString(),
+          subQuestionType: sub,
+          prepTimeSeconds:
+              int.tryParse(q['prep_time_seconds']?.toString() ?? '') ?? 0,
+          recordTimeSeconds:
+              int.tryParse(q['record_time_seconds']?.toString() ?? '') ?? 0,
         ));
       }
     }
     return out;
   }
 
-  static QuestionKind _resolveKind(String qt, String sub) {
-    if (qt == 'writing' || qt == 'essay' || sub.contains('chart') || sub.contains('opinion') || sub.contains('task_')) {
+  static QuestionKind _resolveKind(String qt, String sub, String sectionType) {
+    if (qt == 'speaking' ||
+        sectionType == 'speaking' ||
+        sub == 'part_1' ||
+        sub == 'part_2' ||
+        sub == 'part_3') {
+      return QuestionKind.speaking;
+    }
+    if (qt == 'writing' ||
+        qt == 'essay' ||
+        sub.contains('chart') ||
+        sub.contains('opinion') ||
+        sub.contains('task_')) {
       return QuestionKind.writing;
     }
     if (qt == 'mcq' || sub == 'mcq') return QuestionKind.mcq;
-    if (qt == 'multi_select' || sub == 'multi_select') return QuestionKind.multiSelect;
-    if (qt == 'true_false' || sub == 'tf_not_given') return QuestionKind.trueFalseNg;
+    if (qt == 'multi_select' || sub == 'multi_select') {
+      return QuestionKind.multiSelect;
+    }
+    if (qt == 'true_false' || sub == 'tf_not_given') {
+      return QuestionKind.trueFalseNg;
+    }
     if (qt == 'yes_no' || sub == 'yn_not_given') return QuestionKind.yesNoNg;
     if (qt == 'matching' || sub == 'matching') return QuestionKind.matching;
-    if (qt == 'sentence_completion' || sub == 'sentence_completion') return QuestionKind.sentenceCompletion;
+    if (qt == 'sentence_completion' || sub == 'sentence_completion') {
+      return QuestionKind.sentenceCompletion;
+    }
     if (qt == 'form_fill' || sub == 'form_fill') return QuestionKind.formFill;
-    if (qt == 'short_answer' || sub == 'short_answer') return QuestionKind.shortAnswer;
+    if (qt == 'short_answer' || sub == 'short_answer') {
+      return QuestionKind.shortAnswer;
+    }
     return QuestionKind.unknown;
   }
 
   static List<String> _parseOptions(dynamic raw) {
-    if (raw is List) return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    }
     return [];
   }
 
@@ -161,6 +223,11 @@ class TestRuntimeParser {
         return 'Form Fill';
       case QuestionKind.writing:
         return sub.isNotEmpty ? sub.replaceAll('_', ' ') : 'Writing';
+      case QuestionKind.speaking:
+        if (sub == 'part_1') return 'Speaking Part 1';
+        if (sub == 'part_2') return 'Speaking Part 2';
+        if (sub == 'part_3') return 'Speaking Part 3';
+        return sub.isNotEmpty ? sub.replaceAll('_', ' ') : 'Speaking';
       default:
         return 'Question';
     }

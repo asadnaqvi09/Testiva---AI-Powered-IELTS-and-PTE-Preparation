@@ -115,7 +115,7 @@ export function Community() {
           <p className="text-sm text-gray-500 mt-0.5">
             {loading ? 'Loading...' : `${meta.total} posts`}
             {stats && ` · ${stats.flagged_posts || 0} flagged`}
-            {' · GET /api/v1/community/admin/posts'}
+            {' · AI shadow-flag + admin review'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export function Community() {
         </select>
         <select value={filterFlag} onChange={e => { setFilterFlag(e.target.value); setPage(1); }} className="text-sm px-3 py-2 rounded-lg border focus:outline-none" style={{ borderColor: '#E5E7EB', background: '#F9FAFB' }}>
           <option value="">All Posts</option>
-          <option value="flagged">Flagged Only</option>
+          <option value="flagged">Flagged Only (AI + Admin)</option>
           <option value="clean">Clean Only</option>
         </select>
       </div>
@@ -219,9 +219,19 @@ export function Community() {
                     <td className="px-4 py-3 text-xs text-gray-400">{post.created_at ? new Date(post.created_at).toLocaleDateString() : post.date}</td>
                     <td className="px-4 py-3">
                       {post.is_flagged ? (
-                        <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#DC354515', color: '#DC3545' }}>
-                          <AlertTriangle size={10} /> Flagged
-                        </span>
+                        <div className="space-y-1">
+                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium w-fit" style={{ background: '#DC354515', color: '#DC3545' }}>
+                            <AlertTriangle size={10} /> Flagged
+                          </span>
+                          <p className="text-[10px] text-gray-500">
+                            by {(post.flagged_by || 'unknown').toString().toUpperCase()}
+                          </p>
+                          {post.flag_reason && (
+                            <p className="text-[10px] text-gray-400 line-clamp-2 max-w-40" title={post.flag_reason}>
+                              {post.flag_reason}
+                            </p>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#28A74515', color: '#28A745' }}>Clean</span>
                       )}

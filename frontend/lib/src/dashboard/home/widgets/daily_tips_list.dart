@@ -22,11 +22,21 @@ class DailyTipsList extends StatelessWidget {
                 color: AppTheme.primaryText(context),
               ),
             ),
-            TextButton(
-              onPressed: () {},
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white12
+                    : const Color(0xFF007BFF).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
               child: Text(
-                'See all',
-                style: TextStyle(color: isDark ? Colors.blueAccent : const Color(0xFF007BFF)),
+                'Sample',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : const Color(0xFF007BFF),
+                ),
               ),
             ),
           ],

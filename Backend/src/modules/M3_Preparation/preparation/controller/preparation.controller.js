@@ -5,6 +5,8 @@ import {
     updatePreparationSchema,
     preparationFilterSchema
 } from "../validator/preparation.validator.js";
+import { findUserById } from "../../../M1_Identity/user.model.js";
+import { getAllowedExamTypes, canAccessExamType, resolveUnlockedExam } from "../../../../utils/helpers.js";
 
 const handleServerError = (res, error) => {
     console.error(error);
@@ -12,6 +14,16 @@ const handleServerError = (res, error) => {
         success: false,
         message: "Internal server error"
     });
+};
+
+const loadAccessUser = async (req) => {
+    const user = await findUserById(req.user.id);
+    if (!user) return null;
+    return {
+        ...user,
+        unlocked_exam: resolveUnlockedExam(user),
+        allowedExamTypes: getAllowedExamTypes(user),
+    };
 };
 
 export const createPrepLesson = async (req, res) => {
@@ -116,24 +128,32 @@ export const getPrepLessons = async (req, res) => {
                 message: error.details[0].message
             });
         }
-        const subscription = req.user.subscription || "free";
-        const userPreference = req.user.preference;
-        const role = req.user.role;
+        const accessUser = await loadAccessUser(req);
+        if (!accessUser) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        const role = accessUser.role;
         let activeTestType = value.test_type;
-        if (role !== "admin" && subscription !== "premium") {
-            if (!userPreference) {
-                return res.status(403).json({ 
-                    success: false, 
-                    message: "Please select your learning preference to continue" 
-                });
-            }
-            if (activeTestType && activeTestType.trim().toUpperCase() !== userPreference.trim().toUpperCase()) {
+        if (role !== "admin") {
+            const allowed = accessUser.allowedExamTypes;
+            if (!allowed.length) {
                 return res.status(403).json({
                     success: false,
-                    message: `Access denied. Your active track is locked to ${userPreference.toUpperCase()}.`
+                    message: "Please select your learning preference to continue"
                 });
             }
-            activeTestType = userPreference;
+            if (activeTestType) {
+                const requested = activeTestType.trim().toUpperCase();
+                if (!allowed.includes(requested)) {
+                    return res.status(403).json({
+                        success: false,
+                        message: `Access denied. Your unlocked track does not include ${requested}.`
+                    });
+                }
+                activeTestType = requested;
+            } else if (allowed.length === 1) {
+                activeTestType = allowed[0];
+            }
         }
         const preparations = await prepModel.getAllPreparations(
             activeTestType,
@@ -159,18 +179,18 @@ export const getPrepDetails = async (req, res) => {
                 message: "Preparation not found"
             });
         }
-        if (req.user.role !== "admin" && req.user.subscription !== "premium") {
-            const userPref = (req.user.preference || "").trim().toUpperCase();
-            const lessonType = (fullPrep.test_type || "").trim().toUpperCase();
-
-            if (!userPref) {
+        const accessUser = await loadAccessUser(req);
+        if (!accessUser) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        if (accessUser.role !== "admin") {
+            if (!accessUser.allowedExamTypes.length) {
                 return res.status(403).json({ success: false, message: "Please set your track preference first." });
             }
-
-            if (lessonType !== userPref) {
-                return res.status(403).json({ 
-                    success: false, 
-                    message: "Access denied. Target content is locked to your tracking preference." 
+            if (!canAccessExamType(accessUser, fullPrep.test_type)) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied. Target content is locked to your unlocked exam track."
                 });
             }
         }

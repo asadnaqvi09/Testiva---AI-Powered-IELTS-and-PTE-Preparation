@@ -1,7 +1,34 @@
 import * as writingEvaluation from "../evaluators/writing.evaluator.js";
 import * as speakingEvaluation from "../evaluators/speaking.evaluator.js";
+import { processAudioToText } from "../processors (Input Cleaning)/speaking.processor.js";
 import pool from "../../../config/db.js";
 import * as progressModel from "../../M4_Progress/models/progress.model.js";
+
+const resolveSpeakingTranscript = async (resp) => {
+  const existing =
+    resp.user_answer?.transcribed_text ||
+    (typeof resp.user_answer === "string" ? resp.user_answer : "") ||
+    "";
+  const trimmed = String(existing).trim();
+  const audioUrl = resp.audio_response_url || null;
+  if (trimmed) {
+    return {
+      transcribedText: trimmed,
+      durationSeconds: resp.time_spent_seconds || 0,
+    };
+  }
+  if (!audioUrl) {
+    return {
+      transcribedText: "No speech detected",
+      durationSeconds: resp.time_spent_seconds || 0,
+    };
+  }
+  const stt = await processAudioToText(audioUrl);
+  return {
+    transcribedText: stt.transcribedText || "No speech detected",
+    durationSeconds: stt.durationSeconds ?? resp.time_spent_seconds ?? 0,
+  };
+};
 
 // Purana single entry point (Maintained for backward compatibility or single question triggers)
 export const processEvaluation = async (userId, attemptId, testType, moduleType, data) => {
@@ -32,7 +59,27 @@ export const processFullTestAI = async (attemptId) => {
   let feedbackTexts = [];
 
   // 2. Filter & Process Writing Tasks
-  const writingResponses = responses.filter(r => (r.question_type || '').toLowerCase() === 'writing');
+  const writingResponses = responses.filter((r) => {
+    const qt = (r.question_type || "").toLowerCase();
+    const sub = (r.sub_question_type || "").toLowerCase();
+    return (
+      qt === "writing" ||
+      qt === "essay" ||
+      [
+        "chart_description",
+        "opinion",
+        "discussion",
+        "problem_solution",
+        "advantages_disadvantages",
+        "two_part_question",
+        "request_information",
+        "explain_situation",
+        "provide_opinion",
+        "task_1",
+        "task_2",
+      ].includes(sub)
+    );
+  });
   for (const wr of writingResponses) {
     try {
       console.log(`[AI Service] Evaluating Writing Question ID: ${wr.question_id}`);
@@ -54,15 +101,16 @@ export const processFullTestAI = async (attemptId) => {
     }
   }
 
-  // 3. Filter & Process Speaking Tasks
-  const speakingResponses = responses.filter(r => (r.question_type || '').toLowerCase() === 'speaking');
+  // 3. Filter & Process Speaking Tasks (Gemini STT when transcript missing)
+  const speakingResponses = responses.filter((r) => {
+    const qt = (r.question_type || "").toLowerCase();
+    const sub = (r.sub_question_type || "").toLowerCase();
+    return qt === "speaking" || ["part_1", "part_2", "part_3"].includes(sub);
+  });
   for (const sr of speakingResponses) {
     try {
       console.log(`[AI Service] Evaluating Speaking Question ID: ${sr.question_id}`);
-      const transcriptionData = {
-        transcribedText: sr.user_answer?.transcribed_text || sr.user_answer || "No speech detected",
-        durationSeconds: sr.time_spent_seconds || 0
-      };
+      const transcriptionData = await resolveSpeakingTranscript(sr);
 
       // --- ITEM #10 FIX: Enforce isolated background validation limits ---
       const fb = await speakingEvaluation.evaluateSpeakingTask(
@@ -81,14 +129,19 @@ export const processFullTestAI = async (attemptId) => {
 
   // 4. SMART BAND CALCULATOR (IELTS/PTE Compliant)
   const freshAttempt = await progressModel.getAttemptById(attemptId);
+  const scoreMeta = await progressModel.getAttemptScoreMeta(attemptId);
+  const examType = (scoreMeta?.exam_type || attempt.test_type || "").toUpperCase();
+  const isSingular = (scoreMeta?.test_category || "") === "singular_module";
   
   const rScore = Number(freshAttempt.reading_score) || 0;
   const lScore = Number(freshAttempt.listening_score) || 0;
   const wScore = writingScore !== null ? Number(writingScore) : (Number(freshAttempt.writing_score) || 0);
   const sScore = speakingScore !== null ? Number(speakingScore) : (Number(freshAttempt.speaking_score) || 0);
 
-  let overallBand = (rScore + lScore + wScore + sScore) / 4;
-  if ((attempt.test_type || '').toUpperCase() !== 'PTE') {
+  let overallBand = isSingular
+    ? (sScore || wScore || rScore || lScore || 0)
+    : (rScore + lScore + wScore + sScore) / 4;
+  if (examType !== "PTE") {
     // IELTS rounding mechanism logic integration
     overallBand = Math.round(overallBand * 2) / 2;
   } else {

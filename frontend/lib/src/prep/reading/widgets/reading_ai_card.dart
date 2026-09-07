@@ -20,7 +20,7 @@ class ReadingAICard extends StatelessWidget {
               Icon(Icons.lightbulb_outline, color: Colors.white, size: 18),
               SizedBox(width: 8),
               Text(
-                'AI RECOMMENDATION',
+                'SAMPLE TIP',
                 style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
               ),
             ],

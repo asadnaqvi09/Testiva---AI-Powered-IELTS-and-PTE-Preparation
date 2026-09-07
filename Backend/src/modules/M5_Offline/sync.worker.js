@@ -5,8 +5,35 @@ import { cacheDelByPrefix } from "../../utils/redisCache.js";
 import { computeAttemptBandScores } from "../../utils/bandScore.js";
 import * as writingEvaluation from "../M6_AI/evaluators/writing.evaluator.js";
 import * as speakingEvaluation from "../M6_AI/evaluators/speaking.evaluator.js";
+import { processAudioToText } from "../M6_AI/processors (Input Cleaning)/speaking.processor.js";
 import { getSocketServer } from "../../config/socket.js";
 import { handleTestResultSyncedNotification } from "../M9_Notification/engine/notification.engine.js";
+
+const resolveSpeakingTranscript = async (resp) => {
+  const existing =
+    resp.user_answer?.transcribed_text ||
+    (typeof resp.user_answer === "string" ? resp.user_answer : "") ||
+    "";
+  const trimmed = String(existing).trim();
+  const audioUrl = resp.audio_response_url || null;
+  if (trimmed) {
+    return {
+      transcribedText: trimmed,
+      durationSeconds: resp.time_spent_seconds || 0,
+    };
+  }
+  if (!audioUrl) {
+    return {
+      transcribedText: "",
+      durationSeconds: resp.time_spent_seconds || 0,
+    };
+  }
+  const stt = await processAudioToText(audioUrl);
+  return {
+    transcribedText: stt.transcribedText || "",
+    durationSeconds: stt.durationSeconds ?? resp.time_spent_seconds ?? 0,
+  };
+};
 
 syncQueue.process(async (job) => {
   const userId = job.data.userId || job.data.userID;
@@ -89,25 +116,38 @@ syncQueue.process(async (job) => {
     client.release();
     const responses = await Progress.getAttemptResponses(attemptId);
     const testMeta = await Progress.getAttemptById(attemptId);
-    const isPte = (testMeta?.test_type || "").toUpperCase() === "PTE";
+    const scoreMeta = await Progress.getAttemptScoreMeta(attemptId);
+    const examType = scoreMeta?.exam_type || testMeta?.test_type || "IELTS";
+    const isPte = String(examType).toUpperCase() === "PTE";
+    const isSingular = (scoreMeta?.test_category || "") === "singular_module";
     let calculatedWritingScore = Number(testData.writing_score) || 0;
     let calculatedSpeakingScore = Number(testData.speaking_score) || 0;
     let cumulativeFeedback = [];
     for (const resp of responses) {
       const qType = (resp.question_type || "").toLowerCase();
-      if (qType === "writing") {
+      const subType = (resp.sub_question_type || "").toLowerCase();
+      const isWritingAi =
+        qType === "writing" ||
+        qType === "essay" ||
+        ["chart_description", "opinion", "discussion", "problem_solution", "advantages_disadvantages", "two_part_question", "request_information", "explain_situation", "provide_opinion", "task_1", "task_2"].includes(subType);
+      const isSpeakingAi =
+        qType === "speaking" ||
+        ["part_1", "part_2", "part_3"].includes(subType);
+      if (isWritingAi) {
         try {
           const essayText = resp.user_answer?.text_essay || (typeof resp.user_answer === "string" ? resp.user_answer : "");
-          const fb = await writingEvaluation.evaluateWriting(userId, attemptId, testMeta?.test_type, resp.question_text, essayText, { skipScoreUpdate: true });
+          const fb = await writingEvaluation.evaluateWriting(userId, attemptId, examType, resp.question_text, essayText, { skipScoreUpdate: true });
           calculatedWritingScore = fb.overall_band_score;
           cumulativeFeedback.push(`[Writing Feedback]: ${fb.general_critique || fb.improvement_suggestions}`);
         } catch (err) {
           console.error(`[AI RECOVERY ERROR]: Attempt ID ${attemptId} Writing Evaluation failure: `, err);
         }
-      } else if (qType === "speaking") {
+      } else if (isSpeakingAi) {
         try {
-          const transcript = resp.user_answer?.transcribed_text || (typeof resp.user_answer === "string" ? resp.user_answer : "");
-          const sData = { transcribedText: transcript, durationSeconds: resp.time_spent_seconds || 0 };
+          const sData = await resolveSpeakingTranscript(resp);
+          if (!sData.transcribedText) {
+            console.warn(`[AI RECOVERY]: Attempt ${attemptId} speaking q ${resp.question_id} had empty transcript`);
+          }
           const fb = await speakingEvaluation.evaluateSpeakingTask(userId, attemptId, sData, { skipScoreUpdate: true });
           calculatedSpeakingScore = fb.overall_band_score;
           cumulativeFeedback.push(`[Speaking Feedback]: ${fb.general_critique || fb.improvement_suggestions}`);
@@ -120,7 +160,12 @@ syncQueue.process(async (job) => {
     const lScore = Number(testMeta?.listening_score) || Number(testData.listening_score) || 0;
     const wScore = calculatedWritingScore || Number(testData.writing_score) || 0;
     const sScore = calculatedSpeakingScore || Number(testData.speaking_score) || 0;
-    let computedBand = (rScore + lScore + wScore + sScore) / 4;
+    let computedBand;
+    if (isSingular) {
+      computedBand = sScore || wScore || rScore || lScore || 0;
+    } else {
+      computedBand = (rScore + lScore + wScore + sScore) / 4;
+    }
     if (!isPte) {
       computedBand = Math.round(computedBand * 2) / 2;
     } else {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Lock, Bell, Palette, Eye, EyeOff, Check, AlertCircle, Moon, Sun, Monitor, Loader2, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { updateUserProfileAPI, changeUserPasswordAPI } from '../services/api';
+import { updateUserProfileAPI, changeUserPasswordAPI, uploadUserAvatarAPI } from '../services/api';
 import { toast } from 'sonner';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -12,24 +12,35 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const NOTIF_SETTINGS = [
-  { id: 'newUser', label: 'New User Registrations', desc: 'Notify when a new student signs up on the portal' },
-  { id: 'subChange', label: 'Subscription Changes', desc: 'Alert immediately on Stripe plan upgrades/downgrades' },
+  { id: 'newUser', label: 'New User Registrations', desc: 'Highlight new-signup alerts in the TopBar bell' },
+  { id: 'subChange', label: 'Subscription Changes', desc: 'Highlight plan-change alerts in the TopBar bell' },
 ];
+
+const NOTIF_STORAGE_KEY = 'testiva_admin_notif_prefs';
+
+function loadNotifPrefs(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, boolean>;
+  } catch { /* ignore */ }
+  return { newUser: true, subChange: true };
+}
 
 export function Settings() {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'appearance'>('profile');
   const [loading, setLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-  const [notifSettings, setNotifSettings] = useState(NOTIF_SETTINGS.map(n => ({ ...n, enabled: true })));
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(loadNotifPrefs);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Logic Check: Initializing with fallback to empty string to ensure input is always controlled
   const [profileForm, setProfileForm] = useState({
     full_name: user?.name || '',
     email: user?.email || '',
-    bio: user?.bio || '', 
+    bio: user?.bio || '',
     avatar_url: user?.avatar || '',
   });
 
@@ -41,7 +52,7 @@ export function Settings() {
       setProfileForm({
         full_name: user.name || '',
         email: user.email || '',
-        bio: user.bio || '', // Displaying user.bio correctly
+        bio: user.bio || '',
         avatar_url: user.avatar || '',
       });
     }
@@ -56,14 +67,47 @@ export function Settings() {
     } else {
       root.classList.remove('dark');
     }
-    toast.success(`Theme mode adapted to ${selectedTheme}`);
+    toast.success(`Theme set to ${selectedTheme}`);
   };
 
-  const handleAvatarSimulation = () => {
-    toast.info('Opening storage pipeline for new Avatar upload...');
+  const handleToggleNotif = (id: string) => {
+    setNotifPrefs(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(next));
+      toast.success('Preference saved on this device');
+      return next;
+    });
   };
 
-  const handleSaveProfile = async () => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB.');
+      return;
+    }
+    try {
+      setAvatarUploading(true);
+      const res = await uploadUserAvatarAPI(file);
+      if (res?.success) {
+        const url = res.user?.avatar_url || profileForm.avatar_url;
+        setProfileForm(p => ({ ...p, avatar_url: url || '' }));
+        updateUser({ avatar: url });
+        toast.success('Avatar updated.');
+      } else {
+        toast.error((res as { message?: string })?.message || 'Avatar upload failed.');
+      }
+    } catch {
+      toast.error('Avatar upload failed.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
     if (!profileForm.full_name.trim()) {
       toast.error('Name field is required.');
       return;
@@ -72,13 +116,13 @@ export function Settings() {
       setLoading(true);
       const res = await updateUserProfileAPI({
         full_name: profileForm.full_name,
-        bio: profileForm.bio, // Passing bio to API
+        bio: profileForm.bio,
       });
 
       if (res?.success) {
         updateUser({
           name: profileForm.full_name,
-          bio: profileForm.bio // Updating bio in Auth Context
+          bio: profileForm.bio
         });
         toast.success('Profile updated successfully!');
       }
@@ -138,7 +182,6 @@ export function Settings() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5">
-        {/* Sidebar */}
         <div className="lg:w-56 flex-shrink-0 space-y-3">
           <div className="bg-white rounded-xl border shadow-sm p-2">
             {TABS.map(tab => (
@@ -150,21 +193,42 @@ export function Settings() {
             ))}
           </div>
 
-          <div className="bg-white rounded-xl border shadow-sm p-4 text-center relative overflow-hidden">
+          <div className="bg-white rounded-xl border shadow-sm p-4 text-center">
             <div className="relative w-16 h-16 mx-auto mb-2 group">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold transition-all shadow-inner" style={{ background: '#007BFF' }}>
-                {profileForm.full_name?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <button onClick={handleAvatarSimulation} className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer">
-                <Camera size={14} />
+              {profileForm.avatar_url ? (
+                <img
+                  src={profileForm.avatar_url}
+                  alt=""
+                  className="w-16 h-16 rounded-full object-cover shadow-inner"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-inner" style={{ background: '#007BFF' }}>
+                  {profileForm.full_name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={avatarUploading}
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer disabled:opacity-60"
+                aria-label="Upload avatar"
+              >
+                {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
               </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </div>
             <p className="text-sm font-semibold truncate text-gray-900">{profileForm.full_name || 'User'}</p>
             <p className="text-xs text-gray-400 mt-0.5 truncate">{ROLE_LABELS[user?.role || ''] || 'Member'}</p>
+            <p className="text-[10px] text-gray-400 mt-2">Hover avatar to upload</p>
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1">
           {activeTab === 'profile' && (
             <div className="bg-white rounded-xl border shadow-sm p-6 space-y-4">
@@ -184,14 +248,13 @@ export function Settings() {
                 </div>
               </div>
               <div>
-                {/* BIO SECTION */}
                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Biography</label>
-                <textarea 
-                  value={profileForm.bio} 
-                  onChange={e => setProfileForm(p => ({ ...p, bio: e.target.value }))} 
+                <textarea
+                  value={profileForm.bio}
+                  onChange={e => setProfileForm(p => ({ ...p, bio: e.target.value }))}
                   rows={4}
                   placeholder="Tell us about yourself..."
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500 bg-gray-50/50 resize-none" 
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500 bg-gray-50/50 resize-none"
                 />
               </div>
               <button disabled={loading} onClick={handleSaveProfile} className="px-5 py-2.5 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5" style={{ background: '#007BFF' }}>
@@ -227,7 +290,7 @@ export function Settings() {
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500 bg-gray-50/50" />
                 </div>
               </div>
-              <button disabled={loading} onClick={handleChangePassword} className="px-5 py-2.5 rounded-lg text-white text-sm font-medium hover:opacity-90 flex items-center gap-1.5" style={{ background: '#007BFF' }}>
+              <button disabled={loading} onClick={handleChangePassword} className="px-5 py-2.5 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5" style={{ background: '#007BFF' }}>
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />} Update Password
               </button>
             </div>
@@ -235,19 +298,25 @@ export function Settings() {
 
           {activeTab === 'notifications' && (
             <div className="bg-white rounded-xl border shadow-sm p-6">
-              <h3 className="font-semibold text-base text-gray-900 mb-4">Notification Preferences</h3>
+              <h3 className="font-semibold text-base text-gray-900 mb-1">Notification Preferences</h3>
+              <p className="text-xs text-gray-400 mb-4">
+                Stored on this browser only. Server still delivers admin notifications; these toggles control local display emphasis.
+              </p>
               <div className="space-y-1">
-                {notifSettings.map(n => (
+                {NOTIF_SETTINGS.map(n => (
                   <div key={n.id} className="flex items-center gap-4 py-3.5 border-b border-gray-50 last:border-0">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">{n.label}</p>
                       <p className="text-xs text-gray-400">{n.desc}</p>
                     </div>
-                    <button onClick={() => setNotifSettings(prev => prev.map(s => s.id === n.id ? { ...s, enabled: !s.enabled } : s))}
+                    <button
+                      onClick={() => handleToggleNotif(n.id)}
                       className="w-10 h-5.5 rounded-full relative transition-all"
-                      style={{ background: n.enabled ? '#007BFF' : '#E5E7EB' }}>
+                      style={{ background: notifPrefs[n.id] !== false ? '#007BFF' : '#E5E7EB' }}
+                      aria-label={`Toggle ${n.label}`}
+                    >
                       <span className="absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-all"
-                        style={{ left: n.enabled ? '22px' : '2px' }} />
+                        style={{ left: notifPrefs[n.id] !== false ? '22px' : '2px' }} />
                     </button>
                   </div>
                 ))}

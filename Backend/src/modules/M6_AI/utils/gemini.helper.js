@@ -27,11 +27,11 @@ export const parseGeminiJson = (rawText) => {
   }
 };
 
-export const generateJsonFromPrompt = async (prompt, maxAttempts = 3) => {
+const runGeminiWithRetry = async (content, maxAttempts = 3) => {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(content);
       const text = (await result.response).text().trim();
       return parseGeminiJson(text);
     } catch (err) {
@@ -45,3 +45,13 @@ export const generateJsonFromPrompt = async (prompt, maxAttempts = 3) => {
   }
   throw lastError;
 };
+
+export const generateJsonFromPrompt = async (prompt, maxAttempts = 3) =>
+  runGeminiWithRetry(prompt, maxAttempts);
+
+/**
+ * Multimodal Gemini call (text + inline audio/image parts).
+ * @param {Array<string|{text?:string,inlineData?:{mimeType:string,data:string}}>} parts
+ */
+export const generateJsonFromMultimodal = async (parts, maxAttempts = 3) =>
+  runGeminiWithRetry(parts, maxAttempts);

@@ -5,9 +5,10 @@ import * as ShareModel from '../models/share.model.js';
 import * as FlagModel from '../models/flag.model.js';
 import { validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts, validateSharePost, validateCreateComment, validateUpdateComment, validateCommentId, validateAdminFlagPost, validateAdminDeletePost } from '../validator/community.validator.js';
 import { getOnlineCount } from '../../M6_AI/services/presence.service.js';
+import { moderatePost, moderateComment } from '../../M6_AI/services/moderation.service.js';
 import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
 import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
-import { emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitToUser } from '../../M9_Notification/socketIO/event.engine.js';
+import { emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitPostFlagged, emitPostRemovedFromFeed } from '../../M9_Notification/socketIO/event.engine.js';
 import { handlePostCreatedNotification, handleLikeNotification, handleCommentNotification, handleReplyNotification, handleModerationNotification, handleAdminNewPostNotification } from '../../M9_Notification/engine/notification.engine.js';
 import { sendError, buildPagination } from '../../../utils/helpers.js';
 
@@ -22,16 +23,47 @@ const buildCommentTree = (comments, parentId = null) =>
       replies: buildCommentTree(comments, comment.id),
     }));
 
+const buildFlagReason = (moderation) => {
+  if (!moderation?.isFlagged) return null;
+  const cats = Array.isArray(moderation.categories) && moderation.categories.length
+    ? ` [${moderation.categories.join(', ')}]`
+    : '';
+  return `${moderation.reason || 'Flagged by AI moderation'}${cats}`;
+};
+
 export const createPost = async (req, res) => {
   try {
     const body = validateCreatePost(req.body);
+    const moderation = await moderatePost({ title: body.title, content: body.content });
     const post = await PostModel.createPost({
       userId: req.user.id,
       topicTag: body.topic_tag,
       title: body.title,
       content: body.content,
+      isFlagged: moderation.isFlagged,
+      flaggedBy: moderation.isFlagged ? 'ai' : null,
+      flagReason: buildFlagReason(moderation),
     });
     const fullPost = await PostModel.getPostById(post.id);
+
+    if (moderation.isFlagged) {
+      emitPostFlagged(req.io, req.user.id, {
+        postId: post.id,
+        reason: buildFlagReason(moderation),
+        status: 'under_review',
+      });
+      handleAdminNewPostNotification(req.io, fullPost).catch(console.error);
+      return res.status(201).json({
+        success: true,
+        data: fullPost,
+        moderation: {
+          is_flagged: true,
+          status: 'under_review',
+          message: 'Your post was submitted and is under review. It will appear in the community feed after approval.',
+        },
+      });
+    }
+
     emitPostCreated(req.io, fullPost);
     handlePostCreatedNotification(req.io, fullPost).catch(console.error);
     handleAdminNewPostNotification(req.io, fullPost).catch(console.error);
@@ -45,9 +77,10 @@ export const getPosts = async (req, res) => {
     const page = Number(query.page || 1);
     const limit = USER_PAGE_LIMIT;
     const offset = (page - 1) * limit;
+    // Shadow-flag: learners only see clean posts in the public feed
     const { posts, total } = await PostModel.getPostsPaginated({
       topicTag: query.topic_tag || 'All',
-      filter: query.filter,
+      filter: 'clean',
       search: query.search,
       limit, offset, userId: req.user.id,
     });
@@ -60,6 +93,9 @@ export const getPostDetail = async (req, res) => {
     const { postId } = validatePostId(req.params);
     const post = await PostModel.getPostById(postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+    if (post.is_flagged && post.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
     return res.json({ success: true, data: post });
   } catch (err) { return sendError(res, err); }
 };
@@ -68,11 +104,44 @@ export const updatePost = async (req, res) => {
   try {
     const { postId } = validatePostId(req.params);
     const body = validateUpdatePost(req.body);
+    const existing = await PostModel.getPostById(postId);
+    if (!existing || existing.user_id !== req.user.id) {
+      return res.status(404).json({ success: false, message: 'Post not found or unauthorized' });
+    }
+    const nextTitle = body.title ?? existing.title;
+    const nextContent = body.content ?? existing.content;
+    const moderation = await moderatePost({ title: nextTitle, content: nextContent });
     const updated = await PostModel.updatePost({
-      postId, userId: req.user.id, title: body.title, content: body.content,
+      postId,
+      userId: req.user.id,
+      title: body.title,
+      content: body.content,
+      isFlagged: moderation.isFlagged,
+      flaggedBy: moderation.isFlagged ? 'ai' : null,
+      flagReason: buildFlagReason(moderation),
     });
     if (!updated) return res.status(404).json({ success: false, message: 'Post not found or unauthorized' });
     const fullPost = await PostModel.getPostById(postId);
+
+    if (moderation.isFlagged) {
+      emitPostRemovedFromFeed(req.io, postId);
+      emitPostFlagged(req.io, req.user.id, {
+        postId,
+        reason: buildFlagReason(moderation),
+        status: 'under_review',
+      });
+      return res.json({
+        success: true,
+        data: fullPost,
+        moderation: {
+          is_flagged: true,
+          status: 'under_review',
+          message: 'Your updated post is under review and hidden from the community feed.',
+        },
+      });
+    }
+
+    emitPostCreated(req.io, fullPost);
     return res.json({ success: true, data: fullPost });
   } catch (err) { return sendError(res, err); }
 };
@@ -113,11 +182,31 @@ export const createComment = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid parent comment' });
       }
     }
+    const moderation = await moderateComment({ content: body.content });
     const comment = await CommentModel.createComment({
-      postId, userId: req.user.id, parentId: body.parent_id || null, content: body.content,
+      postId,
+      userId: req.user.id,
+      parentId: body.parent_id || null,
+      content: body.content,
+      isFlagged: moderation.isFlagged,
+      flaggedBy: moderation.isFlagged ? 'ai' : null,
+      flagReason: buildFlagReason(moderation),
     });
     const fullComment = await CommentModel.getCommentById(comment.id);
     const post = await PostModel.getPostById(postId);
+
+    if (moderation.isFlagged) {
+      return res.status(201).json({
+        success: true,
+        data: fullComment,
+        moderation: {
+          is_flagged: true,
+          status: 'under_review',
+          message: 'Your comment was submitted and is under review. It will appear after approval.',
+        },
+      });
+    }
+
     emitCommentCreated(req.io, { comment: fullComment, topic_tag: post.topic_tag });
     try {
       if (body.parent_id && parentComment) {
@@ -165,11 +254,28 @@ export const updateComment = async (req, res) => {
   try {
     const { commentId } = validateCommentId(req.params);
     const body = validateUpdateComment(req.body);
+    const moderation = await moderateComment({ content: body.content });
     const updated = await CommentModel.updateComment({
-      commentId, userId: req.user.id, content: body.content,
+      commentId,
+      userId: req.user.id,
+      content: body.content,
+      isFlagged: moderation.isFlagged,
+      flaggedBy: moderation.isFlagged ? 'ai' : null,
+      flagReason: buildFlagReason(moderation),
     });
     if (!updated) return res.status(404).json({ success: false, message: 'Comment not found or unauthorized' });
     const fullComment = await CommentModel.getCommentById(commentId);
+    if (moderation.isFlagged) {
+      return res.json({
+        success: true,
+        data: fullComment,
+        moderation: {
+          is_flagged: true,
+          status: 'under_review',
+          message: 'Your updated comment is under review and hidden from the thread.',
+        },
+      });
+    }
     return res.json({ success: true, data: fullComment });
   } catch (err) { return sendError(res, err); }
 };
@@ -254,6 +360,7 @@ export const adminFlagPost = async (req, res) => {
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
     const adminFeedback = body.reason?.trim() || DEFAULT_MODERATION_REASON;
     await PostModel.flagPost({ postId, flaggedBy: 'admin', flagReason: adminFeedback });
+    emitPostRemovedFromFeed(req.io, postId);
     await sendPostFlaggedEmail({ email: post.email, userName: post.full_name, postTitle: post.title, adminFeedback });
     await FlagModel.insertModerationLog({ adminId: req.user.id, targetId: postId, action: 'flag', adminFeedback, emailSent: true });
     await handleModerationNotification(req.io, { postId, postOwnerId: post.user_id, adminFeedback, action: 'flag' });
@@ -273,6 +380,8 @@ export const adminUnflagPost = async (req, res) => {
     if (!unflagged) return res.status(404).json({ success: false, message: 'Post not found' });
     await FlagModel.insertModerationLog({ adminId: req.user.id, targetId: postId, action: 'unflag' });
     await handleModerationNotification(req.io, { postId, postOwnerId: post.user_id, action: 'unflag' });
+    const fullPost = await PostModel.getPostById(postId);
+    if (fullPost) emitPostCreated(req.io, fullPost);
     return res.json({ success: true, data: unflagged });
   } catch (err) {
     console.log("Error in adminUnFlagPost...", err)

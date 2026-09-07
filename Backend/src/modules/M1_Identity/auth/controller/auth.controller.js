@@ -13,6 +13,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
+  getTokenTtlSeconds,
 } from "../../../../utils/jwt.js";
 import { handleAdminNewUserNotification } from "../../../M9_Notification/engine/notification.engine.js";
 import { verifyGoogleToken } from "../services/google.service.js";
@@ -21,8 +22,10 @@ import {
   hashPassword,
   generateOTP,
   resolveSubscription,
+  resolveUnlockedExam,
   hashOTP,
 } from "../../../../utils/helpers.js";
+import { redisClient } from "../../../../config/redis.js";
 import bcrypt from "bcrypt";
 
 const hashOtpValue = async (otp) => hashOTP(String(otp));
@@ -30,9 +33,31 @@ const buildToken = (user) => ({
   id: user.id,
   role: user.role,
   subscription: resolveSubscription(user),
-  tokenVersion: user.token_version,
-  preference: user.preference, 
+  tokenVersion: user.token_version ?? 0,
+  preference: user.preference,
+  unlocked_exam: resolveUnlockedExam(user),
 });
+
+const publicUser = (user) => ({
+  id: user.id,
+  full_name: user.full_name,
+  email: user.email,
+  role: user.role,
+  subscription: resolveSubscription(user),
+  preference: user.preference,
+  unlocked_exam: resolveUnlockedExam(user),
+  avatar_url: user.avatar_url ?? null,
+});
+
+const blacklistAccessToken = async (accessToken) => {
+  if (!accessToken) return;
+  try {
+    const ttl = getTokenTtlSeconds(accessToken);
+    await redisClient.set(`bl:${accessToken}`, "1", "EX", ttl);
+  } catch (err) {
+    console.error("Failed to blacklist access token:", err.message);
+  }
+};
 
 export const registerUser = async (req, res) => {
   try {
@@ -100,7 +125,7 @@ export const loginUser = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid credentials" });
     const accessToken = generateAccessToken(buildToken(user));
-    const refreshToken = generateRefreshToken(user.id);
+    const refreshToken = generateRefreshToken(user.id, user.token_version);
     await Promise.all([
       pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]),
       pool.query(
@@ -113,15 +138,8 @@ export const loginUser = async (req, res) => {
       success: true,
       accessToken,
       refreshToken,
-      expiresIn: "15m",
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        subscription: resolveSubscription(user),
-        preference: user.preference,
-      },
+      expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+      user: publicUser(user),
     });
   } catch (error) {
     console.log("Error In Login Controller : ", error.message);
@@ -345,13 +363,7 @@ export const setUserPreference = async (req, res) => {
         ? `User preference forcefully updated to ${preference} via Admin Override.` 
         : "Preference locked successfully.",
       accessToken: updatedToken,
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        preference: user.preference,
-      }
+      user: publicUser(user),
     });
   } catch (error) {
     console.error("Error in setUserPreference Controller:", error.message);
@@ -369,7 +381,12 @@ export const refreshAccessToken = async (req, res) => {
       return res
         .status(401)
         .json({ success: false, message: "Refresh token required" });
-    const decoded = verifyRefreshToken(refreshToken);
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
     const stored = await findRefreshToken(refreshToken);
     if (!stored)
       return res.status(401).json({ success: false, message: "Invalid token" });
@@ -382,30 +399,31 @@ export const refreshAccessToken = async (req, res) => {
       return res
         .status(401)
         .json({ success: false, message: "User not found" });
-    if (decoded.tokenVersion !== user.token_version) {
+    const tokenVersion = Number(decoded.tokenVersion ?? 0);
+    if (tokenVersion !== Number(user.token_version ?? 0)) {
       await deleteRefreshToken(refreshToken);
       return res
         .status(401)
         .json({ success: false, message: "Token invalidated" });
     }
     const accessToken = generateAccessToken(buildToken(user));
-    const newRefreshToken = generateRefreshToken(user.id);
+    const newRefreshToken = generateRefreshToken(user.id, user.token_version);
+    await deleteRefreshToken(refreshToken);
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
        VALUES ($1,$2,NOW() + INTERVAL '7 days')`,
-      [
-        user.id,
-        newRefreshToken,
-      ],
+      [user.id, newRefreshToken],
     );
     return res.json({
       success: true,
       accessToken,
       refreshToken: newRefreshToken,
-      expiresIn: "15m",
+      expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+      user: publicUser(user),
     });
-  } catch {
-    return res.status(500).json({ success: false, message: "Refresh failed" });
+  } catch (error) {
+    console.error("Refresh failed:", error.message);
+    return res.status(401).json({ success: false, message: "Refresh failed" });
   }
 };
 
@@ -562,7 +580,7 @@ export const googleAuth = async (req, res) => {
       }
     }
     const accessToken = generateAccessToken(buildToken(user));
-    const refreshToken = generateRefreshToken(user.id);
+    const refreshToken = generateRefreshToken(user.id, user.token_version);
     await Promise.all([
       pool.query(`UPDATE users SET last_login_at=NOW() WHERE id=$1`, [user.id]),
       pool.query(
@@ -575,16 +593,8 @@ export const googleAuth = async (req, res) => {
       success: true,
       accessToken,
       refreshToken,
-      expiresIn: "15m",
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        subscription: resolveSubscription(user),
-        preference: user.preference,
-        avatar_url: user.avatar_url,
-      },
+      expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+      user: publicUser(user),
     });
   } catch (error) {
     console.error("Error in googleAuth:", error);
@@ -616,7 +626,10 @@ export const googleAuth = async (req, res) => {
 export const logoutUser = async (req, res) => {
   try {
     const { refreshToken } = req.body;
-    await deleteRefreshToken(refreshToken);
+    if (refreshToken) {
+      await deleteRefreshToken(refreshToken);
+    }
+    await blacklistAccessToken(req.token);
     return res.json({ success: true, message: "Logged out" });
   } catch {
     return res.status(500).json({ success: false, message: "Logout failed" });
@@ -631,6 +644,7 @@ export const logoutAllUserDevices = async (req, res) => {
       `UPDATE users SET token_version = token_version + 1 WHERE id=$1`,
       [userId],
     );
+    await blacklistAccessToken(req.token);
     return res.json({ success: true, message: "Logged out all devices" });
   } catch {
     return res.status(500).json({ success: false, message: "Failed" });

@@ -20,7 +20,7 @@ class WritingAICard extends StatelessWidget {
               Icon(Icons.psychology, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text(
-                'AI RECOMMENDATION',
+                'SAMPLE TIP',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,

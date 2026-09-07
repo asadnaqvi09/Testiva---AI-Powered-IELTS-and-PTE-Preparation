@@ -9,6 +9,12 @@ type SortDir = 'asc' | 'desc';
 
 const TEST_TYPES = ['IELTS', 'PTE']; 
 const SUBSCRIPTION_TYPES = ['free', 'basic', 'premium'];
+const UNLOCK_OPTIONS = [
+  { value: '', label: 'Clear (none)' },
+  { value: 'IELTS', label: 'IELTS only' },
+  { value: 'PTE', label: 'PTE only' },
+  { value: 'BOTH', label: 'Both exams' },
+];
 const PLAN_LABELS: Record<string, string> = { free: 'Free', basic: 'Basic ₨399', premium: 'Premium ₨699' };
 
 export function Users() {
@@ -31,6 +37,7 @@ export function Users() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [editSubscription, setEditSubscription] = useState<string>('free');
   const [editPreference, setEditPreference] = useState<string>('IELTS');
+  const [editUnlockedExam, setEditUnlockedExam] = useState<string>('');
   const [mutationLoading, setMutationLoading] = useState<boolean>(false);
 
   /* ==========================================================================
@@ -108,7 +115,8 @@ export function Users() {
   const handleOpenEditModal = (userData: any) => {
     setSelectedUser(userData);
     setEditSubscription(userData.subscription || 'free');
-    setEditPreference(userData.preference || 'IELTS'); 
+    setEditPreference(userData.preference || 'IELTS');
+    setEditUnlockedExam(userData.unlocked_exam || '');
     setShowEdit(userData.id);
   };
 
@@ -116,7 +124,14 @@ export function Users() {
   if (!selectedUser) return;
   try {
     setMutationLoading(true);
-    const subRes = await updateUserSubscriptionAPI(selectedUser.id, editSubscription);
+    let unlockedPayload: string | null | undefined = editUnlockedExam || null;
+    if (editSubscription === 'free') unlockedPayload = null;
+    else if (editSubscription === 'premium') unlockedPayload = 'BOTH';
+    const subRes = await updateUserSubscriptionAPI(
+      selectedUser.id,
+      editSubscription,
+      unlockedPayload,
+    );
     if (subRes && subRes.success === false) {
       throw new Error(subRes.message || 'Subscription update failed.');
     }
@@ -204,6 +219,7 @@ export function Users() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer select-none" onClick={() => toggleSort('subscription')}>
                   Access Tier Level <SortIcon k="subscription" />
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Unlocked Exam</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Action Controls</th>
               </tr>
@@ -211,7 +227,7 @@ export function Users() {
             <tbody className="divide-y" style={{ borderColor: '#F5F7FA' }}>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-sm text-gray-400">
+                  <td colSpan={7} className="text-center py-12 text-sm text-gray-400">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       Fetching records from server pipeline...
@@ -219,7 +235,7 @@ export function Users() {
                   </td>
                 </tr>
               ) : filteredAndSortedUsers.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-gray-400 text-sm">No synchronized student records matching criteria.</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-gray-400 text-sm">No synchronized student records matching criteria.</td></tr>
               ) : filteredAndSortedUsers.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-xs font-mono text-gray-500 font-semibold">{u.customID || `USR-${u.id.substring(0, 5)}`}</td>
@@ -238,6 +254,13 @@ export function Users() {
                     {u.preference ? <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded text-xs font-bold">{u.preference}</span> : <span className="text-gray-300 text-xs italic">Not Selected</span>}
                   </td>
                   <td className="px-4 py-3">{subBadge(u.subscription || 'free')}</td>
+                  <td className="px-4 py-3">
+                    {u.unlocked_exam ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700">{u.unlocked_exam}</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 italic">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium capitalize bg-gray-100 text-gray-700">
                       {u.role}
@@ -277,10 +300,37 @@ export function Users() {
               {/* Parameter 1: Access Tier Selection */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Access Subscription Plan</label>
-                <select value={editSubscription} onChange={e => setEditSubscription(e.target.value)}
+                <select
+                  value={editSubscription}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setEditSubscription(next);
+                    if (next === 'free') setEditUnlockedExam('');
+                    else if (next === 'premium') setEditUnlockedExam('BOTH');
+                    else if (next === 'basic' && !editUnlockedExam) setEditUnlockedExam('IELTS');
+                  }}
                   className="w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:border-blue-500 bg-white" style={{ borderColor: '#E5E7EB' }}>
                   {SUBSCRIPTION_TYPES.map(s => <option key={s} value={s}>{PLAN_LABELS[s]}</option>)}
                 </select>
+              </div>
+
+              {/* Parameter 1b: Exam unlock */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Unlocked Exam Access</label>
+                <select
+                  value={editSubscription === 'free' ? '' : (editSubscription === 'premium' ? 'BOTH' : editUnlockedExam)}
+                  disabled={editSubscription === 'free' || editSubscription === 'premium'}
+                  onChange={e => setEditUnlockedExam(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  style={{ borderColor: '#E5E7EB' }}
+                >
+                  {UNLOCK_OPTIONS.map(o => (
+                    <option key={o.value || 'clear'} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Free clears unlock. Premium forces BOTH. Basic: choose IELTS, PTE, BOTH, or clear.
+                </p>
               </div>
 
               {/* Parameter 2: Manual Exam Track Override */}

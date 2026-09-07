@@ -36,6 +36,7 @@ export const authenticate = async (req, res, next) => {
       subscription: decoded.subscription ?? "free",
       tokenVersion: decoded.tokenVersion ?? 0,
       preference: decoded.preference ?? null,
+      unlocked_exam: decoded.unlocked_exam ?? null,
     };
     next();
   } catch {

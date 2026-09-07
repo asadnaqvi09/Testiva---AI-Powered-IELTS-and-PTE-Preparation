@@ -121,17 +121,17 @@ const BASE = '/api/v1';
     });
   }
 
-  export async function verifyOtpAPI(email: string, otp: string) {
+  export async function verifyOtpAPI(email: string, otp: string, type: 'register' | 'reset' = 'reset') {
     return apiFetch('/auth/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ email, otp, type }),
     });
   }
 
-  export async function resendOtpAPI(email: string) {
+  export async function resendOtpAPI(email: string, type: 'register' | 'reset' = 'reset') {
     return apiFetch('/auth/resend-otp', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, type }),
     });
   }
 
@@ -142,7 +142,7 @@ const BASE = '/api/v1';
     });
   }
 
-  export async function resetPasswordAPI(body: any) {
+  export async function resetPasswordAPI(body: { email: string; new_password: string }) {
     return apiFetch('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -275,14 +275,22 @@ const BASE = '/api/v1';
     }>(`/admin/users?${q}`);
   }
 
-  export async function updateUserSubscriptionAPI(targetID: string, newSubscription: string) {
+  export async function updateUserSubscriptionAPI(
+    targetID: string,
+    newSubscription: string,
+    unlocked_exam?: string | null,
+  ) {
+    const body: Record<string, unknown> = { targetID, newSubscription };
+    if (unlocked_exam !== undefined) {
+      body.unlocked_exam = unlocked_exam;
+    }
     return apiFetch<{
       success: boolean;
       message: string;
       data: any;
     }>('/admin/users/subscription', {
       method: 'PUT',
-      body: JSON.stringify({ targetID, newSubscription }),
+      body: JSON.stringify(body),
     });
   }
 

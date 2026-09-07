@@ -1,11 +1,19 @@
 import pool from '../../../config/db.js';
 
-export const createComment = async ({ postId, userId, parentId, content }) => {
+export const createComment = async ({
+  postId,
+  userId,
+  parentId,
+  content,
+  isFlagged = false,
+  flaggedBy = null,
+  flagReason = null,
+}) => {
   const result = await pool.query(
-    `INSERT INTO comments (post_id, user_id, parent_id, content)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, post_id, user_id, parent_id, content, created_at`,
-    [postId, userId, parentId || null, content]
+    `INSERT INTO comments (post_id, user_id, parent_id, content, is_flagged, flagged_by, flag_reason)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, post_id, user_id, parent_id, content, is_flagged, flagged_by, flag_reason, created_at`,
+    [postId, userId, parentId || null, content, Boolean(isFlagged), flaggedBy, flagReason]
   );
   return result.rows[0];
 };
@@ -55,6 +63,7 @@ export const getCommentsForPost = async ({ postId, userId }) => {
     LEFT JOIN comment_likes cl ON cl.comment_id = c.id
     WHERE c.post_id = $1
       AND c.deleted_at IS NULL
+      AND c.is_flagged = FALSE
     GROUP BY
       c.id,
       c.post_id,
@@ -74,13 +83,39 @@ export const getCommentsForPost = async ({ postId, userId }) => {
   return result.rows;
 };
 
-export const updateComment = async ({ commentId, userId, content }) => {
+export const updateComment = async ({
+  commentId,
+  userId,
+  content,
+  isFlagged,
+  flaggedBy,
+  flagReason,
+}) => {
   const result = await pool.query(
     `UPDATE comments
-     SET content = $1, updated_at = NOW()
+     SET content = $1,
+         is_flagged = COALESCE($4, is_flagged),
+         flagged_by = CASE
+           WHEN $4 IS TRUE THEN $5::flag_source
+           WHEN $4 IS FALSE THEN NULL
+           ELSE flagged_by
+         END,
+         flag_reason = CASE
+           WHEN $4 IS TRUE THEN $6
+           WHEN $4 IS FALSE THEN NULL
+           ELSE flag_reason
+         END,
+         updated_at = NOW()
      WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
-     RETURNING id, content, updated_at`,
-    [content, commentId, userId]
+     RETURNING id, content, is_flagged, flagged_by, flag_reason, updated_at`,
+    [
+      content,
+      commentId,
+      userId,
+      typeof isFlagged === "boolean" ? isFlagged : null,
+      flaggedBy ?? null,
+      flagReason ?? null,
+    ]
   );
   return result.rows[0] || null;
 };

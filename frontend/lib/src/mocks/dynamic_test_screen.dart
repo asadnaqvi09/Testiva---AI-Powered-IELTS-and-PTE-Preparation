@@ -13,6 +13,7 @@ import 'models/runtime_question.dart';
 import 'test_results_screen.dart';
 import 'widgets/matching_engine.dart';
 import 'widgets/selection_engine.dart';
+import 'widgets/speaking_recorder.dart';
 
 class DynamicTestScreen extends StatefulWidget {
   final String testId;
@@ -211,6 +212,9 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
       final text = raw is String ? raw : '';
       return text.trim().isEmpty ? '' : {'text_essay': text};
     }
+    if (q.kind == QuestionKind.speaking) {
+      return <String, dynamic>{};
+    }
     if (q.kind == QuestionKind.multiSelect && raw is List) {
       return raw;
     }
@@ -222,6 +226,16 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
     return raw?.toString() ?? '';
   }
 
+  Future<String?> _uploadSpeakingLocal(String localPath) async {
+    final online = await ConnectivityService.instance.checkOnline();
+    if (!online) return null;
+    try {
+      return await ApiService.uploadSpeakingAudio(localPath);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _submitTest() async {
     setState(() => _isLoading = true);
     try {
@@ -231,7 +245,25 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
 
       for (int i = 0; i < _questions.length; i++) {
         final q = _questions[i];
-        final raw = _answers[i];
+        var raw = _answers[i];
+
+        String? audioUrl;
+        if (q.isSpeaking) {
+          SpeakingAnswerState speaking = raw is SpeakingAnswerState
+              ? raw
+              : const SpeakingAnswerState();
+          audioUrl = speaking.audioResponseUrl;
+          if ((audioUrl == null || audioUrl.isEmpty) && speaking.hasLocal) {
+            final uploaded = await _uploadSpeakingLocal(speaking.localPath!);
+            if (uploaded != null && uploaded.isNotEmpty) {
+              audioUrl = uploaded;
+              speaking = speaking.copyWith(audioResponseUrl: uploaded);
+              _answers[i] = speaking;
+              raw = speaking;
+            }
+          }
+        }
+
         final serialized = _serializeAnswer(q, raw);
         int wc = 0;
         if (q.isWriting && raw is String) wc = _wordCount(raw);
@@ -241,7 +273,42 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           'user_answer': serialized,
           'time_spent_seconds': perQ,
           if (wc > 0) 'word_count': wc,
+          if (audioUrl != null && audioUrl.isNotEmpty)
+            'audio_response_url': audioUrl,
         });
+      }
+
+      final missingSpeaking = _questions.asMap().entries.where((e) {
+        if (!e.value.isSpeaking) return false;
+        final resp = responses[e.key];
+        final url = resp['audio_response_url']?.toString() ?? '';
+        return url.isEmpty;
+      }).length;
+      if (missingSpeaking > 0 && mounted) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Speaking audio missing'),
+            content: Text(
+              '$missingSpeaking speaking answer(s) have no uploaded audio. '
+              'Those items will not be AI-scored. Continue anyway?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Go back'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Submit anyway'),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true) {
+          if (mounted) setState(() => _isLoading = false);
+          return;
+        }
       }
 
       final body = {
@@ -368,7 +435,7 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
             child: Text(
               _loadedFromCache
                   ? 'This test is not cached on your device yet.\nOpen it once while online to take it offline.'
-                  : 'No questions available for this test.\n(Speaking sections are skipped in the app for now.)',
+                  : 'No questions available for this test.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppTheme.secondaryText(context)),
             ),
@@ -638,6 +705,17 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
               ),
             ),
           ],
+        );
+      case QuestionKind.speaking:
+        final initial = _answers[_currentIndex] is SpeakingAnswerState
+            ? _answers[_currentIndex] as SpeakingAnswerState
+            : null;
+        return SpeakingRecorderWidget(
+          key: ValueKey('speaking_${q.id}'),
+          question: q,
+          initial: initial,
+          uploadAudio: _uploadSpeakingLocal,
+          onChanged: (state) => setState(() => _answers[_currentIndex] = state),
         );
       default:
         return Container(

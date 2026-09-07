@@ -36,6 +36,7 @@ class _PrepScreenState extends State<PrepScreen> {
   String _currentTip = "Focus on Writing Task 2 - it carries the most weight in your score.";
   String? _focusModule;
   String? _focusReason;
+  bool _tipIsSample = true;
 
   @override
   void initState() {
@@ -82,6 +83,7 @@ class _PrepScreenState extends State<PrepScreen> {
               _currentTip = body['tip'];
               _focusModule = body['focus_module']?.toString();
               _focusReason = body['reason']?.toString();
+              _tipIsSample = body['source']?.toString() == 'fallback';
             });
           }
           return;
@@ -95,6 +97,7 @@ class _PrepScreenState extends State<PrepScreen> {
         _currentTip = _aiTips[Random().nextInt(_aiTips.length)];
         _focusModule = null;
         _focusReason = null;
+        _tipIsSample = true;
       });
     }
   }
@@ -148,14 +151,16 @@ class _PrepScreenState extends State<PrepScreen> {
   void _loadOriginalFallbackModules() {
     if (mounted) {
       setState(() {
-        _liveModules = [
-          PrepModule(title: 'Reading', lessonsCount: 12, icon: Icons.book_outlined, color: Colors.blue, isCompleted: true),
-          PrepModule(title: 'Writing', lessonsCount: 8, icon: Icons.edit_note, color: Colors.orange, isCompleted: true),
-          PrepModule(title: 'Listening', lessonsCount: 8, icon: Icons.headphones_outlined, color: Colors.amber, isCompleted: true),
-          PrepModule(title: 'Speaking', lessonsCount: 8, icon: Icons.record_voice_over_outlined, color: Colors.purple, isCompleted: true),
-        ];
+        _liveModules = [];
         _isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Preparation content unavailable. Showing empty state (not offline sample data).',
+          ),
+        ),
+      );
     }
   }
 
@@ -229,11 +234,16 @@ class _PrepScreenState extends State<PrepScreen> {
 
   bool _isTabLocked(String track) {
     final user = UserNotifier.notifier.value;
-    final bool isPremium = user['isPremium'] == true || user['subscription'] == 'premium';
+    final unlocked = user['unlocked_exam']?.toString().toUpperCase();
+    final bool isPremium = user['isPremium'] == true ||
+        user['subscription'] == 'premium' ||
+        unlocked == 'BOTH';
     final bool isAdmin = user['role'] == 'admin';
-    final String userPref = user['preference'] ?? 'IELTS';
-
     if (isPremium || isAdmin) return false;
+    if (unlocked == 'IELTS' || unlocked == 'PTE') {
+      return unlocked != track.toUpperCase();
+    }
+    final String userPref = user['preference'] ?? 'IELTS';
     return userPref.toUpperCase() != track.toUpperCase();
   }
 
@@ -260,9 +270,9 @@ class _PrepScreenState extends State<PrepScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'AI Study Focus',
-                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11),
+                      Text(
+                        _tipIsSample ? 'Sample Study Tip' : 'Study Focus',
+                        style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11),
                       ),
                       const SizedBox(width: 8),
                       if (_focusModule != null && _focusModule!.isNotEmpty)

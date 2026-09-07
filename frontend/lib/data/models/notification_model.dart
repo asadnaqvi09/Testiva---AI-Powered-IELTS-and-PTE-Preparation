@@ -57,7 +57,13 @@ class NotificationModel {
     );
   }
 
-  bool get isCommunityRelated => postId != null && postId!.isNotEmpty && !isTestResultSynced;
+  bool get isCommunityRelated =>
+      (postId != null && postId!.isNotEmpty && !isTestResultSynced) ||
+      type == 'preference_new_post' ||
+      type == 'post_like' ||
+      type == 'post_comment' ||
+      type == 'comment_reply' ||
+      type == 'admin_new_post';
 
   bool get isTestResultSynced => type == 'test_result_synced';
 

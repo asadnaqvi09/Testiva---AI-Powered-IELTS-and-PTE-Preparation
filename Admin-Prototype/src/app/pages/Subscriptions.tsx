@@ -1,25 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, TrendingUp, Users, DollarSign, X, Check, ChevronUp, Download, Lock, Loader2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { CreditCard, TrendingUp, Users, Unlock, Loader2 } from 'lucide-react';
 import { getDashboardStats } from '../services/api';
 import { toast } from 'sonner';
 
 const PLANS = [
-  { id: 'basic', name: 'Basic', price: 399, color: '#007BFF', tests: 'IELTS Only', desc: 'Full IELTS prep' },
-  { id: 'premium', name: 'Premium', price: 699, color: '#28A745', tests: 'All Tests', desc: 'IELTS + TOEFL + PTE' },
+  { id: 'basic', name: 'Basic', price: 399, color: '#007BFF', tests: 'IELTS or PTE', desc: 'Single-exam unlock via Stripe' },
+  { id: 'premium', name: 'Premium', price: 699, color: '#28A745', tests: 'IELTS + PTE', desc: 'Full unlock (BOTH exams)' },
 ];
 
-function StatCard({ icon, label, value, sub, color, comingSoon }: { 
-  icon: React.ReactNode; label: string; value: string | number; sub: string; color: string; comingSoon?: boolean;
+function StatCard({ icon, label, value, sub, color }: {
+  icon: React.ReactNode; label: string; value: string | number; sub: string; color: string;
 }) {
   return (
-    <div className="bg-white rounded-xl p-5 border shadow-sm relative overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
-      {comingSoon && (
-        <div className="absolute inset-0 bg-gray-50/60 backdrop-blur-[2px] flex items-center justify-center gap-1.5 z-10">
-          <Lock size={14} className="text-gray-400" />
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Coming Soon</span>
-        </div>
-      )}
+    <div className="bg-white rounded-xl p-5 border shadow-sm" style={{ borderColor: '#E5E7EB' }}>
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
           <span style={{ color }}>{icon}</span>
@@ -34,33 +27,17 @@ function StatCard({ icon, label, value, sub, color, comingSoon }: {
   );
 }
 
-function ComingSoonOverlay({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="absolute inset-0 bg-white/70 backdrop-blur-[3px] flex flex-col items-center justify-center gap-2 z-20 transition-all rounded-xl">
-      <div className="p-2 bg-blue-50 text-blue-600 rounded-full shadow-sm animate-pulse">
-        <Lock size={18} />
-      </div>
-      <div className="text-center px-4">
-        <h4 className="font-bold text-sm text-gray-800">{title}</h4>
-        <p className="text-xs text-gray-500 mt-0.5 max-w-xs mx-auto">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
 export function Subscriptions() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'institutes'>('users');
   const [loading, setLoading] = useState(true);
-  
   const [dbMetrics, setDbMetrics] = useState({
     totalUsers: 0,
     freeUsers: 0,
     basicUsers: 0,
-    premiumUsers: 0
+    premiumUsers: 0,
+    unlockedIelts: 0,
+    unlockedPte: 0,
+    unlockedBoth: 0,
   });
-
-  const isSuperAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
     async function fetchLiveSubs() {
@@ -72,11 +49,17 @@ export function Subscriptions() {
             totalUsers: parseInt(res.data.total_users || '0', 10),
             freeUsers: parseInt(res.data.free_users || '0', 10),
             basicUsers: parseInt(res.data.basic_users || '0', 10),
-            premiumUsers: parseInt(res.data.premium_users || '0', 10)
+            premiumUsers: parseInt(res.data.premium_users || '0', 10),
+            unlockedIelts: parseInt(res.data.unlocked_ielts || '0', 10),
+            unlockedPte: parseInt(res.data.unlocked_pte || '0', 10),
+            unlockedBoth: parseInt(res.data.unlocked_both || '0', 10),
           });
+        } else {
+          toast.error('Could not load subscription stats.');
         }
       } catch (err) {
-        console.error("Billing sync trace failure:", err);
+        console.error('Billing sync failure:', err);
+        toast.error('Could not load subscription stats.');
       } finally {
         setLoading(false);
       }
@@ -88,78 +71,63 @@ export function Subscriptions() {
 
   if (loading) {
     return (
-      <div className="h-[70vh] w-100 flex flex-col items-center justify-center gap-3">
+      <div className="h-[70vh] w-full flex flex-col items-center justify-center gap-3">
         <Loader2 className="animate-spin text-blue-600" size={36} />
-        <p className="text-sm font-medium text-gray-500">Compiling financial ledgers & tier breakdowns...</p>
+        <p className="text-sm font-medium text-gray-500">Loading subscription breakdown…</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 style={{ color: '#1A1A1A' }}>Subscriptions & Billing</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage plans and live tier breakdowns</p>
-        </div>
-        <button 
-          disabled
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium opacity-50 cursor-not-allowed" 
-          style={{ borderColor: '#E5E7EB', color: '#1A1A1A', background: 'white' }}
-        >
-          <Download size={15} /> Export
-        </button>
+      <div>
+        <h1 style={{ color: '#1A1A1A' }}>Subscriptions</h1>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Live tier and exam-unlock counts (manage individuals on Users)
+        </p>
       </div>
 
-      {/* Stats Layer */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon={<DollarSign size={20} />} label="Monthly Revenue" value="₨0.00" sub="Stripe engine offline" color="#28A745" comingSoon />
-        <StatCard icon={<Users size={20} />} label="Premium Subscribers" value={dbMetrics.premiumUsers} sub={`₨${dbMetrics.premiumUsers * 699}/mo (Est.)`} color="#007BFF" />
-        <StatCard icon={<CreditCard size={20} />} label="Basic Subscribers" value={dbMetrics.basicUsers} sub={`₨${dbMetrics.basicUsers * 399}/mo (Est.)`} color="#F59E0B" />
-        <StatCard icon={<TrendingUp size={20} />} label="Total Active Subs" value={totalActiveSubs} sub="Across all premium tiers" color="#8B5CF6" />
+        <StatCard icon={<Users size={20} />} label="Free Users" value={dbMetrics.freeUsers} sub="No paid plan" color="#6C757D" />
+        <StatCard icon={<CreditCard size={20} />} label="Basic Subscribers" value={dbMetrics.basicUsers} sub="Single-exam plans" color="#F59E0B" />
+        <StatCard icon={<TrendingUp size={20} />} label="Premium Subscribers" value={dbMetrics.premiumUsers} sub="Full access" color="#007BFF" />
+        <StatCard icon={<Unlock size={20} />} label="Total Paid" value={totalActiveSubs} sub={`${dbMetrics.totalUsers} registered total`} color="#8B5CF6" />
       </div>
 
-      {/* Revenue Chart Component (Coming Soon) */}
-      <div className="bg-white rounded-xl p-5 border shadow-sm relative min-h-[240px]" style={{ borderColor: '#E5E7EB' }}>
-        <ComingSoonOverlay title="Revenue Analytical Trend" desc="Awaiting historical gateway ledger synchronization charts module." />
-        <h3 className="mb-1" style={{ color: '#1A1A1A' }}>Revenue Summary (Last 6 Months)</h3>
-        <p className="text-xs text-gray-400 mb-4">Monthly subscription revenue in PKR</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+          <p className="text-xs font-semibold uppercase text-gray-400">Unlocked IELTS</p>
+          <p className="text-2xl font-bold mt-1" style={{ color: '#1A1A1A' }}>{dbMetrics.unlockedIelts}</p>
+        </div>
+        <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+          <p className="text-xs font-semibold uppercase text-gray-400">Unlocked PTE</p>
+          <p className="text-2xl font-bold mt-1" style={{ color: '#1A1A1A' }}>{dbMetrics.unlockedPte}</p>
+        </div>
+        <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+          <p className="text-xs font-semibold uppercase text-gray-400">Unlocked Both</p>
+          <p className="text-2xl font-bold mt-1" style={{ color: '#1A1A1A' }}>{dbMetrics.unlockedBoth}</p>
+        </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      {isSuperAdmin && (
-        <div className="flex gap-1 bg-white border rounded-lg p-1 w-fit" style={{ borderColor: '#E5E7EB' }}>
-          {(['users', 'institutes'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className="px-4 py-1.5 rounded text-sm font-medium transition-all capitalize"
-              style={activeTab === tab ? { background: '#007BFF', color: 'white' } : { color: '#6B7280' }}>
-              {tab}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* User Accounts Grid Panel */}
-      {(!isSuperAdmin || activeTab === 'users') && (
-        <div className="bg-white rounded-xl border shadow-sm relative min-h-[250px]" style={{ borderColor: '#E5E7EB' }}>
-          <ComingSoonOverlay title="User Subscription Matrix" desc="Stripe webhook billing table pipelines are currently under construction." />
-          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#E5E7EB' }}>
-            <h3 style={{ color: '#1A1A1A' }}>User Subscriptions</h3>
-            <span className="text-xs text-gray-400">{dbMetrics.totalUsers} registered profiles</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {PLANS.map(plan => (
+          <div key={plan.id} className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{plan.name}</h3>
+              <span className="text-sm font-bold" style={{ color: plan.color }}>₨{plan.price}/mo</span>
+            </div>
+            <p className="text-sm text-gray-600">{plan.desc}</p>
+            <p className="text-xs text-gray-400 mt-2">Includes: {plan.tests}</p>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Institute Accounts Grid Panel */}
-      {isSuperAdmin && activeTab === 'institutes' && (
-        <div className="bg-white rounded-xl border shadow-sm relative min-h-[250px]" style={{ borderColor: '#E5E7EB' }}>
-          <ComingSoonOverlay title="B2B Institute Invoicing" desc="Automated monthly ledger distribution engines are coming soon." />
-          <div className="px-5 py-4 border-b" style={{ borderColor: '#E5E7EB' }}>
-            <h3 style={{ color: '#1A1A1A' }}>Institute Billing</h3>
-          </div>
-        </div>
-      )}
+      <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+        <p className="text-sm text-gray-600">
+          Stripe Checkout is live in the mobile app. Detailed billing ledgers and CSV export are outside this MVP —
+          change a user’s plan and <code className="text-xs bg-gray-100 px-1 rounded">unlocked_exam</code> from the Users page.
+        </p>
+      </div>
     </div>
   );
 }

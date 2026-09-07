@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PremiumModal extends StatefulWidget {
   const PremiumModal({super.key});
@@ -9,273 +13,251 @@ class PremiumModal extends StatefulWidget {
 }
 
 class _PremiumModalState extends State<PremiumModal> {
-  // 0: Plans, 1: Payment Method Selection
-  int _currentStep = 0;
-  bool _isDigitalWallet = false;
+  String _selectedPlan = 'basic_ielts';
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _startCheckout() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await ApiService.post('/payments/checkout', {
+        'plan': _selectedPlan,
+      });
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode != 200 || body['success'] != true) {
+        setState(() {
+          _error = body['message']?.toString() ??
+              'Unable to start checkout. Check Stripe config.';
+        });
+        return;
+      }
+      final url = body['data']?['url']?.toString();
+      final sessionId = body['data']?['sessionId']?.toString();
+      if (url == null || url.isEmpty) {
+        setState(() => _error = 'Checkout URL missing from server');
+        return;
+      }
+      final uri = Uri.parse(url);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        setState(() => _error = 'Could not open Stripe Checkout');
+        return;
+      }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Complete payment'),
+          content: const Text(
+            'Finish checkout in the browser, then tap “I’ve paid” to unlock your track.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                if (sessionId != null) {
+                  await _confirmSession(sessionId);
+                }
+              },
+              child: const Text("I've paid"),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      setState(() => _error = 'Payment error: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _confirmSession(String sessionId) async {
+    setState(() => _loading = true);
+    try {
+      final response =
+          await ApiService.get('/payments/confirm?session_id=$sessionId');
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && body['success'] == true) {
+        final user = Map<String, dynamic>.from(body['user'] as Map? ?? {});
+        if (user.isNotEmpty) {
+          AuthNavigationHelper.syncUserNotifier(user);
+        }
+        if (!mounted) return;
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment confirmed — your exam track is unlocked!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        setState(() {
+          _error = body['message']?.toString() ??
+              'Payment not confirmed yet. Try again in a moment.';
+        });
+      }
+    } catch (e) {
+      setState(() => _error = 'Confirm failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.75,
       decoration: BoxDecoration(
         color: AppTheme.dialogBg(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: const EdgeInsets.all(24),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _currentStep == 0 ? _buildPlansStep() : _buildPaymentStep(),
-      ),
-    );
-  }
-
-
-  Widget _buildPlansStep() {
-    return Column(
-      key: const ValueKey(0),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Center(child: _buildHandle(context)),
-        const SizedBox(height: 24),
-        _buildHeader('🚀 Unlock Premium', 'Choose a plan that fits your prep journey'),
-        const SizedBox(height: 24),
-        _packageCard(title: 'Basic Package', price: 'Rs399', features: ['IELTS Reading', 'IELTS Writing', 'IELTS Listening', 'IELTS Speaking']),
-        const SizedBox(height: 16),
-        _packageCard(title: 'Premium Package', price: 'Rs699', isSelected: true, features: ['Everything in Basic', 'PTE Full Preparation', 'AI Analysis & Reports']),
-        const Spacer(),
-        _buildButton('Continue to Payment', () => setState(() => _currentStep = 1)),
-      ],
-    );
-  }
-
-
-  Widget _buildPaymentStep() {
-    return Column(
-      key: const ValueKey(1),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Center(child: _buildHandle(context)),
-        const SizedBox(height: 24),
-        _buildHeader('💳 Payment', 'Premium Package - Rs699'),
-        const SizedBox(height: 20),
-
-
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(color: AppTheme.inputFill(context), borderRadius: BorderRadius.circular(12)),
-          child: Row(
-            children: [
-              _buildTab('Debit/Credit', Icons.credit_card, !_isDigitalWallet, () => setState(() => _isDigitalWallet = false)),
-              _buildTab('Digital Wallet', Icons.account_balance_wallet, _isDigitalWallet, () => setState(() => _isDigitalWallet = true)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-
-
-        _isDigitalWallet ? _buildDigitalWalletView() : _buildCardView(),
-
-        const Spacer(),
-        _buildButton(_isDigitalWallet ? 'Select Provider' : 'Pay Now Rs699', () {}),
-        Center(
-          child: TextButton(
-            onPressed: () => setState(() => _currentStep = 0),
-            child: Text('← Back to plans', style: TextStyle(color: AppTheme.secondaryText(context))),
-          ),
-        ),
-      ],
-    );
-  }
-
-
-  Widget _buildCardView() {
-    return Column(
-      children: [
-        _buildTextField('Card Number', '4242 4242 4242 4242', Icons.credit_card),
-        const SizedBox(height: 16),
-        _buildTextField('Name on Card', 'Ahmed Khan', Icons.person_outline),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(child: _buildTextField('Expiry Date', '12/28', null)),
-            const SizedBox(width: 16),
-            Expanded(child: _buildTextField('CVV', '123', null)),
-          ],
-        ),
-      ],
-    );
-  }
-
-
-  Widget _buildDigitalWalletView() {
-    return Column(
-      children: [
-        _walletButton('Pay with Easypaisa', Colors.green, 'assets/easypaisa.png'),
-        const SizedBox(height: 12),
-        _walletButton('Pay with JazzCash', Colors.red, 'assets/jazzcash.png'),
-        const SizedBox(height: 12),
-        _walletButton('Pay with SadaPay', Colors.deepPurple, 'assets/sadapay.png'),
-      ],
-    );
-  }
-
-
-  Widget _buildHandle(BuildContext context) => Container(
-    width: 40,
-    height: 4,
-    decoration: BoxDecoration(
-      color: AppTheme.borderColor(context),
-      borderRadius: BorderRadius.circular(2),
-    ),
-  );
-
-  Widget _buildHeader(String title, String sub) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryText(context),
-          ),
-        ),
-        IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.close, color: AppTheme.iconColor(context)),
-        ),
-      ]),
-      Text(sub, style: TextStyle(color: AppTheme.secondaryText(context))),
-    ],
-  );
-
-  Widget _buildTab(String label, IconData icon, bool active, VoidCallback onTap) {
-    final isDark = AppTheme.isDark(context);
-    final activeBg = isDark ? const Color(0xFF333333) : Colors.white;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: active ? activeBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: active ? [BoxShadow(color: isDark ? Colors.black26 : Colors.black12, blurRadius: 4)] : [],
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(
-              icon,
-              size: 18,
-              color: active ? (isDark ? Colors.blueAccent : const Color(0xFF007BFF)) : AppTheme.secondaryText(context),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: active ? AppTheme.primaryText(context) : AppTheme.secondaryText(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, String hint, IconData? icon) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-          color: AppTheme.primaryText(context),
-        ),
-      ),
-      const SizedBox(height: 8),
-      TextField(
-        style: TextStyle(color: AppTheme.primaryText(context)),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
-          prefixIcon: icon != null ? Icon(icon, size: 20, color: AppTheme.secondaryText(context)) : null,
-          filled: true,
-          fillColor: AppTheme.inputFill(context),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        ),
-      ),
-    ],
-  );
-
-  Widget _walletButton(String label, Color color, String iconPath) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
-    child: Center(child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-  );
-
-  Widget _buildButton(String text, VoidCallback onPressed) {
-    final isDark = AppTheme.isDark(context);
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDark ? Colors.blueAccent : const Color(0xFF007BFF),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-      ),
-    );
-  }
-
-  Widget _packageCard({required String title, required String price, required List<String> features, bool isSelected = false}) {
-    final isDark = AppTheme.isDark(context);
-    final accentColor = isDark ? Colors.blueAccent : const Color(0xFF007BFF);
-    final selectedBorder = isDark ? Colors.blueAccent : const Color(0xFF8B5CF6);
-    final defaultBorder = AppTheme.borderColor(context);
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isSelected ? selectedBorder : defaultBorder, width: 2),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          ),
+          const SizedBox(height: 20),
           Text(
-            title,
+            'Unlock your exam track',
             style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppTheme.primaryText(context),
             ),
           ),
+          const SizedBox(height: 8),
           Text(
-            price,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: accentColor,
+            'Pay for IELTS, PTE, or both. You only see mocks for what you unlock.',
+            style: TextStyle(color: AppTheme.secondaryText(context)),
+          ),
+          const SizedBox(height: 20),
+          _planTile(
+            keyName: 'basic_ielts',
+            title: 'Basic IELTS',
+            subtitle: 'All IELTS singular + full mocks',
+            price: 'Rs 399',
+          ),
+          const SizedBox(height: 12),
+          _planTile(
+            keyName: 'basic_pte',
+            title: 'Basic PTE',
+            subtitle: 'All PTE full mocks',
+            price: 'Rs 399',
+          ),
+          const SizedBox(height: 12),
+          _planTile(
+            keyName: 'premium',
+            title: 'Premium',
+            subtitle: 'IELTS + PTE unlocked',
+            price: 'Rs 699',
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+          ],
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _startCheckout,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF007BFF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Continue with Stripe',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
             ),
           ),
-        ]),
-        const SizedBox(height: 12),
-        ...features.map((f) => Padding(
-          padding: const EdgeInsets.only(bottom: 6.0),
-          child: Row(children: [
-            Icon(Icons.check_circle, size: 16, color: accentColor),
-            const SizedBox(width: 8),
-            Text(
-              f,
-              style: TextStyle(fontSize: 13, color: AppTheme.secondaryText(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _planTile({
+    required String keyName,
+    required String title,
+    required String subtitle,
+    required String price,
+  }) {
+    final selected = _selectedPlan == keyName;
+    return InkWell(
+      onTap: () => setState(() => _selectedPlan = keyName),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xFF007BFF) : Colors.grey.shade300,
+            width: selected ? 2 : 1,
+          ),
+          color: selected
+              ? const Color(0xFF007BFF).withValues(alpha: 0.06)
+              : AppTheme.inputFill(context),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected ? const Color(0xFF007BFF) : Colors.grey,
             ),
-          ]),
-        )),
-      ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primaryText(context),
+                      )),
+                  Text(subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.secondaryText(context),
+                      )),
+                ],
+              ),
+            ),
+            Text(price,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF007BFF),
+                )),
+          ],
+        ),
+      ),
     );
   }
 }

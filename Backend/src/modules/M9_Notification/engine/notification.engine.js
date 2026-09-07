@@ -7,11 +7,21 @@ export const handlePostCreatedNotification = async (io, post) => {
     const { topic_tag, user_id: authorId, id: postId, title: postTitle } = post;
     if (!topic_tag || isGeneralTopicTag(topic_tag)) return;
 
+    const track = String(topic_tag).trim().toUpperCase();
+    if (track !== "IELTS" && track !== "PTE") return;
+
+    // Match users whose preference OR paid unlock includes this track
     const result = await pool.query(
         `SELECT id FROM users
-         WHERE preference = $1
-         AND id != $2`,
-        [topic_tag, authorId]
+         WHERE id != $1
+           AND role != 'admin'
+           AND (
+             UPPER(COALESCE(preference, '')) = $2
+             OR UPPER(COALESCE(unlocked_exam, '')) = $2
+             OR UPPER(COALESCE(unlocked_exam, '')) = 'BOTH'
+             OR LOWER(COALESCE(subscription, 'free')) = 'premium'
+           )`,
+        [authorId, track]
     );
 
     const recipientIds = result.rows.map((row) => row.id);
@@ -22,8 +32,8 @@ export const handlePostCreatedNotification = async (io, post) => {
         recipientIds,
         senderId: authorId,
         type: "preference_new_post",
-        title: `New ${topic_tag} Post`,
-        message: `A new post was created: ${postTitle}`,
+        title: `New ${track} community post`,
+        message: `Someone shared “${postTitle}” in ${track}. Tap to join the discussion.`,
         postId,
     });
 };
@@ -103,8 +113,8 @@ export const handleAdminNewUserNotification = async (io, newUser) => {
         io,
         recipientIds: adminIds,
         type: "admin_new_user",
-        title: "New User Registration",
-        message: `${newUser.full_name} (${newUser.email}) just joined the platform.`,
+        title: "New student registered",
+        message: `${newUser.full_name} (${newUser.email}) just joined Testiva.`,
         senderId: newUser.id,
     });
 };
@@ -117,8 +127,8 @@ export const handleAdminNewPostNotification = async (io, newPost) => {
         io,
         recipientIds: adminIds,
         type: "admin_new_post",
-        title: "New Community Post",
-        message: `A new post was created in the ${newPost.topic_tag} tag.`,
+        title: "New community post to review",
+        message: `New post in ${newPost.topic_tag}: “${newPost.title || "Untitled"}”.`,
         postId: newPost.id,
         senderId: newPost.user_id,
     });
@@ -134,8 +144,8 @@ export const handleAdminPreferenceChangeNotification = async (io, { user, target
         recipientIds: adminIds,
         senderId: user.id,
         type: "preference_change_request",
-        title: "Preference Change Request",
-        message: `${user.full_name} (${user.email}) requested a change from ${user.preference || "none"} to ${targetPreference}${summary}`,
+        title: "Preference change request",
+        message: `${user.full_name} asked to switch from ${user.preference || "none"} → ${targetPreference}${summary}`,
     });
 };
 

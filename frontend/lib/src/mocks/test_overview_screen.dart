@@ -42,7 +42,7 @@ class TestOverviewScreen extends StatelessWidget {
       'Navigate freely between questions using Next and Prev.',
       'Listening sections include audio — use headphones for best results.',
       'Writing responses are evaluated by Testiva AI after submission.',
-      'Speaking sections are configured in admin but skipped in the mobile app for now.',
+      'Speaking: allow microphone access, record each answer, then submit for AI scoring.',
       'Submit when finished — results appear after scoring completes.',
     ];
   }

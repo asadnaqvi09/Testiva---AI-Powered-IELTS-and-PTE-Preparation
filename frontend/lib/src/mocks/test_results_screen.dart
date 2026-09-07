@@ -269,7 +269,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'AI is evaluating your writing responses. Scores will update automatically…',
+                        'AI is evaluating your writing and speaking responses. Scores will update automatically…',
                         style: TextStyle(fontSize: 13, color: Color(0xFF9A3412)),
                       ),
                     ),
@@ -336,8 +336,14 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                   if (totalQuestions > 0) _buildBreakdownRow('Accuracy', accuracyValue, accuracyString, Colors.blue),
                   if (rScore > 0 || totalQuestions > 0) _buildBreakdownRow('Reading', rScore / 9.0, 'Band $rScore', Colors.purple),
                   if (lScore > 0) _buildBreakdownRow('Listening', lScore / 9.0, 'Band $lScore', Colors.green),
-                  if (wScore > 0) _buildBreakdownRow('Writing', wScore / 9.0, 'Band $wScore', Colors.orange),
-                  if (sScore > 0) _buildBreakdownRow('Speaking', sScore / 9.0, 'Band $sScore', Colors.pink),
+                  if (wScore > 0)
+                    _buildBreakdownRow('Writing', wScore / 9.0, 'Band $wScore', Colors.orange)
+                  else if (_isPending)
+                    _buildBreakdownRow('Writing', 0, 'Pending AI…', Colors.orange),
+                  if (sScore > 0)
+                    _buildBreakdownRow('Speaking', sScore / 9.0, 'Band $sScore', Colors.pink)
+                  else if (_isPending)
+                    _buildBreakdownRow('Speaking', 0, 'Pending AI…', Colors.pink),
                 ],
               ),
             ),

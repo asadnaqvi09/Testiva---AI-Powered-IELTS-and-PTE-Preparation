@@ -1,17 +1,35 @@
 import multer from "multer";
 const storage = multer.memoryStorage();
 
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
-    "image/jpeg", "image/png", "image/webp",
-    "audio/mpeg", "audio/wav", "audio/x-wav"
-  ];
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+const allowedAudioTypes = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/mp4",
+  "audio/m4a",
+  "audio/x-m4a",
+  "audio/aac",
+  "audio/webm",
+  "audio/ogg",
+  "audio/flac",
+];
 
-  if (allowedTypes.includes(file.mimetype)) {
+const audioExtOk = (name = "") =>
+  /\.(mp3|wav|m4a|mp4|aac|ogg|webm|flac)$/i.test(name);
+
+const fileFilter = (req, file, cb) => {
+  if (allowedImageTypes.includes(file.mimetype) || allowedAudioTypes.includes(file.mimetype)) {
     cb(null, true);
-  } else {
-    cb(new Error("Invalid file type. Only Images and Audio allowed."), false);
+    return;
   }
+  // Flutter / some clients send octet-stream for m4a recordings.
+  if (file.mimetype === "application/octet-stream" && audioExtOk(file.originalname)) {
+    cb(null, true);
+    return;
+  }
+  cb(new Error("Invalid file type. Only Images and Audio allowed."), false);
 };
 
 const pdfFileFilter = (req, file, cb) => {

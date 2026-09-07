@@ -28,7 +28,6 @@ SET row_security = off;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
-
 --
 -- TOC entry 5386 (class 0 OID 0)
 -- Dependencies: 2
@@ -37,14 +36,12 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 
-
 --
 -- TOC entry 3 (class 3079 OID 24576)
 -- Name: uuid-ossp; Type: EXTENSION; Schema: -; Owner: -
 --
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-
 
 --
 -- TOC entry 5387 (class 0 OID 0)
@@ -53,7 +50,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
-
 
 --
 -- TOC entry 1003 (class 1247 OID 41630)
@@ -65,7 +61,6 @@ CREATE TYPE public.admin_status AS ENUM (
     'flagged',
     'removed'
 );
-
 
 ALTER TYPE public.admin_status OWNER TO postgres;
 
@@ -80,7 +75,6 @@ CREATE TYPE public.attempt_status_enum AS ENUM (
     'synced'
 );
 
-
 ALTER TYPE public.attempt_status_enum OWNER TO postgres;
 
 --
@@ -94,7 +88,6 @@ CREATE TYPE public.difficulty_enum AS ENUM (
     'hard'
 );
 
-
 ALTER TYPE public.difficulty_enum OWNER TO postgres;
 
 --
@@ -106,7 +99,6 @@ CREATE TYPE public.flag_source AS ENUM (
     'ai',
     'admin'
 );
-
 
 ALTER TYPE public.flag_source OWNER TO postgres;
 
@@ -123,7 +115,6 @@ CREATE TYPE public.lesson_section_enum AS ENUM (
     'Speaking & Writing'
 );
 
-
 ALTER TYPE public.lesson_section_enum OWNER TO postgres;
 
 --
@@ -135,7 +126,6 @@ CREATE TYPE public.lesson_status_enum AS ENUM (
     'draft',
     'published'
 );
-
 
 ALTER TYPE public.lesson_status_enum OWNER TO postgres;
 
@@ -149,7 +139,6 @@ CREATE TYPE public.moderation_action AS ENUM (
     'unflag',
     'delete'
 );
-
 
 ALTER TYPE public.moderation_action OWNER TO postgres;
 
@@ -171,7 +160,6 @@ CREATE TYPE public.notification_type AS ENUM (
     'admin_new_post'
 );
 
-
 ALTER TYPE public.notification_type OWNER TO postgres;
 
 --
@@ -183,7 +171,6 @@ CREATE TYPE public.otp_type AS ENUM (
     'register',
     'reset'
 );
-
 
 ALTER TYPE public.otp_type OWNER TO postgres;
 
@@ -198,7 +185,6 @@ CREATE TYPE public.section_type_enum AS ENUM (
     'writing',
     'speaking'
 );
-
 
 ALTER TYPE public.section_type_enum OWNER TO postgres;
 
@@ -215,7 +201,6 @@ CREATE TYPE public.share_platform AS ENUM (
     'copy_link'
 );
 
-
 ALTER TYPE public.share_platform OWNER TO postgres;
 
 --
@@ -229,7 +214,6 @@ CREATE TYPE public.subscription_status_enum AS ENUM (
     'premium'
 );
 
-
 ALTER TYPE public.subscription_status_enum OWNER TO postgres;
 
 --
@@ -242,7 +226,6 @@ CREATE TYPE public.test_category_enum AS ENUM (
     'singular_module'
 );
 
-
 ALTER TYPE public.test_category_enum OWNER TO postgres;
 
 --
@@ -254,7 +237,6 @@ CREATE TYPE public.test_type_enum AS ENUM (
     'IELTS',
     'PTE'
 );
-
 
 ALTER TYPE public.test_type_enum OWNER TO postgres;
 
@@ -269,7 +251,6 @@ CREATE TYPE public.topic_tag AS ENUM (
     'General'
 );
 
-
 ALTER TYPE public.topic_tag OWNER TO postgres;
 
 --
@@ -283,7 +264,6 @@ CREATE TYPE public.user_preference AS ENUM (
     'NULL'
 );
 
-
 ALTER TYPE public.user_preference OWNER TO postgres;
 
 --
@@ -296,7 +276,6 @@ CREATE TYPE public.user_role_enum AS ENUM (
     'user',
     'admin'
 );
-
 
 ALTER TYPE public.user_role_enum OWNER TO postgres;
 
@@ -321,7 +300,6 @@ CREATE FUNCTION public.notify_subscription_change() RETURNS trigger
       END;
       $$;
 
-
 ALTER FUNCTION public.notify_subscription_change() OWNER TO postgres;
 
 --
@@ -337,7 +315,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
 
 ALTER FUNCTION public.set_updated_at() OWNER TO postgres;
 
@@ -358,7 +335,6 @@ CREATE TABLE public.admin_logs (
     details jsonb,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
 
 ALTER TABLE public.admin_logs OWNER TO postgres;
 
@@ -382,7 +358,6 @@ CREATE TABLE public.ai_feedback (
     evaluated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
 ALTER TABLE public.ai_feedback OWNER TO postgres;
 
 --
@@ -395,7 +370,6 @@ CREATE TABLE public.comment_likes (
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
 
 ALTER TABLE public.comment_likes OWNER TO postgres;
 
@@ -418,7 +392,6 @@ CREATE TABLE public.comments (
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-
 ALTER TABLE public.comments OWNER TO postgres;
 
 --
@@ -435,7 +408,6 @@ CREATE TABLE public.moderation_log (
     email_sent boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
 
 ALTER TABLE public.moderation_log OWNER TO postgres;
 
@@ -457,7 +429,6 @@ CREATE TABLE public.notifications (
     created_at timestamp with time zone DEFAULT now()
 );
 
-
 ALTER TABLE public.notifications OWNER TO postgres;
 
 --
@@ -470,7 +441,6 @@ CREATE TABLE public.post_likes (
     user_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
 
 ALTER TABLE public.post_likes OWNER TO postgres;
 
@@ -486,7 +456,6 @@ CREATE TABLE public.post_shares (
     platform public.share_platform NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
 
 ALTER TABLE public.post_shares OWNER TO postgres;
 
@@ -509,52 +478,15 @@ CREATE TABLE public.posts (
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-
 ALTER TABLE public.posts OWNER TO postgres;
 
 --
 -- TOC entry 233 (class 1259 OID 25228)
--- Name: practice_responses; Type: TABLE; Schema: public; Owner: postgres
 --
-
-CREATE TABLE public.practice_responses (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    session_id uuid NOT NULL,
-    question_id uuid NOT NULL,
-    user_answer text,
-    is_correct boolean,
-    marks_obtained integer DEFAULT 0,
-    time_taken_seconds integer,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.practice_responses OWNER TO postgres;
 
 --
 -- TOC entry 232 (class 1259 OID 25205)
--- Name: practice_sessions; Type: TABLE; Schema: public; Owner: postgres
 --
-
-CREATE TABLE public.practice_sessions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    section_name character varying(50) NOT NULL,
-    question_type character varying(50),
-    difficulty_level integer DEFAULT 1,
-    status character varying(20) DEFAULT 'in_progress'::character varying,
-    total_questions integer DEFAULT 0,
-    correct_answers integer DEFAULT 0,
-    accuracy numeric(5,2) DEFAULT 0.00,
-    started_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    completed_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT practice_sessions_difficulty_level_check CHECK (((difficulty_level >= 1) AND (difficulty_level <= 5))),
-    CONSTRAINT practice_sessions_status_check CHECK (((status)::text = ANY ((ARRAY['in_progress'::character varying, 'completed'::character varying])::text[])))
-);
-
-
-ALTER TABLE public.practice_sessions OWNER TO postgres;
 
 --
 -- TOC entry 239 (class 1259 OID 41596)
@@ -571,7 +503,6 @@ CREATE TABLE public.prep_media (
     file_type character varying(50)
 );
 
-
 ALTER TABLE public.prep_media OWNER TO postgres;
 
 --
@@ -586,7 +517,6 @@ CREATE TABLE public.prep_parts (
     part_content text,
     order_index integer DEFAULT 0
 );
-
 
 ALTER TABLE public.prep_parts OWNER TO postgres;
 
@@ -605,7 +535,6 @@ CREATE TABLE public.preparations (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
 
 ALTER TABLE public.preparations OWNER TO postgres;
 
@@ -638,7 +567,6 @@ CREATE TABLE public.questions (
     word_limit_instruction text
 );
 
-
 ALTER TABLE public.questions OWNER TO postgres;
 
 --
@@ -653,7 +581,6 @@ CREATE TABLE public.refresh_tokens (
     expires_at timestamp without time zone NOT NULL,
     created_at timestamp without time zone DEFAULT now()
 );
-
 
 ALTER TABLE public.refresh_tokens OWNER TO postgres;
 
@@ -670,7 +597,6 @@ CREATE SEQUENCE public.refresh_tokens_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
 ALTER SEQUENCE public.refresh_tokens_id_seq OWNER TO postgres;
 
 --
@@ -681,49 +607,13 @@ ALTER SEQUENCE public.refresh_tokens_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.refresh_tokens_id_seq OWNED BY public.refresh_tokens.id;
 
-
 --
 -- TOC entry 235 (class 1259 OID 25279)
--- Name: study_plan_items; Type: TABLE; Schema: public; Owner: postgres
 --
-
-CREATE TABLE public.study_plan_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    plan_id uuid NOT NULL,
-    day_number integer NOT NULL,
-    item_type character varying(20) NOT NULL,
-    item_id uuid NOT NULL,
-    title character varying(255) NOT NULL,
-    estimated_minutes integer DEFAULT 30,
-    is_completed boolean DEFAULT false,
-    completed_at timestamp without time zone,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT study_plan_items_item_type_check CHECK (((item_type)::text = ANY ((ARRAY['lesson'::character varying, 'practice'::character varying, 'mock_test'::character varying])::text[])))
-);
-
-
-ALTER TABLE public.study_plan_items OWNER TO postgres;
 
 --
 -- TOC entry 234 (class 1259 OID 25258)
--- Name: study_plans; Type: TABLE; Schema: public; Owner: postgres
 --
-
-CREATE TABLE public.study_plans (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    title character varying(255) NOT NULL,
-    target_band numeric(3,1) NOT NULL,
-    start_date date NOT NULL,
-    end_date date NOT NULL,
-    status character varying(20) DEFAULT 'active'::character varying,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT study_plans_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'completed'::character varying, 'paused'::character varying])::text[])))
-);
-
-
-ALTER TABLE public.study_plans OWNER TO postgres;
 
 --
 -- TOC entry 228 (class 1259 OID 25059)
@@ -742,7 +632,6 @@ CREATE TABLE public.temp_users (
     is_verified boolean DEFAULT false,
     attempts integer DEFAULT 0
 );
-
 
 ALTER TABLE public.temp_users OWNER TO postgres;
 
@@ -772,7 +661,6 @@ CREATE TABLE public.test_attempts (
     CONSTRAINT test_attempts_sync_status_check CHECK ((sync_status = ANY (ARRAY['pending'::text, 'synced'::text, 'failed'::text])))
 );
 
-
 ALTER TABLE public.test_attempts OWNER TO postgres;
 
 --
@@ -793,7 +681,6 @@ CREATE TABLE public.test_sections (
     section_type public.section_type_enum,
     sub_type character varying(50)
 );
-
 
 ALTER TABLE public.test_sections OWNER TO postgres;
 
@@ -819,7 +706,6 @@ CREATE TABLE public.tests (
     min_required_band numeric(3,1) DEFAULT 6.0
 );
 
-
 ALTER TABLE public.tests OWNER TO postgres;
 
 --
@@ -835,7 +721,6 @@ CREATE TABLE public.user_progress_stats (
     highest_score numeric(3,1) DEFAULT 0.0,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
 
 ALTER TABLE public.user_progress_stats OWNER TO postgres;
 
@@ -860,7 +745,6 @@ CREATE TABLE public.user_responses (
     word_count integer DEFAULT 0,
     time_spent_seconds integer DEFAULT 0
 );
-
 
 ALTER TABLE public.user_responses OWNER TO postgres;
 
@@ -888,7 +772,6 @@ CREATE TABLE public.users (
     fcm_token text
 );
 
-
 ALTER TABLE public.users OWNER TO postgres;
 
 --
@@ -897,7 +780,6 @@ ALTER TABLE public.users OWNER TO postgres;
 --
 
 ALTER TABLE ONLY public.refresh_tokens ALTER COLUMN id SET DEFAULT nextval('public.refresh_tokens_id_seq'::regclass);
-
 
 --
 -- TOC entry 5365 (class 0 OID 25133)
@@ -923,14 +805,11 @@ INSERT INTO public.admin_logs (id, admin_id, action, target_user_id, details, cr
 INSERT INTO public.admin_logs (id, admin_id, action, target_user_id, details, created_at) VALUES ('146ee0ed-b748-45c2-bb77-0105f608d26d', '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', 'Subscription Change', '660c49f1-a752-420e-a27c-fe53a73d71db', '{"message": "Changed subscription to free"}', '2026-05-13 20:41:26.38322');
 INSERT INTO public.admin_logs (id, admin_id, action, target_user_id, details, created_at) VALUES ('c90e95e6-e669-4a4d-b82b-e5a198770977', '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', 'Subscription Change', '660c49f1-a752-420e-a27c-fe53a73d71db', '{"message": "Changed subscription to premium"}', '2026-05-13 22:15:36.836687');
 
-
 --
 -- TOC entry 5370 (class 0 OID 25331)
 -- Dependencies: 236
 -- Data for Name: ai_feedback; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5377 (class 0 OID 42050)
@@ -938,15 +817,11 @@ INSERT INTO public.admin_logs (id, admin_id, action, target_user_id, details, cr
 -- Data for Name: comment_likes; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-
-
 --
 -- TOC entry 5375 (class 0 OID 41993)
 -- Dependencies: 241
 -- Data for Name: comments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5379 (class 0 OID 42125)
@@ -964,7 +839,6 @@ INSERT INTO public.moderation_log (id, admin_id, post_id, action, admin_feedback
 INSERT INTO public.moderation_log (id, admin_id, post_id, action, admin_feedback, email_sent, created_at) VALUES ('7fc3d0ae-a8f0-4f5d-a04e-40daef082995', '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', '57bb735d-452f-468a-bd1a-dac28b145e2c', 'unflag', NULL, false, '2026-05-13 11:51:47.771761+05');
 INSERT INTO public.moderation_log (id, admin_id, post_id, action, admin_feedback, email_sent, created_at) VALUES ('978273a1-5084-4719-ae1c-4a0ec27452da', '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', '57bb735d-452f-468a-bd1a-dac28b145e2c', 'flag', 'Your post has been removed because it violates our Community Guidelines. Please ensure all content is respectful, relevant, and appropriate for an academic learning environment.', true, '2026-05-13 11:51:55.871951+05');
 
-
 --
 -- TOC entry 5380 (class 0 OID 42167)
 -- Dependencies: 246
@@ -975,22 +849,17 @@ INSERT INTO public.notifications (id, user_id, actor_id, post_id, comment_id, ty
 INSERT INTO public.notifications (id, user_id, actor_id, post_id, comment_id, type, title, message, is_read, created_at) VALUES ('d1c93164-258e-484a-ac1d-c3f3c9f72d12', '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', '660c49f1-a752-420e-a27c-fe53a73d71db', NULL, NULL, 'admin_subscription_changed', 'Manual Subscription Update', 'Admin Asad''s subscription was manually changed from premium to free.', false, '2026-05-13 20:17:35.818806+05');
 INSERT INTO public.notifications (id, user_id, actor_id, post_id, comment_id, type, title, message, is_read, created_at) VALUES ('ea2b4697-9775-476c-8fa9-e53904828084', '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', '660c49f1-a752-420e-a27c-fe53a73d71db', NULL, NULL, 'admin_subscription_changed', 'Manual Subscription Update', 'Admin Asad''s subscription was manually changed from free to premium.', false, '2026-05-13 22:15:37.068036+05');
 
-
 --
 -- TOC entry 5376 (class 0 OID 42030)
 -- Dependencies: 242
 -- Data for Name: post_likes; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-
-
 --
 -- TOC entry 5378 (class 0 OID 42070)
 -- Dependencies: 244
 -- Data for Name: post_shares; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5374 (class 0 OID 41963)
@@ -1000,22 +869,15 @@ INSERT INTO public.notifications (id, user_id, actor_id, post_id, comment_id, ty
 
 INSERT INTO public.posts (id, user_id, topic_tag, title, content, is_flagged, flagged_by, flag_reason, deleted_at, created_at, updated_at) VALUES ('57bb735d-452f-468a-bd1a-dac28b145e2c', 'f81c2b76-cf4c-4718-8872-ba3afc90af2a', 'IELTS', 'Need IELTS writing tips', 'How can I improve coherence and cohesion?', true, 'admin', 'Your post has been removed because it violates our Community Guidelines. Please ensure all content is respectful, relevant, and appropriate for an academic learning environment.', NULL, '2026-05-09 14:01:57.009047+05', '2026-05-13 11:51:53.710632+05');
 
-
 --
 -- TOC entry 5367 (class 0 OID 25228)
 -- Dependencies: 233
--- Data for Name: practice_responses; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5366 (class 0 OID 25205)
 -- Dependencies: 232
--- Data for Name: practice_sessions; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5373 (class 0 OID 41596)
@@ -1031,7 +893,6 @@ INSERT INTO public.prep_media (id, prep_id, file_url, file_name, created_at, fil
 INSERT INTO public.prep_media (id, prep_id, file_url, file_name, created_at, file_size, file_type) VALUES ('67c95f9d-9d3e-4a0a-8079-5d9ce7eb11e4', '0a85f43e-e16e-47dc-93fb-549f705878a3', 'https://res.cloudinary.com/dbsfrh5fa/raw/upload/v1778751984/testiva/documents/1778751980805-PTE-Writing-Practice-test-2.pdf', 'pte-speaking-strategies.pdf', '2026-05-14 14:46:56.777784', 52980, 'application/pdf');
 INSERT INTO public.prep_media (id, prep_id, file_url, file_name, created_at, file_size, file_type) VALUES ('469515bd-182f-4246-8324-31421393c538', '30162207-e4e4-4b67-ad0d-3f0f7a77249a', 'https://res.cloudinary.com/dbsfrh5fa/raw/upload/v1778751984/testiva/documents/1778751980805-PTE-Writing-Practice-test-2.pdf', 'pte-writing-strategies.pdf', '2026-05-14 14:47:33.536223', 52980, 'application/pdf');
 INSERT INTO public.prep_media (id, prep_id, file_url, file_name, created_at, file_size, file_type) VALUES ('25e8ac12-ed19-4091-9b0d-28544282eeea', 'c5531fba-586a-44dc-ae11-ea966b1ef5b0', 'https://placeholder.com/ielts-speaking-sample-tasks-2023.pdf', 'ielts-speaking-sample-tasks-2023.pdf', '2026-05-14 14:51:42.761617', 470, 'application/pdf');
-
 
 --
 -- TOC entry 5372 (class 0 OID 41581)
@@ -1132,7 +993,6 @@ Never say "I don''t know." Say: "This is not something I''ve thought about befor
 🎯 Part 3 Discussion Practice
 Sample question: "How has technology changed communication in your country?" Approach: General statement → Example → Contrast old vs new → Future speculation', 2);
 
-
 --
 -- TOC entry 5371 (class 0 OID 41566)
 -- Dependencies: 237
@@ -1147,7 +1007,6 @@ INSERT INTO public.preparations (id, title, test_type, section, summary, status,
 INSERT INTO public.preparations (id, title, test_type, section, summary, status, created_at, updated_at) VALUES ('0a85f43e-e16e-47dc-93fb-549f705878a3', 'PTE Speaking Complete Preparation Guide', 'PTE', 'Speaking', 'Comprehensive PTE Speaking strategies including pronunciation improvement, fluency development, confidence building, repeat sentence techniques, and speaking template practice for higher scores.', 'published', '2026-05-14 14:46:56.777784', '2026-05-14 14:46:56.777784');
 INSERT INTO public.preparations (id, title, test_type, section, summary, status, created_at, updated_at) VALUES ('30162207-e4e4-4b67-ad0d-3f0f7a77249a', 'PTE Writing High Score Strategy Guide', 'PTE', 'Writing', 'Advanced PTE Writing preparation including essay structure, summarize written text techniques, grammar improvement, vocabulary enhancement, and time management strategies for better writing scores.', 'published', '2026-05-14 14:47:33.536223', '2026-05-14 14:47:33.536223');
 INSERT INTO public.preparations (id, title, test_type, section, summary, status, created_at, updated_at) VALUES ('c5531fba-586a-44dc-ae11-ea966b1ef5b0', 'IELTS Speaking', 'IELTS', 'Speaking', 'How to organize your thoughts and speak fluently in 40 seconds', 'published', '2026-05-14 14:51:42.761617', '2026-05-14 14:51:42.761617');
-
 
 --
 -- TOC entry 5358 (class 0 OID 24854)
@@ -1285,7 +1144,6 @@ explain your opinion
 discuss the impact on residents
 suggest an alternative idea', '[]', '{}', NULL, 9, 1.0, '2026-05-19 13:44:41.38105', 'medium', '[]', NULL, '{}', 'provide_opinion', 0, 0, 0, 0, NULL);
 
-
 --
 -- TOC entry 5364 (class 0 OID 25110)
 -- Dependencies: 230
@@ -1316,22 +1174,15 @@ INSERT INTO public.refresh_tokens (id, user_id, token, expires_at, created_at) V
 INSERT INTO public.refresh_tokens (id, user_id, token, expires_at, created_at) VALUES (60, 'ec831232-3433-432f-a2f6-8091109e3ea5', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlYzgzMTIzMi0zNDMzLTQzMmYtYTJmNi04MDkxMTA5ZTNlYTUiLCJ0b2tlbklkIjoiODQ1OTJjOTEtYWZiOS00MzZjLThlOTgtOTA1NTYzMWI2MjA1IiwiaWF0IjoxNzc5MjY2Nzg4LCJleHAiOjE3Nzk4NzE1ODh9.iG0WI3BGttmK4wmNvCjVaANShzyL3vl9UeHsbrubmgI', '2026-05-27 13:46:28.822', '2026-05-20 13:46:28.823361');
 INSERT INTO public.refresh_tokens (id, user_id, token, expires_at, created_at) VALUES (61, '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3YzdlNWM5ZS1lYWQ3LTRhOWEtYTc2MS0zNzNiNjEyMWMxOGUiLCJ0b2tlbklkIjoiODFkZjkwM2QtM2U2Yy00M2MxLTliNzEtM2RlN2Y1Njk2MGE2IiwiaWF0IjoxNzgwMzAwOTMxLCJleHAiOjE3ODA5MDU3MzF9.oZt_UYZnHGc34Fy-xwecHViMgavESXmch-lETBXy-TA', '2026-06-08 13:02:11.407', '2026-06-01 13:02:11.409004');
 
-
 --
 -- TOC entry 5369 (class 0 OID 25279)
 -- Dependencies: 235
--- Data for Name: study_plan_items; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5368 (class 0 OID 25258)
 -- Dependencies: 234
--- Data for Name: study_plans; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5362 (class 0 OID 25059)
@@ -1341,14 +1192,11 @@ INSERT INTO public.refresh_tokens (id, user_id, token, expires_at, created_at) V
 
 INSERT INTO public.temp_users (id, email, full_name, password_hash, otp_code, expires_at, created_at, type, is_verified, attempts) VALUES ('42199d3d-67f7-4965-8c49-a2c2b8d0c2a6', 'testuser_1779266515671@example.com', 'Test User', '$2b$10$38.TGruyystpkdbKG.1gTeYQKRt2dHgWmtUr1aolAwnLlwqZ0tUz.', '$2b$10$W5asHGWA8uYzuY3/kD.h4e4VaKDRd4Mhs/ynqn8jcC2Sy1.i5F5ue', '2026-05-20 13:56:56.053', '2026-05-20 13:41:56.05419', 'register', false, 1);
 
-
 --
 -- TOC entry 5359 (class 0 OID 24905)
 -- Dependencies: 225
 -- Data for Name: test_attempts; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5357 (class 0 OID 24833)
@@ -1364,7 +1212,6 @@ INSERT INTO public.test_sections (id, test_id, section_name, time_limit_minutes,
 INSERT INTO public.test_sections (id, test_id, section_name, time_limit_minutes, order_number, instructions, created_at, question_types_allowed, task_count, section_type, sub_type) VALUES ('03a1fe5f-0363-4e53-8549-257c3d2f4ace', '047684a1-5841-4c06-90cc-44dcde456ae5', 'Writing', 15, 3, NULL, '2026-05-19 13:44:41.38105', '["Chart Description"]', 1, 'writing', 'Task 1');
 INSERT INTO public.test_sections (id, test_id, section_name, time_limit_minutes, order_number, instructions, created_at, question_types_allowed, task_count, section_type, sub_type) VALUES ('d06f9cea-4625-42f2-9250-64807e7cf002', '047684a1-5841-4c06-90cc-44dcde456ae5', 'Writing', 15, 4, NULL, '2026-05-19 13:44:41.38105', '["Request Information", "Request Information", "Request Information", "Explain Situation", "Explain Situation", "Explain Situation", "Provide Opinion", "Provide Opinion", "Provide Opinion", "Provide Opinion"]', 1, 'writing', 'Task 1');
 
-
 --
 -- TOC entry 5356 (class 0 OID 24776)
 -- Dependencies: 222
@@ -1374,22 +1221,17 @@ INSERT INTO public.test_sections (id, test_id, section_name, time_limit_minutes,
 INSERT INTO public.tests (id, title, total_duration, created_by, created_at, updated_at, exam_type, is_published, passing_score, difficulty_level, is_premium, test_category, display_id, min_required_band) VALUES ('d2319e2d-12d4-440a-8af0-75fa93f537eb', 'IELTS Reading', 60, '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', '2026-05-16 23:59:25.126072', '2026-05-17 11:27:50.086234', 'IELTS', true, 6.5, 'medium', false, 'singular_module', 'mck001', 6.0);
 INSERT INTO public.tests (id, title, total_duration, created_by, created_at, updated_at, exam_type, is_published, passing_score, difficulty_level, is_premium, test_category, display_id, min_required_band) VALUES ('047684a1-5841-4c06-90cc-44dcde456ae5', 'IELTS Writing', 60, '7c7e5c9e-ead7-4a9a-a761-373b6121c18e', '2026-05-18 22:58:36.579291', '2026-05-19 13:44:41.38105', 'IELTS', true, 6.5, 'medium', false, 'singular_module', 'mck002', 6.0);
 
-
 --
 -- TOC entry 5361 (class 0 OID 24958)
 -- Dependencies: 227
 -- Data for Name: user_progress_stats; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-
-
 --
 -- TOC entry 5360 (class 0 OID 24936)
 -- Dependencies: 226
 -- Data for Name: user_responses; Type: TABLE DATA; Schema: public; Owner: postgres
 --
-
-
 
 --
 -- TOC entry 5355 (class 0 OID 24603)
@@ -1402,7 +1244,6 @@ INSERT INTO public.users (id, email, password_hash, full_name, avatar_url, auth_
 INSERT INTO public.users (id, email, password_hash, full_name, avatar_url, auth_provider, role, is_email_verified, last_login_at, created_at, updated_at, subscription, token_version, bio, preference, fcm_token) VALUES ('ec831232-3433-432f-a2f6-8091109e3ea5', 's23-0385@student.uoh.edu.pk', '$2b$10$j1KCKhcNtosiczg6Bf.Ly.oYW0zC02g9/5WKhYqlbo5AIWwykoe5i', 'TesterQe', NULL, 'email', 'user', true, '2026-05-20 13:46:28.856212', '2026-05-20 13:45:50.676775', '2026-05-20 13:46:34.101235', 'free', 0, 'No bio provided', 'IELTS', NULL);
 INSERT INTO public.users (id, email, password_hash, full_name, avatar_url, auth_provider, role, is_email_verified, last_login_at, created_at, updated_at, subscription, token_version, bio, preference, fcm_token) VALUES ('7c7e5c9e-ead7-4a9a-a761-373b6121c18e', 'ragesr56@gmail.com', '$2b$10$nHu4qCDEUz4Dm6jmoaVIke7QdKDvlG8VeFZ464xGw5OnbqPpYZkii', 'Asad Abbas', NULL, 'email', 'admin', true, '2026-06-01 13:02:11.498984', '2026-05-09 13:29:44.911295', '2026-05-14 12:10:45.552511', 'free', 0, 'This is my bio', 'PTE', NULL);
 
-
 --
 -- TOC entry 5389 (class 0 OID 0)
 -- Dependencies: 229
@@ -1410,7 +1251,6 @@ INSERT INTO public.users (id, email, password_hash, full_name, avatar_url, auth_
 --
 
 SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 61, true);
-
 
 --
 -- TOC entry 5115 (class 2606 OID 25144)
@@ -1420,7 +1260,6 @@ SELECT pg_catalog.setval('public.refresh_tokens_id_seq', 61, true);
 ALTER TABLE ONLY public.admin_logs
     ADD CONSTRAINT admin_logs_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5136 (class 2606 OID 25344)
 -- Name: ai_feedback ai_feedback_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1428,7 +1267,6 @@ ALTER TABLE ONLY public.admin_logs
 
 ALTER TABLE ONLY public.ai_feedback
     ADD CONSTRAINT ai_feedback_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5162 (class 2606 OID 42058)
@@ -1438,7 +1276,6 @@ ALTER TABLE ONLY public.ai_feedback
 ALTER TABLE ONLY public.comment_likes
     ADD CONSTRAINT comment_likes_pkey PRIMARY KEY (comment_id, user_id);
 
-
 --
 -- TOC entry 5153 (class 2606 OID 42010)
 -- Name: comments comments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1446,7 +1283,6 @@ ALTER TABLE ONLY public.comment_likes
 
 ALTER TABLE ONLY public.comments
     ADD CONSTRAINT comments_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5168 (class 2606 OID 42140)
@@ -1456,7 +1292,6 @@ ALTER TABLE ONLY public.comments
 ALTER TABLE ONLY public.moderation_log
     ADD CONSTRAINT moderation_log_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5170 (class 2606 OID 42181)
 -- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1464,7 +1299,6 @@ ALTER TABLE ONLY public.moderation_log
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5160 (class 2606 OID 42038)
@@ -1474,7 +1308,6 @@ ALTER TABLE ONLY public.notifications
 ALTER TABLE ONLY public.post_likes
     ADD CONSTRAINT post_likes_pkey PRIMARY KEY (post_id, user_id);
 
-
 --
 -- TOC entry 5166 (class 2606 OID 42081)
 -- Name: post_shares post_shares_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1482,7 +1315,6 @@ ALTER TABLE ONLY public.post_likes
 
 ALTER TABLE ONLY public.post_shares
     ADD CONSTRAINT post_shares_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5151 (class 2606 OID 41982)
@@ -1492,33 +1324,17 @@ ALTER TABLE ONLY public.post_shares
 ALTER TABLE ONLY public.posts
     ADD CONSTRAINT posts_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5124 (class 2606 OID 25240)
--- Name: practice_responses practice_responses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.practice_responses
-    ADD CONSTRAINT practice_responses_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5126 (class 2606 OID 25242)
--- Name: practice_responses practice_responses_session_id_question_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.practice_responses
-    ADD CONSTRAINT practice_responses_session_id_question_id_key UNIQUE (session_id, question_id);
-
 
 --
 -- TOC entry 5120 (class 2606 OID 25222)
--- Name: practice_sessions practice_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.practice_sessions
-    ADD CONSTRAINT practice_sessions_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5144 (class 2606 OID 41605)
@@ -1528,7 +1344,6 @@ ALTER TABLE ONLY public.practice_sessions
 ALTER TABLE ONLY public.prep_media
     ADD CONSTRAINT prep_media_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5142 (class 2606 OID 41590)
 -- Name: prep_parts prep_parts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1536,7 +1351,6 @@ ALTER TABLE ONLY public.prep_media
 
 ALTER TABLE ONLY public.prep_parts
     ADD CONSTRAINT prep_parts_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5140 (class 2606 OID 41578)
@@ -1546,7 +1360,6 @@ ALTER TABLE ONLY public.prep_parts
 ALTER TABLE ONLY public.preparations
     ADD CONSTRAINT preparations_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5092 (class 2606 OID 24867)
 -- Name: questions questions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1554,7 +1367,6 @@ ALTER TABLE ONLY public.preparations
 
 ALTER TABLE ONLY public.questions
     ADD CONSTRAINT questions_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5111 (class 2606 OID 25122)
@@ -1564,7 +1376,6 @@ ALTER TABLE ONLY public.questions
 ALTER TABLE ONLY public.refresh_tokens
     ADD CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5113 (class 2606 OID 25124)
 -- Name: refresh_tokens refresh_tokens_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1573,24 +1384,13 @@ ALTER TABLE ONLY public.refresh_tokens
 ALTER TABLE ONLY public.refresh_tokens
     ADD CONSTRAINT refresh_tokens_token_key UNIQUE (token);
 
-
 --
 -- TOC entry 5134 (class 2606 OID 25294)
--- Name: study_plan_items study_plan_items_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.study_plan_items
-    ADD CONSTRAINT study_plan_items_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5130 (class 2606 OID 25273)
--- Name: study_plans study_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.study_plans
-    ADD CONSTRAINT study_plans_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5102 (class 2606 OID 25071)
@@ -1600,7 +1400,6 @@ ALTER TABLE ONLY public.study_plans
 ALTER TABLE ONLY public.temp_users
     ADD CONSTRAINT temp_users_email_key UNIQUE (email);
 
-
 --
 -- TOC entry 5104 (class 2606 OID 25094)
 -- Name: temp_users temp_users_email_type_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1608,7 +1407,6 @@ ALTER TABLE ONLY public.temp_users
 
 ALTER TABLE ONLY public.temp_users
     ADD CONSTRAINT temp_users_email_type_unique UNIQUE (email, type);
-
 
 --
 -- TOC entry 5106 (class 2606 OID 25082)
@@ -1618,7 +1416,6 @@ ALTER TABLE ONLY public.temp_users
 ALTER TABLE ONLY public.temp_users
     ADD CONSTRAINT temp_users_email_unique UNIQUE (email);
 
-
 --
 -- TOC entry 5108 (class 2606 OID 25069)
 -- Name: temp_users temp_users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1626,7 +1423,6 @@ ALTER TABLE ONLY public.temp_users
 
 ALTER TABLE ONLY public.temp_users
     ADD CONSTRAINT temp_users_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5095 (class 2606 OID 24924)
@@ -1636,7 +1432,6 @@ ALTER TABLE ONLY public.temp_users
 ALTER TABLE ONLY public.test_attempts
     ADD CONSTRAINT test_attempts_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5086 (class 2606 OID 24845)
 -- Name: test_sections test_sections_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1644,7 +1439,6 @@ ALTER TABLE ONLY public.test_attempts
 
 ALTER TABLE ONLY public.test_sections
     ADD CONSTRAINT test_sections_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5082 (class 2606 OID 24788)
@@ -1654,7 +1448,6 @@ ALTER TABLE ONLY public.test_sections
 ALTER TABLE ONLY public.tests
     ADD CONSTRAINT tests_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5088 (class 2606 OID 24847)
 -- Name: test_sections unique_test_section_order; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1662,7 +1455,6 @@ ALTER TABLE ONLY public.tests
 
 ALTER TABLE ONLY public.test_sections
     ADD CONSTRAINT unique_test_section_order UNIQUE (test_id, order_number);
-
 
 --
 -- TOC entry 5100 (class 2606 OID 24967)
@@ -1672,7 +1464,6 @@ ALTER TABLE ONLY public.test_sections
 ALTER TABLE ONLY public.user_progress_stats
     ADD CONSTRAINT user_progress_stats_pkey PRIMARY KEY (user_id);
 
-
 --
 -- TOC entry 5098 (class 2606 OID 24946)
 -- Name: user_responses user_responses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1680,7 +1471,6 @@ ALTER TABLE ONLY public.user_progress_stats
 
 ALTER TABLE ONLY public.user_responses
     ADD CONSTRAINT user_responses_pkey PRIMARY KEY (id);
-
 
 --
 -- TOC entry 5076 (class 2606 OID 24623)
@@ -1690,7 +1480,6 @@ ALTER TABLE ONLY public.user_responses
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_email_key UNIQUE (email);
 
-
 --
 -- TOC entry 5078 (class 2606 OID 24621)
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -1699,14 +1488,12 @@ ALTER TABLE ONLY public.users
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
-
 --
 -- TOC entry 5093 (class 1259 OID 24935)
 -- Name: idx_attempts_user_test; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_attempts_user_test ON public.test_attempts USING btree (user_id, test_id);
-
 
 --
 -- TOC entry 5163 (class 1259 OID 42069)
@@ -1715,14 +1502,12 @@ CREATE INDEX idx_attempts_user_test ON public.test_attempts USING btree (user_id
 
 CREATE INDEX idx_comment_likes_comment_id ON public.comment_likes USING btree (comment_id);
 
-
 --
 -- TOC entry 5154 (class 1259 OID 42029)
 -- Name: idx_comments_created_at; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_comments_created_at ON public.comments USING btree (created_at DESC);
-
 
 --
 -- TOC entry 5155 (class 1259 OID 42027)
@@ -1731,14 +1516,12 @@ CREATE INDEX idx_comments_created_at ON public.comments USING btree (created_at 
 
 CREATE INDEX idx_comments_parent_id ON public.comments USING btree (parent_id);
 
-
 --
 -- TOC entry 5156 (class 1259 OID 42026)
 -- Name: idx_comments_post_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_comments_post_id ON public.comments USING btree (post_id);
-
 
 --
 -- TOC entry 5157 (class 1259 OID 42028)
@@ -1747,14 +1530,12 @@ CREATE INDEX idx_comments_post_id ON public.comments USING btree (post_id);
 
 CREATE INDEX idx_comments_user_id ON public.comments USING btree (user_id);
 
-
 --
 -- TOC entry 5137 (class 1259 OID 25356)
 -- Name: idx_feedback_attempt; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_feedback_attempt ON public.ai_feedback USING btree (attempt_id);
-
 
 --
 -- TOC entry 5138 (class 1259 OID 25355)
@@ -1763,14 +1544,12 @@ CREATE INDEX idx_feedback_attempt ON public.ai_feedback USING btree (attempt_id)
 
 CREATE INDEX idx_feedback_user ON public.ai_feedback USING btree (user_id);
 
-
 --
 -- TOC entry 5158 (class 1259 OID 42049)
 -- Name: idx_post_likes_post_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_post_likes_post_id ON public.post_likes USING btree (post_id);
-
 
 --
 -- TOC entry 5164 (class 1259 OID 42092)
@@ -1779,14 +1558,12 @@ CREATE INDEX idx_post_likes_post_id ON public.post_likes USING btree (post_id);
 
 CREATE INDEX idx_post_shares_post_id ON public.post_shares USING btree (post_id);
 
-
 --
 -- TOC entry 5145 (class 1259 OID 41991)
 -- Name: idx_posts_created_at; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_posts_created_at ON public.posts USING btree (created_at DESC);
-
 
 --
 -- TOC entry 5146 (class 1259 OID 41992)
@@ -1795,7 +1572,6 @@ CREATE INDEX idx_posts_created_at ON public.posts USING btree (created_at DESC);
 
 CREATE INDEX idx_posts_deleted_at ON public.posts USING btree (deleted_at) WHERE (deleted_at IS NULL);
 
-
 --
 -- TOC entry 5147 (class 1259 OID 41990)
 -- Name: idx_posts_is_flagged; Type: INDEX; Schema: public; Owner: postgres
@@ -1803,14 +1579,12 @@ CREATE INDEX idx_posts_deleted_at ON public.posts USING btree (deleted_at) WHERE
 
 CREATE INDEX idx_posts_is_flagged ON public.posts USING btree (is_flagged);
 
-
 --
 -- TOC entry 5148 (class 1259 OID 41989)
 -- Name: idx_posts_topic_tag; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_posts_topic_tag ON public.posts USING btree (topic_tag);
-
 
 --
 -- TOC entry 5149 (class 1259 OID 41988)
@@ -1820,44 +1594,8 @@ CREATE INDEX idx_posts_topic_tag ON public.posts USING btree (topic_tag);
 CREATE INDEX idx_posts_user_id ON public.posts USING btree (user_id);
 
 
---
--- TOC entry 5121 (class 1259 OID 25257)
--- Name: idx_practice_responses_question; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_practice_responses_question ON public.practice_responses USING btree (question_id);
 
 
---
--- TOC entry 5122 (class 1259 OID 25256)
--- Name: idx_practice_responses_session; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_practice_responses_session ON public.practice_responses USING btree (session_id);
-
-
---
--- TOC entry 5116 (class 1259 OID 25254)
--- Name: idx_practice_sessions_section; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_practice_sessions_section ON public.practice_sessions USING btree (section_name);
-
-
---
--- TOC entry 5117 (class 1259 OID 25255)
--- Name: idx_practice_sessions_status; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_practice_sessions_status ON public.practice_sessions USING btree (status);
-
-
---
--- TOC entry 5118 (class 1259 OID 25253)
--- Name: idx_practice_sessions_user; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_practice_sessions_user ON public.practice_sessions USING btree (user_id);
 
 
 --
@@ -1867,14 +1605,12 @@ CREATE INDEX idx_practice_sessions_user ON public.practice_sessions USING btree 
 
 CREATE INDEX idx_questions_difficulty ON public.questions USING btree (difficulty);
 
-
 --
 -- TOC entry 5090 (class 1259 OID 24873)
 -- Name: idx_questions_section_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_questions_section_id ON public.questions USING btree (section_id);
-
 
 --
 -- TOC entry 5109 (class 1259 OID 25131)
@@ -1883,7 +1619,6 @@ CREATE INDEX idx_questions_section_id ON public.questions USING btree (section_i
 
 CREATE INDEX idx_refresh_user ON public.refresh_tokens USING btree (user_id);
 
-
 --
 -- TOC entry 5096 (class 1259 OID 24957)
 -- Name: idx_responses_attempt; Type: INDEX; Schema: public; Owner: postgres
@@ -1891,14 +1626,12 @@ CREATE INDEX idx_refresh_user ON public.refresh_tokens USING btree (user_id);
 
 CREATE INDEX idx_responses_attempt ON public.user_responses USING btree (attempt_id);
 
-
 --
 -- TOC entry 5083 (class 1259 OID 33376)
 -- Name: idx_sections_question_types; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_sections_question_types ON public.test_sections USING gin (question_types_allowed);
-
 
 --
 -- TOC entry 5084 (class 1259 OID 24853)
@@ -1908,36 +1641,7 @@ CREATE INDEX idx_sections_question_types ON public.test_sections USING gin (ques
 CREATE INDEX idx_sections_test_id ON public.test_sections USING btree (test_id);
 
 
---
--- TOC entry 5131 (class 1259 OID 25303)
--- Name: idx_study_plan_items_day; Type: INDEX; Schema: public; Owner: postgres
---
 
-CREATE INDEX idx_study_plan_items_day ON public.study_plan_items USING btree (day_number);
-
-
---
--- TOC entry 5132 (class 1259 OID 25302)
--- Name: idx_study_plan_items_plan; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_study_plan_items_plan ON public.study_plan_items USING btree (plan_id);
-
-
---
--- TOC entry 5127 (class 1259 OID 25301)
--- Name: idx_study_plans_status; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_study_plans_status ON public.study_plans USING btree (status);
-
-
---
--- TOC entry 5128 (class 1259 OID 25300)
--- Name: idx_study_plans_user; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_study_plans_user ON public.study_plans USING btree (user_id);
 
 
 --
@@ -1947,14 +1651,12 @@ CREATE INDEX idx_study_plans_user ON public.study_plans USING btree (user_id);
 
 CREATE INDEX idx_tests_exam_type ON public.tests USING btree (exam_type);
 
-
 --
 -- TOC entry 5080 (class 1259 OID 33375)
 -- Name: idx_tests_published; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX idx_tests_published ON public.tests USING btree (is_published);
-
 
 --
 -- TOC entry 5073 (class 1259 OID 24624)
@@ -1963,7 +1665,6 @@ CREATE INDEX idx_tests_published ON public.tests USING btree (is_published);
 
 CREATE INDEX idx_users_email ON public.users USING btree (email);
 
-
 --
 -- TOC entry 5074 (class 1259 OID 24625)
 -- Name: idx_users_role; Type: INDEX; Schema: public; Owner: postgres
@@ -1971,14 +1672,12 @@ CREATE INDEX idx_users_email ON public.users USING btree (email);
 
 CREATE INDEX idx_users_role ON public.users USING btree (role);
 
-
 --
 -- TOC entry 5207 (class 2620 OID 42216)
 -- Name: users user_subscription_trigger; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
 CREATE TRIGGER user_subscription_trigger AFTER UPDATE OF subscription ON public.users FOR EACH ROW EXECUTE FUNCTION public.notify_subscription_change();
-
 
 --
 -- TOC entry 5180 (class 2606 OID 25145)
@@ -1988,7 +1687,6 @@ CREATE TRIGGER user_subscription_trigger AFTER UPDATE OF subscription ON public.
 ALTER TABLE ONLY public.admin_logs
     ADD CONSTRAINT admin_logs_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5181 (class 2606 OID 25150)
 -- Name: admin_logs admin_logs_target_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -1996,7 +1694,6 @@ ALTER TABLE ONLY public.admin_logs
 
 ALTER TABLE ONLY public.admin_logs
     ADD CONSTRAINT admin_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
-
 
 --
 -- TOC entry 5187 (class 2606 OID 25345)
@@ -2006,7 +1703,6 @@ ALTER TABLE ONLY public.admin_logs
 ALTER TABLE ONLY public.ai_feedback
     ADD CONSTRAINT ai_feedback_attempt_id_fkey FOREIGN KEY (attempt_id) REFERENCES public.test_attempts(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5188 (class 2606 OID 25350)
 -- Name: ai_feedback ai_feedback_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2014,7 +1710,6 @@ ALTER TABLE ONLY public.ai_feedback
 
 ALTER TABLE ONLY public.ai_feedback
     ADD CONSTRAINT ai_feedback_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
-
 
 --
 -- TOC entry 5197 (class 2606 OID 42059)
@@ -2024,7 +1719,6 @@ ALTER TABLE ONLY public.ai_feedback
 ALTER TABLE ONLY public.comment_likes
     ADD CONSTRAINT comment_likes_comment_id_fkey FOREIGN KEY (comment_id) REFERENCES public.comments(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5198 (class 2606 OID 42064)
 -- Name: comment_likes comment_likes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2032,7 +1726,6 @@ ALTER TABLE ONLY public.comment_likes
 
 ALTER TABLE ONLY public.comment_likes
     ADD CONSTRAINT comment_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5192 (class 2606 OID 42021)
@@ -2042,7 +1735,6 @@ ALTER TABLE ONLY public.comment_likes
 ALTER TABLE ONLY public.comments
     ADD CONSTRAINT comments_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.comments(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5193 (class 2606 OID 42011)
 -- Name: comments comments_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2050,7 +1742,6 @@ ALTER TABLE ONLY public.comments
 
 ALTER TABLE ONLY public.comments
     ADD CONSTRAINT comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5194 (class 2606 OID 42016)
@@ -2060,7 +1751,6 @@ ALTER TABLE ONLY public.comments
 ALTER TABLE ONLY public.comments
     ADD CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5201 (class 2606 OID 42141)
 -- Name: moderation_log moderation_log_admin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2068,7 +1758,6 @@ ALTER TABLE ONLY public.comments
 
 ALTER TABLE ONLY public.moderation_log
     ADD CONSTRAINT moderation_log_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5202 (class 2606 OID 42146)
@@ -2078,7 +1767,6 @@ ALTER TABLE ONLY public.moderation_log
 ALTER TABLE ONLY public.moderation_log
     ADD CONSTRAINT moderation_log_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5203 (class 2606 OID 42187)
 -- Name: notifications notifications_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2086,7 +1774,6 @@ ALTER TABLE ONLY public.moderation_log
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id) ON DELETE SET NULL;
-
 
 --
 -- TOC entry 5204 (class 2606 OID 42197)
@@ -2096,7 +1783,6 @@ ALTER TABLE ONLY public.notifications
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_comment_id_fkey FOREIGN KEY (comment_id) REFERENCES public.comments(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5205 (class 2606 OID 42192)
 -- Name: notifications notifications_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2104,7 +1790,6 @@ ALTER TABLE ONLY public.notifications
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5206 (class 2606 OID 42182)
@@ -2114,7 +1799,6 @@ ALTER TABLE ONLY public.notifications
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5195 (class 2606 OID 42039)
 -- Name: post_likes post_likes_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2122,7 +1806,6 @@ ALTER TABLE ONLY public.notifications
 
 ALTER TABLE ONLY public.post_likes
     ADD CONSTRAINT post_likes_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5196 (class 2606 OID 42044)
@@ -2132,7 +1815,6 @@ ALTER TABLE ONLY public.post_likes
 ALTER TABLE ONLY public.post_likes
     ADD CONSTRAINT post_likes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5199 (class 2606 OID 42082)
 -- Name: post_shares post_shares_post_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2140,7 +1822,6 @@ ALTER TABLE ONLY public.post_likes
 
 ALTER TABLE ONLY public.post_shares
     ADD CONSTRAINT post_shares_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.posts(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5200 (class 2606 OID 42087)
@@ -2150,7 +1831,6 @@ ALTER TABLE ONLY public.post_shares
 ALTER TABLE ONLY public.post_shares
     ADD CONSTRAINT post_shares_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5191 (class 2606 OID 41983)
 -- Name: posts posts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2159,33 +1839,17 @@ ALTER TABLE ONLY public.post_shares
 ALTER TABLE ONLY public.posts
     ADD CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5183 (class 2606 OID 25248)
--- Name: practice_responses practice_responses_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.practice_responses
-    ADD CONSTRAINT practice_responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5184 (class 2606 OID 25243)
--- Name: practice_responses practice_responses_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.practice_responses
-    ADD CONSTRAINT practice_responses_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.practice_sessions(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5182 (class 2606 OID 25223)
--- Name: practice_sessions practice_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.practice_sessions
-    ADD CONSTRAINT practice_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5190 (class 2606 OID 41606)
@@ -2195,7 +1859,6 @@ ALTER TABLE ONLY public.practice_sessions
 ALTER TABLE ONLY public.prep_media
     ADD CONSTRAINT prep_media_prep_id_fkey FOREIGN KEY (prep_id) REFERENCES public.preparations(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5189 (class 2606 OID 41591)
 -- Name: prep_parts prep_parts_prep_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2203,7 +1866,6 @@ ALTER TABLE ONLY public.prep_media
 
 ALTER TABLE ONLY public.prep_parts
     ADD CONSTRAINT prep_parts_prep_id_fkey FOREIGN KEY (prep_id) REFERENCES public.preparations(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5173 (class 2606 OID 24868)
@@ -2213,7 +1875,6 @@ ALTER TABLE ONLY public.prep_parts
 ALTER TABLE ONLY public.questions
     ADD CONSTRAINT questions_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.test_sections(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5179 (class 2606 OID 25125)
 -- Name: refresh_tokens refresh_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2222,24 +1883,13 @@ ALTER TABLE ONLY public.questions
 ALTER TABLE ONLY public.refresh_tokens
     ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5186 (class 2606 OID 25295)
--- Name: study_plan_items study_plan_items_plan_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.study_plan_items
-    ADD CONSTRAINT study_plan_items_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.study_plans(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5185 (class 2606 OID 25274)
--- Name: study_plans study_plans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
-
-ALTER TABLE ONLY public.study_plans
-    ADD CONSTRAINT study_plans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5174 (class 2606 OID 24930)
@@ -2249,7 +1899,6 @@ ALTER TABLE ONLY public.study_plans
 ALTER TABLE ONLY public.test_attempts
     ADD CONSTRAINT test_attempts_test_id_fkey FOREIGN KEY (test_id) REFERENCES public.tests(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5175 (class 2606 OID 24925)
 -- Name: test_attempts test_attempts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2257,7 +1906,6 @@ ALTER TABLE ONLY public.test_attempts
 
 ALTER TABLE ONLY public.test_attempts
     ADD CONSTRAINT test_attempts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 
 --
 -- TOC entry 5172 (class 2606 OID 24848)
@@ -2267,7 +1915,6 @@ ALTER TABLE ONLY public.test_attempts
 ALTER TABLE ONLY public.test_sections
     ADD CONSTRAINT test_sections_test_id_fkey FOREIGN KEY (test_id) REFERENCES public.tests(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5171 (class 2606 OID 24789)
 -- Name: tests tests_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2275,7 +1922,6 @@ ALTER TABLE ONLY public.test_sections
 
 ALTER TABLE ONLY public.tests
     ADD CONSTRAINT tests_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
-
 
 --
 -- TOC entry 5178 (class 2606 OID 24968)
@@ -2285,7 +1931,6 @@ ALTER TABLE ONLY public.tests
 ALTER TABLE ONLY public.user_progress_stats
     ADD CONSTRAINT user_progress_stats_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5176 (class 2606 OID 24947)
 -- Name: user_responses user_responses_attempt_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2294,7 +1939,6 @@ ALTER TABLE ONLY public.user_progress_stats
 ALTER TABLE ONLY public.user_responses
     ADD CONSTRAINT user_responses_attempt_id_fkey FOREIGN KEY (attempt_id) REFERENCES public.test_attempts(id) ON DELETE CASCADE;
 
-
 --
 -- TOC entry 5177 (class 2606 OID 24952)
 -- Name: user_responses user_responses_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -2302,7 +1946,6 @@ ALTER TABLE ONLY public.user_responses
 
 ALTER TABLE ONLY public.user_responses
     ADD CONSTRAINT user_responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id) ON DELETE CASCADE;
-
 
 -- Completed on 2026-06-01 14:41:22
 
