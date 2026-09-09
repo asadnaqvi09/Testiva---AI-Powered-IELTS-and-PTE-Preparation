@@ -218,7 +218,13 @@ class ApiService {
             .timeout(timeout);
         break;
       case 'PATCH':
-        response = await http.patch(url, headers: headers).timeout(timeout);
+        response = await http
+            .patch(
+              url,
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(timeout);
         break;
       case 'DELETE':
         response = await http.delete(url, headers: headers).timeout(timeout);
@@ -263,6 +269,41 @@ class ApiService {
     await clearAuthSession();
   }
 
+  /// Invalidates all refresh tokens / bumps token_version, then clears local session.
+  static Future<http.Response> logoutAllDevices() async {
+    final response = await _request(
+      'POST',
+      '/auth/logout-all',
+      body: {},
+      skipAuthRetry: true,
+    );
+    await clearAuthSession();
+    return response;
+  }
+
+  static Future<http.Response> updateFcmToken(String fcmToken) async {
+    return put('/user/fcm-token', {'fcm_token': fcmToken});
+  }
+
+  /// Multipart avatar upload (`field`: avatar).
+  static Future<http.Response> uploadAvatar(String filePath) async {
+    final lower = filePath.toLowerCase();
+    MediaType mime = MediaType('image', 'jpeg');
+    if (lower.endsWith('.png')) {
+      mime = MediaType('image', 'png');
+    } else if (lower.endsWith('.webp')) {
+      mime = MediaType('image', 'webp');
+    } else if (lower.endsWith('.gif')) {
+      mime = MediaType('image', 'gif');
+    }
+    return uploadFile(
+      '/user/avatar',
+      filePath,
+      fieldName: 'avatar',
+      contentType: mime,
+    );
+  }
+
   static Future<http.Response> post(
     String endpoint,
     Map<String, dynamic> body,
@@ -296,9 +337,12 @@ class ApiService {
     }
   }
 
-  static Future<http.Response> patch(String endpoint) async {
+  static Future<http.Response> patch(
+    String endpoint, [
+    Map<String, dynamic>? body,
+  ]) async {
     try {
-      return await _request('PATCH', endpoint);
+      return await _request('PATCH', endpoint, body: body);
     } catch (e) {
       print('API Error [PATCH $endpoint]: $e');
       rethrow;

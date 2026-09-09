@@ -6,6 +6,7 @@ import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/database/local_db.dart';
 import 'package:frontend/core/services/auth_gate.dart';
 import 'package:frontend/core/services/connectivity_service.dart';
+import 'package:frontend/core/services/fcm_token_service.dart';
 import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/theme_provider.dart';
 import 'package:frontend/providers/feedback_provider.dart';
@@ -30,6 +31,9 @@ void main() async {
   debugPrint(
     '[Testiva] API ${AppConfig.apiBaseUrl} (${AppConfig.resolveSource})',
   );
+  // Firebase + FCM: graceful if native config missing (desktop / incomplete iOS).
+  await FcmTokenService.ensureFirebaseInitialized();
+  await FcmTokenService.syncTokenIfAvailable();
   runApp(
     MultiProvider(
       providers: [

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/utils/dev_otp.dart';
@@ -58,19 +57,26 @@ class _SignupFormState extends State<SignupForm> {
           );
           if (!mounted) return;
 
-          final hasDevOtp = !kReleaseMode && responseData['devOtp'] != null;
-          if (hasDevOtp) {
-            showDevOtpSnackBar(context, responseData);
-          } else {
+          if (!isOtpEmailSent(responseData)) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registration Successful! OTP sent to your email.')),
+              const SnackBar(
+                content: Text(kOtpSendFailedMessage),
+                backgroundColor: Colors.red,
+              ),
             );
+            return;
           }
 
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(otpSendSuccessMessage(
+                fallback: 'Registration successful! OTP sent to your email.',
+              )),
+            ),
+          );
 
           final savedEmail = enteredEmail;
           final savedPass = enteredPassword;
-          final savedDevOtp = hasDevOtp ? responseData['devOtp']?.toString() : null;
 
           _nameController.clear();
           _emailController.clear();
@@ -83,7 +89,6 @@ class _SignupFormState extends State<SignupForm> {
               builder: (c) => OtpScreen(
                 email: savedEmail,
                 password: savedPass,
-                devOtp: savedDevOtp,
               ),
             ),
           );

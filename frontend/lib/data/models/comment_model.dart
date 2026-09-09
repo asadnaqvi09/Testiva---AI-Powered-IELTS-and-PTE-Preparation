@@ -42,7 +42,7 @@ class CommentModel {
       parentId: json['parent_id'] as String?,
       content: json['content'] as String,
       fullName: json['full_name'] as String,
-      profileImage: json['profile_image'] as String?,
+      profileImage: (json['profile_image'] ?? json['avatar_url'])?.toString(),
       subscriptionType: json['subscription_type'] as String?,
       likeCount: json['like_count'] as int? ?? 0,
       likedByMe: json['liked_by_me'] as bool? ?? false,
@@ -52,17 +52,15 @@ class CommentModel {
   }
 
   String get timeAgo {
-    final difference = DateTime.now().difference(createdAt);
-    if (difference.inDays > 7) {
-      return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
+    final difference = DateTime.now().toUtc().difference(createdAt.toUtc());
+    if (difference.inSeconds < 60) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    if (difference.inDays < 35) return '${(difference.inDays / 7).floor()}w ago';
+    if (difference.inDays < 365) {
+      return '${(difference.inDays / 30).floor()}mo ago';
     }
+    return '${(difference.inDays / 365).floor()}y ago';
   }
 }

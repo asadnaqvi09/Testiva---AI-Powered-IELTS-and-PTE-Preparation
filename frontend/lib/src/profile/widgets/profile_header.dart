@@ -5,12 +5,16 @@ class ProfileHeader extends StatelessWidget {
   final bool isDarkMode;
   final Map<String, dynamic> userData;
   final VoidCallback? onEditPressed;
+  final VoidCallback? onAvatarTap;
+  final bool avatarUploading;
 
   const ProfileHeader({
     super.key,
     required this.isDarkMode,
     required this.userData,
     this.onEditPressed,
+    this.onAvatarTap,
+    this.avatarUploading = false,
   });
 
   String _memberSince(String? created) {
@@ -33,6 +37,7 @@ class ProfileHeader extends StatelessWidget {
     final String email = userData['email'] ?? 'user@email.com';
     final bool isPremium = userData['isPremium'] ?? false;
     final created = userData['created_at']?.toString();
+    final avatarUrl = userData['avatar_url']?.toString();
 
     String initials = 'U';
     try {
@@ -55,22 +60,68 @@ class ProfileHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFF475569),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              initials,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
+          GestureDetector(
+            onTap: avatarUploading ? null : onAvatarTap,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF475569),
+                    borderRadius: BorderRadius.circular(16),
+                    image: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(avatarUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: avatarUploading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : (avatarUrl == null || avatarUrl.isEmpty)
+                          ? Text(
+                              initials,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          : null,
+                ),
+                if (onAvatarTap != null && !avatarUploading)
+                  Positioned(
+                    right: -4,
+                    bottom: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007BFF),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.cardBg(context),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_outlined,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(width: 14),

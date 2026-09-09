@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:image_picker/image_picker.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/edit_profile_modal.dart';
 import '../dashboard/home/widgets/stats_row.dart';
@@ -27,6 +28,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isLoading = true;
+  bool _avatarUploading = false;
 
   Map<String, dynamic> _userData = {
     'name': 'User',
@@ -47,20 +49,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['user'] != null) {
+          final user = data['user'] as Map<String, dynamic>;
+          final unlocked = user['unlocked_exam']?.toString();
+          final subscription = (user['subscription'] ?? 'free').toString();
           final newUserData = {
-            'name': data['user']['full_name'] ?? data['user']['name'] ?? 'User Name',
-            'email': data['user']['email'] ?? 'user@email.com',
-            'isPremium': (data['user']['subscription'] ?? '').toString().toLowerCase() == 'premium',
-            'preference': data['user']['preference'],
-            'role': data['user']['role'] ?? 'user',
-            'subscription': data['user']['subscription'] ?? 'free',
-            'created_at': data['user']['created_at'] ?? data['user']['member_since'],
+            'id': user['id'],
+            'name': user['full_name'] ?? user['name'] ?? 'User Name',
+            'email': user['email'] ?? 'user@email.com',
+            'isPremium':
+                subscription.toLowerCase() == 'premium' ||
+                unlocked?.toUpperCase() == 'BOTH',
+            'preference': user['preference'],
+            'role': user['role'] ?? 'user',
+            'subscription': subscription,
+            'unlocked_exam': unlocked,
+            'avatar_url': user['avatar_url'],
+            'created_at': user['created_at'] ?? user['member_since'],
           };
           setState(() {
             _userData = newUserData;
             _isLoading = false;
           });
-          UserNotifier.notifier.value = newUserData;
+          UserNotifier.notifier.value = {
+            ...UserNotifier.notifier.value,
+            ...newUserData,
+          };
           return;
         }
       }
@@ -68,6 +81,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       debugPrint(e.toString());
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      setState(() => _avatarUploading = true);
+      final response = await ApiService.uploadAvatar(picked.path);
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (!mounted) return;
+      if (response.statusCode == 200 && body['success'] == true) {
+        final user = body['user'];
+        if (user is Map) {
+          setState(() {
+            _userData = {
+              ..._userData,
+              'avatar_url': user['avatar_url'],
+              'name': user['full_name'] ?? _userData['name'],
+            };
+          });
+          UserNotifier.notifier.value = {
+            ...UserNotifier.notifier.value,
+            'avatar_url': user['avatar_url'],
+          };
+        } else {
+          await _fetchUserProfileData();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Avatar updated'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(body['message']?.toString() ?? 'Avatar upload failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Avatar error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _avatarUploading = false);
     }
   }
 
@@ -399,7 +471,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      endDrawer: const CustomDrawer(),
+      drawer: const CustomDrawer(),
       appBar: AppHeader(
         scaffoldKey: _scaffoldKey,
         showBackButton: widget.asTab ? false : null,
@@ -474,6 +546,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         isDarkMode: AppTheme.isDark(context),
                         userData: _userData,
                         onEditPressed: null,
+                        onAvatarTap: _pickAndUploadAvatar,
+                        avatarUploading: _avatarUploading,
                       ),
                       const SizedBox(height: 25),
                       const StatsRow(),

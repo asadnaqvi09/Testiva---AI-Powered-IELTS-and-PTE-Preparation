@@ -11,9 +11,8 @@ class OtpScreen extends StatefulWidget {
   final String email;
 
   final String? password;
-  final String? devOtp;
 
-  const OtpScreen({required this.email, this.password, this.devOtp, super.key});
+  const OtpScreen({required this.email, this.password, super.key});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -34,13 +33,6 @@ class _OtpScreenState extends State<OtpScreen> {
   void initState() {
     super.initState();
     _startTimer();
-    final initialDevOtp = widget.devOtp;
-    if (initialDevOtp != null && initialDevOtp.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        showDevOtpSnackBar(context, {'devOtp': initialDevOtp});
-      });
-    }
   }
 
   void _startTimer() {
@@ -87,22 +79,24 @@ class _OtpScreenState extends State<OtpScreen> {
       });
       final responseData = jsonDecode(response.body);
       if (mounted) {
-        if (response.statusCode == 200 && responseData['success'] == true) {
-          showDevOtpSnackBar(context, responseData);
-          if (responseData['devOtp'] == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('A fresh OTP has been sent!'),
-                  backgroundColor: Colors.green),
-            );
-          }
+        if (response.statusCode == 200 &&
+            responseData['success'] == true &&
+            isOtpEmailSent(responseData)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(otpSendSuccessMessage(
+                fallback: 'A fresh OTP has been sent!',
+              )),
+              backgroundColor: Colors.green,
+            ),
+          );
           _startTimer();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content:
-                    Text(responseData['message'] ?? 'Failed to resend OTP'),
-                backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text(kOtpSendFailedMessage),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }

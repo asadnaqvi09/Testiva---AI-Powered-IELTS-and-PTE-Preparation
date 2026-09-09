@@ -17,6 +17,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
   String _userName = 'User';
   String _userTier = 'Free Member';
   String _initials = 'U';
+  bool _isPremium = false;
   bool _isLoadingHeader = true;
 
   @override
@@ -51,6 +52,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
           if (mounted) {
             setState(() {
               _userName = name;
+              _isPremium = isPremium;
               _userTier = isPremium ? 'Premium Member' : 'Free Member';
               _initials = calculatedInitials;
               _isLoadingHeader = false;
@@ -59,7 +61,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
           }
         }
       }
-      setState(() => _isLoadingHeader = false);
+      if (mounted) setState(() => _isLoadingHeader = false);
     } catch (e) {
       debugPrint("Drawer state fallback processing: ${e.toString()}");
       if (mounted) {
@@ -77,33 +79,35 @@ class _CustomDrawerState extends State<CustomDrawer> {
       backgroundColor: AppTheme.drawerBg(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(28),
-          bottomLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: Column(
         children: [
-          // Dynamic Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 60, 16, 16),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 30,
-                  backgroundColor: const Color(0xFF007BFF),
+                  radius: 28,
+                  backgroundColor: AppTheme.brandBlue,
                   child: _isLoadingHeader
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
-                      : Text(_initials,
+                      : Text(
+                          _initials,
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20)),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                 ),
-                const SizedBox(width: 15),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,85 +117,62 @@ class _CustomDrawerState extends State<CustomDrawer> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: theme.textTheme.bodyLarge?.color),
-                      ),
-                      Text(
-                        _userTier,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _userTier.contains('Premium')
-                              ? const Color(0xFFD97706)
-                              : Colors.grey,
-                          fontWeight: _userTier.contains('Premium')
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.bodyLarge?.color,
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (_isPremium) ...[
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 14,
+                              color: Color(0xFFE8B339),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Flexible(
+                            child: Text(
+                              _userTier,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _isPremium
+                                    ? const Color(0xFFD97706)
+                                    : Colors.grey,
+                                fontWeight: _isPremium
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: AppTheme.circleIconDecor(context),
-                    child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(Icons.close, size: 22, color: Colors.grey),
                   ),
                 ),
               ],
             ),
           ),
           const Divider(height: 1, indent: 20, endIndent: 20),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 _buildDrawerItem(
                   context,
-                  icon: Icons.dashboard_outlined,
-                  text: 'Dashboard Home',
-                  isSelected:
-                      currentRoute == '/home' || currentRoute == '/dashboard',
-                  onTap: () =>
-                      _navigateToRoute(context, currentRoute, '/home'),
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.model_training_outlined,
-                  text: 'Exam Prep Track',
-                  isSelected: currentRoute == '/prep',
-                  onTap: () =>
-                      _navigateToRoute(context, currentRoute, '/prep'),
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.assignment_outlined,
-                  text: 'Mock Exams Engine',
-                  isSelected: currentRoute == '/mocks',
-                  onTap: () =>
-                      _navigateToRoute(context, currentRoute, '/mocks'),
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.person_outline,
-                  text: 'My Profile Metrics',
-                  isSelected: currentRoute == '/profile',
-                  onTap: () =>
-                      _navigateToRoute(context, currentRoute, '/profile'),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                  child: Divider(),
-                ),
-                _buildDrawerItem(
-                  context,
                   icon: Icons.settings_outlined,
-                  text: 'Settings Options',
+                  text: 'Settings',
                   isSelected: currentRoute == '/settings',
                   onTap: () =>
                       _navigateToRoute(context, currentRoute, '/settings'),
@@ -199,7 +180,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                 _buildDrawerItem(
                   context,
                   icon: Icons.chat_bubble_outline,
-                  text: 'Feedback Support',
+                  text: 'Feedback',
                   isSelected: currentRoute == '/feedback',
                   onTap: () =>
                       _navigateToRoute(context, currentRoute, '/feedback'),
@@ -221,7 +202,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   onTap: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Thanks for supporting Testiva!')),
+                      const SnackBar(
+                          content: Text('Thanks for supporting Testiva!')),
                     );
                   },
                 ),
@@ -230,18 +212,20 @@ class _CustomDrawerState extends State<CustomDrawer> {
           ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
             child: SizedBox(
               width: double.infinity,
               height: 50,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  final hostContext =
-                      Navigator.of(context, rootNavigator: true).overlay!.context;
+                  final hostContext = Navigator.of(context, rootNavigator: true)
+                      .overlay!
+                      .context;
                   Navigator.pop(context);
                   showDialog(
                     context: hostContext,
-                    builder: (dialogContext) => LogoutDialog(hostContext: hostContext),
+                    builder: (dialogContext) =>
+                        LogoutDialog(hostContext: hostContext),
                   );
                 },
                 icon: const Icon(Icons.logout, color: Color(0xFFDC2626), size: 18),
@@ -263,7 +247,6 @@ class _CustomDrawerState extends State<CustomDrawer> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
         ],
       ),
     );
@@ -271,11 +254,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
 
   void _navigateToRoute(
       BuildContext context, String? current, String target) {
-    Navigator.pop(context);
-    if (current != target) {
-      Navigator.pushNamedAndRemoveUntil(
-          context, target, (route) => route.isFirst);
-    }
+    final navigator = Navigator.of(context);
+    navigator.pop(); // close drawer only
+    if (current == target) return;
+    // Push on top of Dashboard — do NOT removeUntil first/AuthGate
+    // (that left onboarding under the stack and looked like a logout).
+    navigator.pushNamed(target);
   }
 
   Widget _buildDrawerItem(
@@ -287,36 +271,40 @@ class _CustomDrawerState extends State<CustomDrawer> {
     int badgeCount = 0,
   }) {
     final theme = Theme.of(context);
+    final borderColor = AppTheme.isDark(context)
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFE8ECF0);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isSelected
-            ? const Color(0xFF007BFF).withValues(alpha: 0.1)
+            ? AppTheme.brandBlue.withValues(alpha: 0.1)
             : AppTheme.tileItemBg(context),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isSelected
-              ? const Color(0xFF007BFF).withValues(alpha: 0.3)
-              : Colors.transparent,
+              ? AppTheme.brandBlue.withValues(alpha: 0.3)
+              : borderColor,
         ),
       ),
       child: ListTile(
         visualDensity: VisualDensity.compact,
-        leading:
-            Icon(icon, color: isSelected ? const Color(0xFF007BFF) : Colors.blueGrey),
+        leading: Icon(icon, color: AppTheme.brandBlue),
         title: Text(
           text,
           style: TextStyle(
             color: isSelected
-                ? const Color(0xFF007BFF)
+                ? AppTheme.brandBlue
                 : theme.textTheme.bodyLarge?.color,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 15,
           ),
         ),
         trailing: badgeCount > 0
             ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(12),
@@ -330,7 +318,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   ),
                 ),
               )
-            : const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+            : const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
         onTap: onTap,
       ),
     );

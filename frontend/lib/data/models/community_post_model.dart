@@ -49,6 +49,8 @@ class CommunityPostModel {
   }
 
   CommunityPostModel copyWith({
+    String? title,
+    String? content,
     int? likes,
     int? comments,
     bool? likedByMe,
@@ -59,8 +61,8 @@ class CommunityPostModel {
       authorName: authorName,
       authorAvatar: authorAvatar,
       tag: tag,
-      title: title,
-      content: content,
+      title: title ?? this.title,
+      content: content ?? this.content,
       likes: likes ?? this.likes,
       comments: comments ?? this.comments,
       likedByMe: likedByMe ?? this.likedByMe,
@@ -69,17 +71,15 @@ class CommunityPostModel {
   }
 
   String get timeAgo {
-    final difference = DateTime.now().difference(createdAt);
-    if (difference.inDays > 7) {
-      return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
+    final difference = DateTime.now().toUtc().difference(createdAt.toUtc());
+    if (difference.inSeconds < 60) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    if (difference.inDays < 35) return '${(difference.inDays / 7).floor()}w ago';
+    if (difference.inDays < 365) {
+      return '${(difference.inDays / 30).floor()}mo ago';
     }
+    return '${(difference.inDays / 365).floor()}y ago';
   }
 }

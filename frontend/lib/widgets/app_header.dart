@@ -58,11 +58,35 @@ class _AppHeaderState extends State<AppHeader> {
   void _openMenu() {
     final state = widget.scaffoldKey?.currentState;
     if (state == null) return;
-    if (state.hasEndDrawer) {
-      state.openEndDrawer();
-    } else {
+    if (state.hasDrawer) {
       state.openDrawer();
+    } else if (state.hasEndDrawer) {
+      state.openEndDrawer();
     }
+  }
+
+  Widget _profileAvatar(String initials) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        );
+      },
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: AppTheme.brandBlue,
+        child: Text(
+          initials,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -73,44 +97,34 @@ class _AppHeaderState extends State<AppHeader> {
     final bool canPop = Navigator.canPop(context);
     final bool displayBackButton = widget.showBackButton ?? canPop;
 
+    // Menu on the LEFT (same side as drawer). Back replaces menu on push routes.
+    final Widget left = displayBackButton
+        ? CircleIconButton(
+            icon: Icons.arrow_back_rounded,
+            onTap: () => Navigator.pop(context),
+          )
+        : CircleIconButton(
+            icon: Icons.menu_rounded,
+            onTap: _openMenu,
+          );
+
+    final Widget right = widget.showProfileAvatar
+        ? _profileAvatar(initials)
+        : const SizedBox(width: 36);
+
     return SafeArea(
       bottom: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
           children: [
-            CircleIconButton(
-              icon: displayBackButton ? Icons.arrow_back_rounded : Icons.menu_rounded,
-              onTap: displayBackButton ? () => Navigator.pop(context) : _openMenu,
-            ),
+            left,
             const Expanded(
               child: Center(
                 child: BrandMark(markSize: 32, fontSize: 17),
               ),
             ),
-            widget.showProfileAvatar
-                ? GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                      );
-                    },
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppTheme.brandBlue,
-                      child: Text(
-                        initials,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  )
-                : const SizedBox(width: 36),
+            right,
           ],
         ),
       ),

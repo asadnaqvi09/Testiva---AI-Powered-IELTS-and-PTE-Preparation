@@ -506,6 +506,28 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
                     ),
                   ),
                 if (q.hasAudio) _buildAudioBar(context),
+                if (q.isListening && !q.hasAudio)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.volume_off, size: 18, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Admin has not attached audio for this listening mock.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
@@ -523,6 +545,8 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
                             _chip(q.sectionName, const Color(0xFFF1F5F9), const Color(0xFF64748B)),
                           ],
                         ),
+                        const SizedBox(height: 10),
+                        _buildModuleHint(context, q),
                         const SizedBox(height: 12),
                         Text(
                           '${_currentIndex + 1}. ${q.text}',
@@ -557,6 +581,74 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Text(label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildModuleHint(BuildContext context, RuntimeQuestion q) {
+    String title;
+    String body;
+    IconData icon;
+    Color color;
+    if (q.isSpeaking) {
+      title = 'Speaking';
+      body = 'Read the prompt, then record. Gemini Flash scores fluency, vocabulary, grammar, and pronunciation.';
+      icon = Icons.mic_none_rounded;
+      color = const Color(0xFFDB2777);
+    } else if (q.isWriting) {
+      title = 'Writing';
+      body = 'Write at least the word limit. Gemini scores task response, cohesion, vocabulary, and grammar.';
+      icon = Icons.edit_outlined;
+      color = const Color(0xFFEA580C);
+    } else if (q.isListening) {
+      title = 'Listening';
+      body = 'Play the audio, then answer. Score is correct answers mapped to an IELTS listening band.';
+      icon = Icons.headphones_outlined;
+      color = const Color(0xFF16A34A);
+    } else {
+      title = 'Reading';
+      body = 'Use the passage above. Score is correct answers mapped to an IELTS reading band.';
+      icon = Icons.menu_book_outlined;
+      color = const Color(0xFF7C3AED);
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  body,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: AppTheme.primaryText(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
