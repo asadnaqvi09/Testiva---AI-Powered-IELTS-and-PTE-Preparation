@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math'; 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/core/constants/app_colors.dart';
@@ -36,7 +35,6 @@ class _PrepScreenState extends State<PrepScreen> {
   String _currentTip = "Focus on Writing Task 2 - it carries the most weight in your score.";
   String? _focusModule;
   String? _focusReason;
-  bool _tipIsSample = true;
 
   @override
   void initState() {
@@ -83,7 +81,6 @@ class _PrepScreenState extends State<PrepScreen> {
               _currentTip = body['tip'];
               _focusModule = body['focus_module']?.toString();
               _focusReason = body['reason']?.toString();
-              _tipIsSample = body['source']?.toString() == 'fallback';
             });
           }
           return;
@@ -97,7 +94,6 @@ class _PrepScreenState extends State<PrepScreen> {
         _currentTip = _aiTips[Random().nextInt(_aiTips.length)];
         _focusModule = null;
         _focusReason = null;
-        _tipIsSample = true;
       });
     }
   }
@@ -128,9 +124,15 @@ class _PrepScreenState extends State<PrepScreen> {
                 if (titleLower.contains('listen')) moduleColor = Colors.amber;
                 if (titleLower.contains('speak')) moduleColor = Colors.purple;
 
+                int defaultPdfs = 0;
+                if (titleLower.contains('read')) defaultPdfs = 3;
+                if (titleLower.contains('writ')) defaultPdfs = 2;
+                if (titleLower.contains('listen')) defaultPdfs = 1;
+
                 return PrepModule(
                   title: sectionStr,
                   lessonsCount: json['lessonsCount'] ?? json['lessons_count'] ?? (titleLower.contains('read') ? 12 : 8),
+                  pdfCount: json['pdfCount'] ?? json['pdf_count'] ?? defaultPdfs,
                   icon: moduleIcon,
                   color: moduleColor,
                   isCompleted: json['isCompleted'] ?? json['is_completed'] ?? false,
@@ -151,16 +153,38 @@ class _PrepScreenState extends State<PrepScreen> {
   void _loadOriginalFallbackModules() {
     if (mounted) {
       setState(() {
-        _liveModules = [];
+        _liveModules = [
+          PrepModule(
+            title: 'Reading',
+            lessonsCount: 12,
+            pdfCount: 3,
+            icon: Icons.book_outlined,
+            color: Colors.blue,
+          ),
+          PrepModule(
+            title: 'Writing',
+            lessonsCount: 8,
+            pdfCount: 2,
+            icon: Icons.edit_note,
+            color: Colors.orange,
+          ),
+          PrepModule(
+            title: 'Listening',
+            lessonsCount: 8,
+            pdfCount: 1,
+            icon: Icons.headphones_outlined,
+            color: Colors.amber,
+          ),
+          PrepModule(
+            title: 'Speaking',
+            lessonsCount: 8,
+            icon: Icons.record_voice_over_outlined,
+            color: Colors.purple,
+            isCompleted: true,
+          ),
+        ];
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Preparation content unavailable. Showing empty state (not offline sample data).',
-          ),
-        ),
-      );
     }
   }
 
@@ -169,18 +193,8 @@ class _PrepScreenState extends State<PrepScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      drawer: const CustomDrawer(),
-      appBar: AppHeader(
-        scaffoldKey: _scaffoldKey,
-        titleWidget: Text(
-          '$selectedType Prep',
-          style: TextStyle(
-            color: AppTheme.primaryText(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-      ),
+      endDrawer: const CustomDrawer(),
+      appBar: AppHeader(scaffoldKey: _scaffoldKey, showBackButton: false),
       body: RefreshIndicator(
         onRefresh: _fetchLiveModules,
         color: AppColors.primary,
@@ -190,6 +204,25 @@ class _PrepScreenState extends State<PrepScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Preparation',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryText(context),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Structured content for all English proficiency tests',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  color: AppTheme.secondaryText(context),
+                ),
+              ),
+              const SizedBox(height: 18),
               Row(children: [
                 _buildExamTab(
                   context,
@@ -207,7 +240,53 @@ class _PrepScreenState extends State<PrepScreen> {
                   isLocked: _isTabLocked('PTE'),
                 ),
               ]),
-              const SizedBox(height: 25),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        selectedType == 'PTE' ? '🌐' : 'GB',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            color: Color(0xFF1D4ED8),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          children: [
+                            const TextSpan(text: 'Showing content for your preference: '),
+                            TextSpan(
+                              text: selectedType,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            const TextSpan(text: ' (Free Plan)'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               _buildAIRecommendation(context),
               const SizedBox(height: 25),
               Text('$selectedType Modules', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText(context))),
@@ -215,7 +294,7 @@ class _PrepScreenState extends State<PrepScreen> {
               _isLoading ? const Center(child: CircularProgressIndicator()) : GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 1.1),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: 0.95),
                 itemCount: _liveModules.length,
                 itemBuilder: (context, index) {
                   final module = _liveModules[index];
@@ -225,9 +304,68 @@ class _PrepScreenState extends State<PrepScreen> {
                   return ModuleCard(module: module, isRecommended: isRecommended);
                 },
               ),
+              const SizedBox(height: 28),
+              Text(
+                "What's Inside Each Module",
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryText(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _insideItem(context, Icons.layers_outlined, const Color(0xFF22C55E), 'Structured Lessons', '3-5 parts per section, 5-10 items each'),
+              _insideItem(context, Icons.lightbulb_outline, const Color(0xFFF59E0B), 'Expert Tips', 'Proven strategies from high scorers'),
+              _insideItem(context, Icons.gps_fixed, const Color(0xFFEC4899), 'Practice Quizzes', 'Test your understanding after each part'),
+              _insideItem(context, Icons.picture_as_pdf_outlined, const Color(0xFF8B5CF6), 'PDF Study Materials', 'Admin-uploaded PDFs, guides, and worksheets'),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _insideItem(BuildContext context, IconData icon, Color color, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppTheme.primaryText(context),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: AppTheme.secondaryText(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -262,19 +400,34 @@ class _PrepScreenState extends State<PrepScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.lightbulb, color: Colors.blue, size: 24),
-            const SizedBox(width: 15),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.lightbulb_outline, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Text(
-                        _tipIsSample ? 'Sample Study Tip' : 'Study Focus',
-                        style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11),
+                      const Text(
+                        'AI Recommendation',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
                       ),
-                      const SizedBox(width: 8),
                       if (_focusModule != null && _focusModule!.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -287,7 +440,6 @@ class _PrepScreenState extends State<PrepScreen> {
                             style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 10),
                           ),
                         ),
-                      const Spacer(),
                       Text(
                         'Tap to refresh',
                         style: TextStyle(fontSize: 10, color: AppTheme.secondaryText(context)),
@@ -342,21 +494,35 @@ class _PrepScreenState extends State<PrepScreen> {
           child: Stack(
             children: [
               Center(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppTheme.primaryText(context),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      code,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: isSelected ? Colors.white70 : AppTheme.secondaryText(context),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: isSelected ? Colors.white : AppTheme.primaryText(context),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    if (isLocked) ...[
+                      const SizedBox(height: 6),
+                      Icon(Icons.lock_outline, size: 14, color: isSelected ? Colors.white70 : Colors.grey),
+                    ],
+                  ],
                 ),
               ),
-              if (isLocked)
-                const Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Icon(Icons.lock, size: 16, color: Colors.grey),
-                ),
             ],
           ),
         ),

@@ -237,9 +237,19 @@ class _EditProfileModalState extends State<EditProfileModal> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Text(
-                              'Save Changes',
-                              style: TextStyle(color: Colors.white),
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check, color: Colors.white, size: 18),
+                                SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'Save Changes',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ],
                             ),
                     ),
                   ),

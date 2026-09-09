@@ -133,40 +133,47 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
                     : null,
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.post.authorName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: AppTheme.primaryText(context),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          widget.post.authorName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppTheme.primaryText(context),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.tagBg(context),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            widget.post.tag,
+                            style: TextStyle(
+                              color: AppTheme.tagText(context),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    widget.post.timeAgo,
-                    style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 11),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.tagBg(context),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  widget.post.tag,
-                  style: TextStyle(
-                    color: AppTheme.tagText(context),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+                    Text(
+                      widget.post.timeAgo,
+                      style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 11),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
               Icon(Icons.more_horiz, color: AppTheme.secondaryText(context), size: 20),
             ],
           ),
@@ -181,12 +188,31 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            widget.post.content,
-            style: TextStyle(
-              color: AppTheme.secondaryText(context),
-              fontSize: 13,
-              height: 1.5,
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: widget.post.content.length > 140
+                      ? '${widget.post.content.substring(0, 140)}… '
+                      : '${widget.post.content} ',
+                  style: TextStyle(
+                    color: AppTheme.secondaryText(context),
+                    fontSize: 13,
+                    height: 1.5,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                if (widget.post.content.length > 140)
+                  const TextSpan(
+                    text: 'Read more',
+                    style: TextStyle(
+                      color: Color(0xFF007BFF),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -235,8 +261,11 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Divider(color: AppTheme.dividerColor(context), height: 1),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               _action(
                 isLiked ? Icons.favorite : Icons.favorite_border,

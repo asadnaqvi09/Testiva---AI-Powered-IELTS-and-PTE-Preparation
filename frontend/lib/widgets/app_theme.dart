@@ -65,9 +65,18 @@ class AppTheme {
       ? []
       : [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           )
         ];
+
+  static const Color brandBlue = Color(0xFF007BFF);
+  static const Color mutedIcon = Color(0xFF94A3B8);
+  static const Color chipFill = Color(0xFFF1F5F9);
+
+  static BoxDecoration circleIconDecor(BuildContext context) => BoxDecoration(
+        color: isDark(context) ? const Color(0xFF2C2C2C) : const Color(0xFFF1F5F9),
+        shape: BoxShape.circle,
+      );
 }

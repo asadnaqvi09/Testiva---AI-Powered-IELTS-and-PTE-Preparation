@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/config/app_config.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../forgot_password/forgot_password_screen.dart';
+import 'demo_credentials.dart';
 import 'social_login_btns.dart';
 
 class LoginForm extends StatefulWidget {
@@ -20,38 +22,37 @@ class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass = TextEditingController();
-  bool _showDemo = false;
   bool _isLoading = false;
   bool _obscurePass = true;
-  bool _rememberMe = false;
+  bool _showDemo = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedEmail();
+    _loadSavedCredentials();
   }
 
-  Future<void> _loadSavedEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('saved_password');
-    final savedEmail = prefs.getString('saved_email') ?? '';
-    if (savedEmail.isNotEmpty) {
-      setState(() {
-        _email.text = savedEmail;
-        _rememberMe = true;
-      });
-    }
+  Future<void> _loadSavedCredentials() async {
+    final saved = await ApiService.loadStudentCredentials();
+    if (!mounted) return;
+    if (saved.email.isEmpty && saved.password.isEmpty) return;
+    setState(() {
+      if (saved.email.isNotEmpty) _email.text = saved.email;
+      if (saved.password.isNotEmpty) _pass.text = saved.password;
+    });
   }
-
-  void _fill(String e, String p) => setState(() {
-        _email.text = e;
-        _pass.text = p;
-      });
 
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _errorMessage = 'Please fill in all fields to continue.');
+      return;
+    }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final emailStr = _email.text.trim().toLowerCase();
@@ -64,38 +65,53 @@ class _LoginFormState extends State<LoginForm> {
 
       if (mounted) {
         if (response.statusCode == 200 || response.statusCode == 201) {
-          final resData = jsonDecode(response.body);
-          await ApiService.persistAuthResponse(
-            Map<String, dynamic>.from(resData as Map),
-          );
+          try {
+            final resData = ApiService.parseJsonObject(response.body);
+            final payload = ApiService.unwrapAuthPayload(resData);
+            await ApiService.persistAuthResponse(payload);
 
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('saved_password');
-          if (_rememberMe) {
-            await prefs.setString('saved_email', emailStr);
-          } else {
-            await prefs.remove('saved_email');
+            final user = ApiService.userFromAuthPayload(payload);
+            await ApiService.saveStudentCredentials(
+              email: emailStr,
+              password: passStr,
+              role: user['role']?.toString(),
+            );
+            if (user.isEmpty) {
+              user['email'] = emailStr;
+            }
+
+            if (!mounted) return;
+
+            await AuthNavigationHelper.navigateAfterAuth(
+              context,
+              user: user,
+              successMessage: 'Welcome back!',
+            );
+          } catch (parseErr) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Login response error: $parseErr\n'
+                  'HTTP ${response.statusCode}  Host: ${AppConfig.apiOrigin}',
+                ),
+                duration: const Duration(seconds: 8),
+              ),
+            );
           }
-
-          final user = Map<String, dynamic>.from(
-            (resData['user'] as Map<String, dynamic>?) ?? {},
-          );
-          if (user.isEmpty) {
-            user['email'] = emailStr;
-          }
-
-          if (!mounted) return;
-
-          await AuthNavigationHelper.navigateAfterAuth(
-            context,
-            user: user,
-            successMessage: 'Welcome back!',
-          );
         } else {
-          final errorData = jsonDecode(response.body);
+          String message = 'Login failed (HTTP ${response.statusCode})';
+          try {
+            final errorData = jsonDecode(response.body);
+            final serverMsg = errorData is Map ? errorData['message'] : null;
+            if (serverMsg != null) {
+              message = '$serverMsg (HTTP ${response.statusCode})';
+            }
+          } catch (_) {}
+          setState(() => _errorMessage = message);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorData['message'] ?? 'Login failed'),
+              content: Text(message),
               backgroundColor:
                   response.statusCode == 409 ? Colors.orange : null,
             ),
@@ -103,11 +119,13 @@ class _LoginFormState extends State<LoginForm> {
         }
       }
     } catch (e) {
-      print('Login Error: $e');
+      print('Login Error: $e  host=${AppConfig.apiOrigin}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Connection error: Unable to connect to server')),
+          SnackBar(
+            content: Text(AppConfig.formatConnectionError(e)),
+            duration: const Duration(seconds: 8),
+          ),
         );
       }
     } finally {
@@ -155,76 +173,73 @@ class _LoginFormState extends State<LoginForm> {
             onPressed: () => setState(() => _obscurePass = !_obscurePass),
           ),
         ),
-        Row(
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                value: _rememberMe,
-                activeColor: AppColors.primary,
-                onChanged: (val) => setState(() => _rememberMe = val ?? false),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+              );
+            },
+            child: const Text(
+              'Forgot Password?',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
-            const SizedBox(width: 8),
-            const Text(
-              'Remember email',
-              style: TextStyle(color: AppColors.textGrey, fontSize: 13),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : AppButton(
-                text: 'Login',
-                onPressed: _handleLogin,
-              ),
-        const SizedBox(height: 20),
-        const SocialLoginBtns(),
-        Center(
-          child: TextButton.icon(
-            onPressed: () => setState(() => _showDemo = !_showDemo),
-            icon: Icon(_showDemo ? Icons.visibility_off : Icons.visibility,
-                size: 18, color: AppColors.textGrey),
-            label: Text('${_showDemo ? 'Hide' : 'Show'} Demo Credentials',
-                style: const TextStyle(color: AppColors.textGrey)),
           ),
         ),
-        if (_showDemo) _demoBox(),
+        if (_errorMessage != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      color: Color(0xFFB91C1C),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        AppButton(
+          text: _isLoading ? 'Signing in...' : 'Login',
+          isLoading: _isLoading,
+          onPressed: _isLoading ? null : _handleLogin,
+        ),
+        const SizedBox(height: 20),
+        const SocialLoginBtns(),
+        const SizedBox(height: 16),
+        DemoCredentials(
+          expanded: _showDemo,
+          onToggle: () => setState(() => _showDemo = !_showDemo),
+          onFill: (email, password) {
+            setState(() {
+              _email.text = email;
+              _pass.text = password;
+            });
+          },
+        ),
       ]),
     );
   }
-
-  Widget _demoBox() => Container(
-        margin: const EdgeInsets.only(top: 10),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-        ),
-        child: Column(children: [
-          _demoTile('Free User', 's23-0385@student.uoh.pk', 'aksa12345@sk',
-              Icons.person_outline, AppColors.primary),
-          _demoTile('Premium', 'premiumuser@example.com', 'aksa12345@sk',
-              Icons.star_outline, Colors.orange),
-          _demoTile('Admin', 'ragesr56@gmail.com', 'TestFlow12345@sk',
-              Icons.admin_panel_settings_outlined, Colors.deepPurple),
-        ]),
-      );
-
-  Widget _demoTile(
-          String l, String e, String password, IconData i, Color c) =>
-      GestureDetector(
-        onTap: () => _fill(e, password),
-        child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(children: [
-              Icon(i, size: 16, color: c),
-              const SizedBox(width: 8),
-              Text('$l: $e',
-                  style: const TextStyle(fontSize: 12, color: AppColors.primary)),
-            ])),
-      );
 }

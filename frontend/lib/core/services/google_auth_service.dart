@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'api_service.dart';
@@ -76,16 +75,19 @@ class GoogleAuthService {
         overlayShown = false;
       }
 
-      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      final responseData = ApiService.parseJsonObject(response.body);
+      final payload = ApiService.unwrapAuthPayload(responseData);
 
-      if (response.statusCode == 200 && responseData['success'] == true) {
-        await ApiService.persistAuthResponse(responseData);
+      if (response.statusCode == 200 &&
+          (responseData['success'] == true || payload['accessToken'] != null)) {
+        await ApiService.persistAuthResponse(payload);
 
         if (!context.mounted) return;
 
-        final user = Map<String, dynamic>.from(
-          responseData['user'] as Map<String, dynamic>,
-        );
+        final user = ApiService.userFromAuthPayload(payload);
+        if (user.isEmpty) {
+          user['email'] = googleUser.email;
+        }
 
         await AuthNavigationHelper.navigateAfterAuth(
           context,

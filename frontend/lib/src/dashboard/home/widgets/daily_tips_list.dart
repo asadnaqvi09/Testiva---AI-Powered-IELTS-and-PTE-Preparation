@@ -22,21 +22,13 @@ class DailyTipsList extends StatelessWidget {
                 color: AppTheme.primaryText(context),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white12
-                    : const Color(0xFF007BFF).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'Sample',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : const Color(0xFF007BFF),
-                ),
+            Text(
+              'See all',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : const Color(0xFF007BFF),
               ),
             ),
           ],
@@ -46,9 +38,9 @@ class DailyTipsList extends StatelessWidget {
             context,
             'Reading Tip',
             'Practice skimming passages in under 2 minutes to improve reading speed and comprehension.',
-            Icons.menu_book,
+            Icons.auto_stories,
             const Color(0xFFE3F2FD),
-            const Color(0xFF007BFF)
+            const Color(0xFF1565C0)
         ),
         const SizedBox(height: 15),
         _tipCard(
@@ -56,15 +48,15 @@ class DailyTipsList extends StatelessWidget {
             'Listening Strategy',
             'Listen to BBC World Service daily to improve accent recognition for IELTS Listening.',
             Icons.headphones,
-            const Color(0xFFFFF8E1),
-            const Color(0xFFFFA000)
+            const Color(0xFFFFF0E6),
+            const Color(0xFFA67C52)
         ),
         const SizedBox(height: 15),
         _tipCard(
             context,
             'Writing Boost',
             "Use linking phrases like 'furthermore', 'however' and 'in contrast' to improve cohesion score.",
-            Icons.edit_note,
+            Icons.draw,
             const Color(0xFFE8F5E9),
             const Color(0xFF43A047)
         ),
@@ -73,9 +65,9 @@ class DailyTipsList extends StatelessWidget {
             context,
             'Speaking Practice',
             'Record yourself speaking for 2 minutes on random topics. Review for fluency and vocabulary.',
-            Icons.interpreter_mode,
+            Icons.record_voice_over,
             const Color(0xFFF3E5F5),
-            const Color(0xFF8E24AA)
+            const Color(0xFF7B1FA2)
         ),
       ],
     );

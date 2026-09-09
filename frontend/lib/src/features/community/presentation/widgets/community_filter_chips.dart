@@ -13,7 +13,7 @@ class CommunityFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filters = ['All', 'General', 'IELTS', 'PTE'];
+    final filters = ['All', 'Popular', 'Recent', 'IELTS', 'PTE'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),

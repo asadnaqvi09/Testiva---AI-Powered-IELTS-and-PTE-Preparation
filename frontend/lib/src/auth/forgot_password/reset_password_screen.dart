@@ -48,6 +48,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       final responseData = jsonDecode(response.body);
 
       if (response.statusCode == 200 && responseData['success'] == true) {
+        await ApiService.saveStudentCredentials(
+          email: widget.email.trim().toLowerCase(),
+          password: _pass.text,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

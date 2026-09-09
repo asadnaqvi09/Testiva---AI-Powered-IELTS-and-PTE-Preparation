@@ -36,78 +36,89 @@ class QuickActionsGrid extends StatelessWidget {
             : preference.toUpperCase();
         final bool showIeltsPrimary = primaryTrack == 'IELTS';
 
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 15,
-          crossAxisSpacing: 15,
-          childAspectRatio: 1.1,
+        return Column(
           children: [
-            // Start Mock (matches unlocked / preference track)
-            _actionCard(
-              context,
-              showIeltsPrimary ? 'Start Mock' : 'PTE Mock',
-              showIeltsPrimary ? 'IELTS Reading' : 'Start Mock Test',
-              Icons.description_outlined,
-              Colors.blue,
-              isLocked: false,
-              onTap: () => onActionTap(1),
+            Row(
+              children: [
+                Text(
+                  'Quick Actions',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryText(context),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '4 available',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: AppTheme.secondaryText(context),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            
-            // IELTS Prep Card
-            _actionCard(
-              context,
-              'IELTS Prep',
-              isIeltsLocked ? 'Unlock Premium' : 'IELTS Writing',
-              Icons.menu_book_outlined,
-              isIeltsLocked ? const Color(0xFF94A3B8) : Colors.green,
-              isLocked: isIeltsLocked,
-              onTap: () {
-                if (isIeltsLocked) {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => const PremiumModal(),
-                  );
-                } else {
-                  onActionTap(2);
-                }
-              },
-            ),
-
-            // Community Card (unlocked)
-            _actionCard(
-              context,
-              'Community',
-              'Discuss & learn',
-              Icons.people_outline,
-              Colors.orange,
-              isLocked: false,
-              onTap: () => onActionTap(3),
-            ),
-
-            // PTE Prep Card
-            _actionCard(
-              context,
-              'PTE Prep',
-              isPteLocked ? 'Unlock Premium' : 'PTE Preparation',
-              Icons.track_changes,
-              isPteLocked ? const Color(0xFF94A3B8) : Colors.purple,
-              isLocked: isPteLocked,
-              onTap: () {
-                if (isPteLocked) {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => const PremiumModal(),
-                  );
-                } else {
-                  onActionTap(2);
-                }
-              },
+            const SizedBox(height: 14),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.25,
+              children: [
+                _actionCard(
+                  context,
+                  showIeltsPrimary ? 'Start Mock' : 'PTE Mock',
+                  showIeltsPrimary ? 'IELTS Reading' : 'Start Mock Test',
+                  Icons.description_outlined,
+                  const Color(0xFF007BFF),
+                  isLocked: false,
+                  onTap: () => onActionTap(1),
+                ),
+                _actionCard(
+                  context,
+                  'Continue Prep',
+                  isIeltsLocked ? 'Unlock Premium' : 'IELTS Writing',
+                  Icons.menu_book_outlined,
+                  isIeltsLocked ? const Color(0xFF94A3B8) : const Color(0xFF22C55E),
+                  isLocked: isIeltsLocked,
+                  onTap: () {
+                    if (isIeltsLocked) {
+                      _showPremium(context);
+                    } else {
+                      onActionTap(2);
+                    }
+                  },
+                ),
+                _actionCard(
+                  context,
+                  'Community',
+                  'Discuss & learn',
+                  Icons.people_outline,
+                  const Color(0xFFF59E0B),
+                  isLocked: false,
+                  onTap: () => onActionTap(3),
+                ),
+                _actionCard(
+                  context,
+                  'PTE Prep',
+                  isPteLocked ? 'Unlock Premium' : 'PTE Preparation',
+                  Icons.track_changes,
+                  isPteLocked ? const Color(0xFF94A3B8) : const Color(0xFF8B5CF6),
+                  isLocked: isPteLocked,
+                  onTap: () {
+                    if (isPteLocked) {
+                      _showPremium(context);
+                    } else {
+                      onActionTap(2);
+                    }
+                  },
+                ),
+              ],
             ),
           ],
         );
@@ -115,38 +126,73 @@ class QuickActionsGrid extends StatelessWidget {
     );
   }
 
-  Widget _actionCard(BuildContext context, String title, String sub, IconData icon, Color color, {bool isLocked = false, required VoidCallback onTap}) {
+  void _showPremium(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const PremiumModal(),
+    );
+  }
+
+  Widget _actionCard(
+    BuildContext context,
+    String title,
+    String sub,
+    IconData icon,
+    Color color, {
+    bool isLocked = false,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppTheme.cardBg(context),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: AppTheme.cardShadow(context),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Icon(icon, color: color),
-            if (isLocked) Icon(Icons.lock_outline, size: 16, color: AppTheme.secondaryText(context)),
-          ]),
-          const Spacer(),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              color: AppTheme.primaryText(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const Spacer(),
+                if (isLocked)
+                  Icon(Icons.lock_outline, size: 16, color: AppTheme.secondaryText(context)),
+              ],
             ),
-          ),
-          Text(
-            sub,
-            style: TextStyle(
-              color: AppTheme.secondaryText(context),
-              fontSize: 12,
+            const Spacer(),
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: AppTheme.primaryText(context),
+              ),
             ),
-          ),
-        ]),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                color: AppTheme.secondaryText(context),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

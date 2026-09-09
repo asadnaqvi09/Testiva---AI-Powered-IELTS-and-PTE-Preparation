@@ -11,6 +11,7 @@ import '../../widgets/app_header.dart';
 import '../../widgets/custom_drawer.dart';
 import 'test_overview_screen.dart';
 import 'widgets/mock_test_card.dart';
+import '../dashboard/home/widgets/premium_modal.dart';
 
 class MocksScreen extends StatefulWidget {
   final VoidCallback onStartTestRequested;
@@ -117,8 +118,11 @@ class _MocksScreenState extends State<MocksScreen> {
               final allowed = list.where((item) {
                 final map = item as Map<String, dynamic>;
                 final type =
-                    (map['exam_type'] ?? map['examType'] ?? '').toString();
-                return type.isEmpty || _canAccessExam(type);
+                    (map['exam_type'] ?? map['examType'] ?? '').toString().toUpperCase();
+                if (type.contains('TOEFL')) return false;
+                return type.isEmpty || type == 'IELTS' || type == 'PTE'
+                    ? _canAccessExam(type.isEmpty ? 'IELTS' : type)
+                    : false;
               }).toList();
               await LocalDb.instance.cacheMockDashboard(
                 examType: examType,
@@ -153,6 +157,7 @@ class _MocksScreenState extends State<MocksScreen> {
   void _applyMockList(List list) {
     var items = list
         .map<MockTest>((item) => MockTest.fromJson(item as Map<String, dynamic>))
+        .where((m) => m.examType == 'IELTS' || m.examType == 'PTE')
         .toList();
     if (_filter == 'IELTS') {
       items = items.where((m) => m.examType == 'IELTS').toList();
@@ -205,25 +210,99 @@ class _MocksScreenState extends State<MocksScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      drawer: const CustomDrawer(),
-      appBar: AppHeader(
-        scaffoldKey: _scaffoldKey,
-        titleWidget: const Text(
-          'Mock Tests',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-      ),
+      endDrawer: const CustomDrawer(),
+      appBar: AppHeader(scaffoldKey: _scaffoldKey, showBackButton: false),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: Text(
-              _isLoading ? 'Loading tests…' : '${_mocks.length} test${_mocks.length == 1 ? '' : 's'} available',
-              style: TextStyle(fontSize: 14, color: AppTheme.secondaryText(context), fontWeight: FontWeight.w500),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mock Tests',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryText(context),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isLoading
+                      ? 'Loading tests…'
+                      : '${_mocks.length} of ${_mocks.length} tests available',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: AppTheme.secondaryText(context),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
+          if (!_hasFullTestAccess()) ...[
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const PremiumModal(),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7E22CE), Color(0xFF3B82F6)],
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.workspace_premium_outlined, color: Colors.white, size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Upgrade to Basic — unlock mock tests Rs399/mo',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Access all IELTS mock tests',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
           SizedBox(
             height: 40,
             child: ListView(
@@ -233,21 +312,26 @@ class _MocksScreenState extends State<MocksScreen> {
                 final active = _filter == f;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(f),
-                    selected: active,
-                    onSelected: (_) {
+                  child: GestureDetector(
+                    onTap: () {
                       setState(() => _filter = f);
                       _fetchMocks();
                     },
-                    selectedColor: const Color(0xFF007BFF),
-                    labelStyle: TextStyle(
-                      color: active ? Colors.white : AppTheme.primaryText(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    backgroundColor: AppTheme.cardBg(context),
-                    side: BorderSide(
-                      color: active ? const Color(0xFF007BFF) : AppTheme.borderColor(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: active ? const Color(0xFF007BFF) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Text(
+                        f,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: active ? Colors.white : AppTheme.primaryText(context),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -278,10 +362,25 @@ class _MocksScreenState extends State<MocksScreen> {
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: _mocks.length,
-                          itemBuilder: (context, index) => MockTestCard(
-                            mock: _mocks[index],
-                            onTap: () => _openMock(_mocks[index]),
-                          ),
+                          itemBuilder: (context, index) {
+                            final locked = !_canAccessExam(_mocks[index].examType);
+                            return MockTestCard(
+                              mock: _mocks[index],
+                              isLocked: locked,
+                              onTap: () {
+                                if (locked) {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (_) => const PremiumModal(),
+                                  );
+                                } else {
+                                  _openMock(_mocks[index]);
+                                }
+                              },
+                            );
+                          },
                         ),
                       ),
           ),

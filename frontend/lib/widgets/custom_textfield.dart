@@ -26,37 +26,59 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 15,
-        height: 22 / 15,
-        color: AppTheme.primaryText(context),
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, color: AppColors.primary),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: AppTheme.inputFill(context),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.primaryText(context),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.transparent),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: isPassword,
+          keyboardType: keyboardType,
+          validator: validator,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 15,
+            height: 22 / 15,
+            color: AppTheme.primaryText(context),
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              fontFamily: 'Inter',
+              color: Color(0xFF94A3B8),
+              fontSize: 14,
+            ),
+            prefixIcon: Icon(prefixIcon, color: const Color(0xFF94A3B8), size: 20),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: AppTheme.isDark(context)
+                ? AppTheme.inputFill(context)
+                : const Color(0xFFF8FAFC),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+          ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
-      ),
+      ],
     );
   }
 }

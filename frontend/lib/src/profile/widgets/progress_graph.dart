@@ -36,7 +36,7 @@ class _ProgressGraphState extends State<ProgressGraph> {
 
 
           if (stats['weeklyTrend'] != null || stats['weekly_trend'] != null) {
-            _weeklyImprovement = stats['weeklyTrend'] ?? stats['weekly_trend'];
+            _weeklyImprovement = (stats['weeklyTrend'] ?? stats['weekly_trend']).toString();
           }
 
           if (stats['graphData'] != null || stats['graph_data'] != null) {

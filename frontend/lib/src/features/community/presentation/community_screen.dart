@@ -5,7 +5,6 @@ import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_header.dart';
 import '../../../../widgets/app_theme.dart';
 import '../../../../core/services/api_service.dart';
-import '../../../../core/services/user_notifier.dart';
 import '../../../../core/services/socket_service.dart';
 import '../../../../data/models/community_post_model.dart';
 import 'widgets/community_post_card.dart';
@@ -66,8 +65,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
     socketService.off('online_count', _handleOnlineCount);
   }
 
+  bool _isToeflContent(String tag, [String title = '', String content = '']) {
+    final blob = '$tag $title $content'.toLowerCase();
+    return blob.contains('toefl');
+  }
+
   bool _matchesFilter(String topicTag) {
-    if (_selectedFilter == 'All') return true;
+    if (_isToeflContent(topicTag)) return false;
+    if (_selectedFilter == 'All' ||
+        _selectedFilter == 'Popular' ||
+        _selectedFilter == 'Recent') {
+      return true;
+    }
     return _selectedFilter == topicTag;
   }
 
@@ -78,6 +87,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       // Shadow-flagged posts must not appear in the public feed
       if (map['is_flagged'] == true) return;
       final post = CommunityPostModel.fromJson(map);
+      if (_isToeflContent(post.tag, post.title, post.content)) return;
       if (!_matchesFilter(post.tag)) return;
       if (_posts.any((p) => p.id == post.id)) return;
       if (!mounted) return;
@@ -162,7 +172,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
       _isLoading = true;
     });
     try {
-      final endpoint = _selectedFilter == 'All'
+      final endpoint = (_selectedFilter == 'All' ||
+              _selectedFilter == 'Popular' ||
+              _selectedFilter == 'Recent')
           ? '/community/get-posts'
           : '/community/get-posts?topic_tag=$_selectedFilter';
       final response = await ApiService.get(endpoint);
@@ -171,7 +183,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
         if (body['success'] == true) {
           final List list = body['data'] as List;
           setState(() {
-            _posts = list.map((item) => CommunityPostModel.fromJson(item as Map<String, dynamic>)).toList();
+            _posts = list
+                .map((item) => CommunityPostModel.fromJson(item as Map<String, dynamic>))
+                .where((p) => !_isToeflContent(p.tag, p.title, p.content))
+                .toList();
+            if (_selectedFilter == 'Popular') {
+              _posts.sort((a, b) => b.likes.compareTo(a.likes));
+            }
           });
         }
       }
@@ -393,22 +411,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userPref = UserNotifier.notifier.value['preference'] ?? 'IELTS';
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      drawer: const CustomDrawer(),
-      appBar: AppHeader(
-        scaffoldKey: _scaffoldKey,
-        titleWidget: Text(
-          '$userPref Community',
-          style: TextStyle(
-            color: AppTheme.primaryText(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-      ),
+      endDrawer: const CustomDrawer(),
+      appBar: AppHeader(scaffoldKey: _scaffoldKey, showBackButton: false),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,39 +426,58 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Study Forum',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryText(context),
+                      Flexible(
+                        child: Text(
+                          'Community',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryText(context),
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
+                          color: const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircleAvatar(radius: 4, backgroundColor: Colors.green),
+                            const CircleAvatar(radius: 4, backgroundColor: Color(0xFF16A34A)),
                             const SizedBox(width: 6),
                             Text(
                               '$_onlineCount online',
-                              style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                color: Color(0xFF15803D),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/notifications'),
+                        child: const Icon(Icons.notifications_none_rounded, color: Color(0xFF007BFF)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Share tips, ask questions, find study partners',
-                    style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      color: AppTheme.secondaryText(context),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:frontend/widgets/app_theme.dart';
 
 class ProfileHeader extends StatelessWidget {
-  // isDarkMode kept for backward compatibility — uses AppTheme internally now
   final bool isDarkMode;
   final Map<String, dynamic> userData;
   final VoidCallback? onEditPressed;
@@ -14,11 +13,26 @@ class ProfileHeader extends StatelessWidget {
     this.onEditPressed,
   });
 
+  String _memberSince(String? created) {
+    if (created == null || created.isEmpty) return 'Member since January 2025';
+    try {
+      final dt = DateTime.parse(created);
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ];
+      return 'Member since ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return 'Member since $created';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String name = userData['name'] ?? 'User Name';
     final String email = userData['email'] ?? 'user@email.com';
     final bool isPremium = userData['isPremium'] ?? false;
+    final created = userData['created_at']?.toString();
 
     String initials = 'U';
     try {
@@ -32,97 +46,109 @@ class ProfileHeader extends StatelessWidget {
       initials = 'U';
     }
 
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 35,
-          backgroundColor: const Color(0xFF007BFF),
-          child: Text(
-            initials,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg(context),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppTheme.cardShadow(context),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF475569),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 15),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText(context),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isPremium
-                          ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
-                          : Colors.grey.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      isPremium ? 'PREMIUM' : 'FREE TIER',
-                      style: TextStyle(
-                        color: isPremium ? const Color(0xFFD97706) : Colors.grey[600],
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppTheme.secondaryText(context),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  if (onEditPressed != null)
-                    GestureDetector(
-                      onTap: onEditPressed,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007BFF).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: Color(0xFF007BFF),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryText(context),
                         ),
                       ),
                     ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isPremium
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                            : const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isPremium ? 'Premium' : 'Free',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: isPremium ? const Color(0xFFD97706) : const Color(0xFF64748B),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: AppTheme.secondaryText(context),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.secondaryText(context)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        _memberSince(created),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          color: AppTheme.secondaryText(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -22,7 +22,28 @@ class AppButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? ElevatedButton.icon(
+              onPressed: null,
+              icon: const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              label: Text(text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF007BFF),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFF007BFF),
+                disabledForegroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                textStyle: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            )
           : isOutline
           ? OutlinedButton.icon(
         onPressed: onPressed,
@@ -34,7 +55,7 @@ class AppButton extends StatelessWidget {
             color: onPressed == null ? Colors.grey.shade300 : const Color(0xFF007BFF),
             width: 1.5,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
@@ -51,7 +72,7 @@ class AppButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFFB0D4FF),
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,

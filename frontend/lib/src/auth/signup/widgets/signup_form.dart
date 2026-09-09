@@ -1,14 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
+import 'package:frontend/core/utils/dev_otp.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/widgets/app_button.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
-import 'package:frontend/widgets/app_theme.dart';
-import 'package:frontend/src/auth/login/widgets/google_button.dart';
-import 'package:frontend/core/services/google_auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend/src/auth/login/widgets/social_login_btns.dart';
 import '../otp_screen.dart';
 
 class SignupForm extends StatefulWidget {
@@ -25,7 +24,6 @@ class _SignupFormState extends State<SignupForm> {
   final _passController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
-  bool _rememberEmail = true;
   bool _obscurePass = true;
   bool _obscureConfirmPass = true;
 
@@ -47,19 +45,32 @@ class _SignupFormState extends State<SignupForm> {
 
       if (mounted) {
         if (response.statusCode == 200 || response.statusCode == 201) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('saved_password');
-          if (_rememberEmail) {
-            await prefs.setString('saved_email', enteredEmail);
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration Successful! OTP sent to your email.')),
+          Map<String, dynamic> responseData = {};
+          try {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map) {
+              responseData = Map<String, dynamic>.from(decoded);
+            }
+          } catch (_) {}
+          await ApiService.saveStudentCredentials(
+            email: enteredEmail,
+            password: enteredPassword,
           );
+          if (!mounted) return;
+
+          final hasDevOtp = !kReleaseMode && responseData['devOtp'] != null;
+          if (hasDevOtp) {
+            showDevOtpSnackBar(context, responseData);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Registration Successful! OTP sent to your email.')),
+            );
+          }
 
 
           final savedEmail = enteredEmail;
           final savedPass = enteredPassword;
+          final savedDevOtp = hasDevOtp ? responseData['devOtp']?.toString() : null;
 
           _nameController.clear();
           _emailController.clear();
@@ -69,7 +80,11 @@ class _SignupFormState extends State<SignupForm> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (c) => OtpScreen(email: savedEmail, password: savedPass),
+              builder: (c) => OtpScreen(
+                email: savedEmail,
+                password: savedPass,
+                devOtp: savedDevOtp,
+              ),
             ),
           );
         } else {
@@ -166,49 +181,14 @@ class _SignupFormState extends State<SignupForm> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: _rememberEmail,
-                  activeColor: AppColors.primary,
-                  onChanged: (val) => setState(() => _rememberEmail = val ?? false),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Remember email for next login',
-                  style: TextStyle(color: AppColors.textGrey, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : AppButton(
+          const SizedBox(height: 22),
+          AppButton(
             text: 'Create Account',
-            onPressed: _handleSignup,
+            isLoading: _isLoading,
+            onPressed: _isLoading ? null : _handleSignup,
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Row(
-              children: [
-                Expanded(child: Divider()),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: Text('or continue with', style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
-                ),
-                Expanded(child: Divider()),
-              ],
-            ),
-          ),
-          Center(child: GoogleButton(onTap: () => GoogleAuthService.handleGoogleSignIn(context))),
+          const SizedBox(height: 8),
+          const SocialLoginBtns(),
         ],
       ),
     );
