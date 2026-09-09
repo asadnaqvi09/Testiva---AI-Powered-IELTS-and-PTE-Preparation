@@ -20,8 +20,6 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -34,16 +32,7 @@ class HomePage extends StatelessWidget {
             const ProgressCard(),
             const SizedBox(height: 25),
             const StatsRow(),
-            const SizedBox(height: 30),
-            Text(
-                'Quick Actions',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: theme.textTheme.titleLarge?.color
-                )
-            ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
             QuickActionsGrid(onActionTap: onActionTap),
             const SizedBox(height: 25),
             AIRecommendationCard(onStartTap: onNavigateToPrep),

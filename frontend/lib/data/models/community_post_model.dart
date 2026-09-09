@@ -26,18 +26,25 @@ class CommunityPostModel {
   });
 
   factory CommunityPostModel.fromJson(Map<String, dynamic> json) {
+    DateTime createdAt;
+    try {
+      createdAt = DateTime.parse(json['created_at']?.toString() ?? '');
+    } catch (_) {
+      createdAt = DateTime.now();
+    }
+
     return CommunityPostModel(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      authorName: json['full_name'] as String? ?? 'User',
-      authorAvatar: json['avatar_url'] as String?,
-      tag: json['topic_tag'] as String,
-      title: json['title'] as String,
-      content: json['content'] as String,
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      authorName: json['full_name']?.toString() ?? 'User',
+      authorAvatar: json['avatar_url']?.toString(),
+      tag: json['topic_tag']?.toString() ?? 'General',
+      title: json['title']?.toString() ?? '',
+      content: json['content']?.toString() ?? '',
       likes: json['like_count'] as int? ?? 0,
       comments: json['comment_count'] as int? ?? 0,
       likedByMe: json['liked_by_me'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: createdAt,
     );
   }
 

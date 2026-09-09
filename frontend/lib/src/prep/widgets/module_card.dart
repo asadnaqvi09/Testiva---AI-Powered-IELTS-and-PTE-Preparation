@@ -81,7 +81,25 @@ class ModuleCard extends StatelessWidget {
                     ),
                   )
                 else if (module.isCompleted)
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  Icon(Icons.check_circle, color: module.color, size: 20)
+                else if (module.pdfCount > 0)
+                  Container(
+                    width: 20,
+                    height: 20,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFDC2626),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${module.pdfCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
               ],
             ),
             const Spacer(),
@@ -96,9 +114,28 @@ class ModuleCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              '${module.lessonsCount} lessons',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  '${module.lessonsCount} lessons',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                if (module.pdfCount > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.picture_as_pdf, color: Color(0xFFDC2626), size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${module.pdfCount} PDF${module.pdfCount == 1 ? '' : 's'}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+              ],
             ),
           ],
         ),

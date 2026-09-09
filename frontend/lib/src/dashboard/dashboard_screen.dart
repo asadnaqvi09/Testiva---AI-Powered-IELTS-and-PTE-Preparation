@@ -137,52 +137,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
       MocksScreen(onStartTestRequested: _handleStartTestFlow),
       const PrepScreen(),
       const CommunityScreen(),
-      const ProfileScreen(),
+      const ProfileScreen(asTab: true),
     ];
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: const CustomDrawer(),
+      endDrawer: const CustomDrawer(),
       body: IndexedStack(
         index: _selectedIndex,
         children: screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: _TestivaBottomNav(
         currentIndex: _selectedIndex,
         onTap: _onTabChanged,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF007BFF),
-        unselectedItemColor: const Color(0xFF94A3B8),
-        showUnselectedLabels: true,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home_filled),
-            label: 'Home',
+      ),
+    );
+  }
+}
+
+class _TestivaBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  const _TestivaBottomNav({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (Icons.home_outlined, Icons.home_rounded, 'Home'),
+      (Icons.description_outlined, Icons.description, 'Mocks'),
+      (Icons.menu_book_outlined, Icons.menu_book, 'Prep'),
+      (Icons.people_outline, Icons.people, 'Community'),
+      (Icons.person_outline, Icons.person, 'Profile'),
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final active = currentIndex == index;
+              final item = items[index];
+              final color = active ? const Color(0xFF007BFF) : const Color(0xFF94A3B8);
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(index),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(active ? item.$2 : item.$1, color: color, size: 22),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.$3,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: active ? const Color(0xFF007BFF) : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            activeIcon: Icon(Icons.assignment),
-            label: 'Mocks',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book_outlined),
-            activeIcon: Icon(Icons.book),
-            label: 'Prep',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        ),
       ),
     );
   }

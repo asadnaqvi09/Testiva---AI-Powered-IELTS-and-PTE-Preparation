@@ -1,9 +1,9 @@
-import
-'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/core/config/api_origin_resolver.dart';
+import 'package:frontend/core/config/app_config.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/database/local_db.dart';
-import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/auth_gate.dart';
 import 'package:frontend/core/services/connectivity_service.dart';
 import 'package:frontend/core/services/offline_sync_service.dart';
@@ -26,8 +26,10 @@ void main() async {
   await ConnectivityService.instance.initialize();
   await LocalDb.instance.database;
   await OfflineSyncService.instance.initialize();
-  // Clear any legacy plaintext password leftovers
-  await ApiService.clearRememberedPassword();
+  await ApiOriginResolver.resolve();
+  debugPrint(
+    '[Testiva] API ${AppConfig.apiBaseUrl} (${AppConfig.resolveSource})',
+  );
   runApp(
     MultiProvider(
       providers: [
@@ -65,9 +67,9 @@ class TestivaApp extends StatelessWidget {
               elevation: 0,
               iconTheme: IconThemeData(color: Colors.black87),
             ),
-            textTheme: ThemeData.light(useMaterial3: true).textTheme.apply(
-              fontFamily: 'Inter',
-            ),
+            textTheme: ThemeData.light(
+              useMaterial3: true,
+            ).textTheme.apply(fontFamily: 'Inter'),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
@@ -83,11 +85,13 @@ class TestivaApp extends StatelessWidget {
               elevation: 0,
               iconTheme: IconThemeData(color: Colors.white),
             ),
-            textTheme: ThemeData.dark(useMaterial3: true).textTheme.apply(
-              fontFamily: 'Inter',
-            ),
+            textTheme: ThemeData.dark(
+              useMaterial3: true,
+            ).textTheme.apply(fontFamily: 'Inter'),
           ),
-          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          themeMode: themeProvider.isDarkMode
+              ? ThemeMode.dark
+              : ThemeMode.light,
           initialRoute: '/',
           routes: {
             '/': (context) => const AuthGate(),
@@ -106,11 +110,15 @@ class TestivaApp extends StatelessWidget {
             '/feedback': (context) => const FeedbackScreen(),
             '/notifications': (context) => const NotificationsScreen(),
             '/email-verified': (context) {
-              final userName = ModalRoute.of(context)!.settings.arguments as String? ?? 'User';
+              final userName =
+                  ModalRoute.of(context)!.settings.arguments as String? ??
+                  'User';
               return EmailVerifiedScreen(userName: userName);
             },
             '/select-preference': (context) {
-              final userName = ModalRoute.of(context)!.settings.arguments as String? ?? 'User';
+              final userName =
+                  ModalRoute.of(context)!.settings.arguments as String? ??
+                  'User';
               return PreferenceSelectionScreen(userName: userName);
             },
           },

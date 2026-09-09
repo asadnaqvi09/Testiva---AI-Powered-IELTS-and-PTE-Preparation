@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/utils/dev_otp.dart';
 import '../../../widgets/app_button.dart';
 import 'reset_password_screen.dart';
 
 class OTPScreen extends StatefulWidget {
   final String email;
-  const OTPScreen({super.key, required this.email});
+  final String? devOtp;
+  const OTPScreen({super.key, required this.email, this.devOtp});
   @override
   State<OTPScreen> createState() => _OTPScreenState();
 }
@@ -23,6 +25,13 @@ class _OTPScreenState extends State<OTPScreen> {
   void initState() {
     super.initState();
     _startT();
+    final initialDevOtp = widget.devOtp;
+    if (initialDevOtp != null && initialDevOtp.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showDevOtpSnackBar(context, {'devOtp': initialDevOtp});
+      });
+    }
   }
 
   void _startT() {
@@ -52,7 +61,7 @@ class _OTPScreenState extends State<OTPScreen> {
 
     try {
       final response = await ApiService.post('/auth/verify-otp', {
-        'email': widget.email,
+        'email': widget.email.trim().toLowerCase(),
         'otp': otpCode,
         'type': 'reset',
       });
@@ -92,15 +101,18 @@ class _OTPScreenState extends State<OTPScreen> {
   Future<void> _resendOTP() async {
     try {
       final response = await ApiService.post('/auth/forgot-password', {
-        'email': widget.email,
+        'email': widget.email.trim().toLowerCase(),
       });
       final responseData = jsonDecode(response.body);
 
       if (response.statusCode == 200 && responseData['success'] == true) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('A new OTP has been sent to your email.'), backgroundColor: Colors.green),
-        );
+        showDevOtpSnackBar(context, responseData);
+        if (responseData['devOtp'] == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('A new OTP has been sent to your email.'), backgroundColor: Colors.green),
+          );
+        }
         setState(() {
           _sec = 60;
         });

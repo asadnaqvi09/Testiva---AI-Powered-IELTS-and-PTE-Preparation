@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import 'brand_mark.dart';
+import 'circle_icon_button.dart';
 import '../src/profile/profile_screen.dart';
 import '../core/services/user_notifier.dart';
 
@@ -21,7 +23,7 @@ class AppHeader extends StatefulWidget implements PreferredSizeWidget {
   State<AppHeader> createState() => _AppHeaderState();
 
   @override
-  Size get preferredSize => const Size.fromHeight(70);
+  Size get preferredSize => const Size.fromHeight(64);
 }
 
 class _AppHeaderState extends State<AppHeader> {
@@ -53,6 +55,16 @@ class _AppHeaderState extends State<AppHeader> {
     return 'U';
   }
 
+  void _openMenu() {
+    final state = widget.scaffoldKey?.currentState;
+    if (state == null) return;
+    if (state.hasEndDrawer) {
+      state.openEndDrawer();
+    } else {
+      state.openDrawer();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userData = UserNotifier.notifier.value;
@@ -62,60 +74,19 @@ class _AppHeaderState extends State<AppHeader> {
     final bool displayBackButton = widget.showBackButton ?? canPop;
 
     return SafeArea(
+      bottom: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            displayBackButton
-                ? GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                       padding: const EdgeInsets.all(8),
-                       decoration: BoxDecoration(
-                         color: AppTheme.cardBg(context),
-                         borderRadius: BorderRadius.circular(10),
-                         boxShadow: AppTheme.cardShadow(context),
-                       ),
-                       child: Icon(Icons.arrow_back, size: 20, color: AppTheme.iconColor(context)),
-                    ),
-                  )
-                : GestureDetector(
-                    onTap: () => widget.scaffoldKey?.currentState?.openDrawer(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardBg(context),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: AppTheme.cardShadow(context),
-                      ),
-                      child: Icon(Icons.menu, size: 20, color: AppTheme.iconColor(context)),
-                    ),
-                  ),
-            Row(
-              children: [
-                if (widget.titleWidget != null) ...[
-                  widget.titleWidget!,
-                ] else ...[
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF007BFF),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.auto_stories, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Testiva',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText(context),
-                    ),
-                  ),
-                ],
-              ],
+            CircleIconButton(
+              icon: displayBackButton ? Icons.arrow_back_rounded : Icons.menu_rounded,
+              onTap: displayBackButton ? () => Navigator.pop(context) : _openMenu,
+            ),
+            const Expanded(
+              child: Center(
+                child: BrandMark(markSize: 32, fontSize: 17),
+              ),
             ),
             widget.showProfileAvatar
                 ? GestureDetector(
@@ -127,10 +98,15 @@ class _AppHeaderState extends State<AppHeader> {
                     },
                     child: CircleAvatar(
                       radius: 18,
-                      backgroundColor: const Color(0xFF007BFF),
+                      backgroundColor: AppTheme.brandBlue,
                       child: Text(
                         initials,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   )

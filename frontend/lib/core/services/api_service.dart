@@ -1,20 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:frontend/core/config/api_origin_resolver.dart';
 import 'package:frontend/core/config/app_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  /// From [AppConfig] — set with `--dart-define=API_BASE_URL=...` for devices.
+  /// Resolved at startup via [ApiOriginResolver] (dart-define / cache / mDNS / default).
   static String get baseUrl => AppConfig.apiBaseUrl;
 
-  static String get socketBaseUrl {
-    final uri = Uri.parse(baseUrl);
-    if (uri.hasPort && uri.port != 0) {
-      return '${uri.scheme}://${uri.host}:${uri.port}';
-    }
-    return '${uri.scheme}://${uri.host}';
-  }
+  static String get socketBaseUrl => AppConfig.apiOrigin;
 
   static Future<void> setToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -26,9 +22,76 @@ class ApiService {
     await prefs.setString('refresh_token', token);
   }
 
+  /// Backend login/google/refresh: `{ success, accessToken, refreshToken, user }`.
+  /// Also accepts a nested `{ data: { ... } }` wrapper.
+  static Map<String, dynamic> unwrapAuthPayload(Map<String, dynamic> resData) {
+    if (resData['accessToken'] != null) return resData;
+    final inner = resData['data'];
+    if (inner is Map) return Map<String, dynamic>.from(inner);
+    return resData;
+  }
+
+  static Map<String, dynamic> parseJsonObject(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is! Map) {
+      throw FormatException('Expected JSON object, got ${decoded.runtimeType}');
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  static Map<String, dynamic> userFromAuthPayload(
+    Map<String, dynamic> payload,
+  ) {
+    final raw = payload['user'];
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return {};
+  }
+
+  static const _savedEmailKey = 'saved_email';
+  static const _savedPasswordKey = 'saved_password';
+
+  static const _blockedPrefillEmails = {
+    'ragesr56@gmail.com',
+    'abdulwasaybaloch5@gmail.com',
+    'mawbsds@gmail.com',
+    'freeuser@example.com',
+    'premiumuser@example.com',
+  };
+
+  static bool isStudentPrefillEmail(String email) {
+    final normalized = email.trim().toLowerCase();
+    return normalized.isNotEmpty && !_blockedPrefillEmails.contains(normalized);
+  }
+
+  static Future<void> saveStudentCredentials({
+    required String email,
+    required String password,
+    String? role,
+  }) async {
+    final normalized = email.trim().toLowerCase();
+    if (!isStudentPrefillEmail(normalized)) return;
+    if (role != null && role.toLowerCase() == 'admin') return;
+    if (password.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_savedEmailKey, normalized);
+    await prefs.setString(_savedPasswordKey, password);
+  }
+
+  static Future<({String email, String password})>
+      loadStudentCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = (prefs.getString(_savedEmailKey) ?? '').trim().toLowerCase();
+    final password = prefs.getString(_savedPasswordKey) ?? '';
+    if (!isStudentPrefillEmail(email)) {
+      return (email: '', password: '');
+    }
+    return (email: email, password: password);
+  }
+
   static Future<void> persistAuthResponse(Map<String, dynamic> resData) async {
-    final access = resData['accessToken']?.toString();
-    final refresh = resData['refreshToken']?.toString();
+    final payload = unwrapAuthPayload(resData);
+    final access = payload['accessToken']?.toString();
+    final refresh = payload['refreshToken']?.toString();
     if (access != null && access.isNotEmpty) {
       await setToken(access);
     }
@@ -43,7 +106,6 @@ class ApiService {
     await prefs.remove('refresh_token');
     await prefs.remove('token');
     await prefs.remove('user_data');
-    await prefs.remove('saved_password');
   }
 
   static Future<void> clearToken() async {
@@ -60,8 +122,22 @@ class ApiService {
     return prefs.getString('refresh_token');
   }
 
-  static Future<Map<String, String>> _getHeaders() async {
+  static bool _isPublicAuthEndpoint(String endpoint) {
+    return endpoint.startsWith('/auth/login') ||
+        endpoint.startsWith('/auth/register') ||
+        endpoint.startsWith('/auth/google') ||
+        endpoint.startsWith('/auth/verify-otp') ||
+        endpoint.startsWith('/auth/resend-otp') ||
+        endpoint.startsWith('/auth/forgot-password') ||
+        endpoint.startsWith('/auth/reset-password') ||
+        endpoint.startsWith('/auth/refresh-token');
+  }
+
+  static Future<Map<String, String>> _getHeaders({String? endpoint}) async {
     final headers = <String, String>{'Content-Type': 'application/json'};
+    if (endpoint != null && _isPublicAuthEndpoint(endpoint)) {
+      return headers;
+    }
     final token = await getToken();
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
@@ -84,6 +160,7 @@ class ApiService {
       if (response.statusCode != 200) return false;
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['success'] != true) return false;
+      unawaited(ApiOriginResolver.persistCurrentBase());
       await persistAuthResponse(data);
       return data['accessToken'] != null;
     } catch (_) {
@@ -100,11 +177,7 @@ class ApiService {
   }
 
   static bool _shouldRetryAuth(String endpoint) {
-    return !endpoint.startsWith('/auth/refresh-token') &&
-        !endpoint.startsWith('/auth/login') &&
-        !endpoint.startsWith('/auth/register') &&
-        !endpoint.startsWith('/auth/google') &&
-        !endpoint.startsWith('/auth/verify-otp');
+    return !_isPublicAuthEndpoint(endpoint);
   }
 
   static Duration _timeoutFor(String endpoint) {
@@ -122,18 +195,26 @@ class ApiService {
     bool skipAuthRetry = false,
   }) async {
     final url = Uri.parse('$baseUrl$endpoint');
-    final headers = await _getHeaders();
+    final headers = await _getHeaders(endpoint: endpoint);
     final timeout = _timeoutFor(endpoint);
     late http.Response response;
     switch (method) {
       case 'POST':
         response = await http
-            .post(url, headers: headers, body: body != null ? jsonEncode(body) : null)
+            .post(
+              url,
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
             .timeout(timeout);
         break;
       case 'PUT':
         response = await http
-            .put(url, headers: headers, body: body != null ? jsonEncode(body) : null)
+            .put(
+              url,
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
             .timeout(timeout);
         break;
       case 'PATCH':
@@ -161,6 +242,9 @@ class ApiService {
       }
       await clearAuthSession();
     }
+    if (response.statusCode > 0 && response.statusCode < 500) {
+      unawaited(ApiOriginResolver.persistCurrentBase());
+    }
     return response;
   }
 
@@ -179,7 +263,10 @@ class ApiService {
     await clearAuthSession();
   }
 
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     try {
       return await _request('POST', endpoint, body: body);
     } catch (e) {
@@ -197,7 +284,10 @@ class ApiService {
     }
   }
 
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> put(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     try {
       return await _request('PUT', endpoint, body: body);
     } catch (e) {
@@ -247,7 +337,9 @@ class ApiService {
           contentType: contentType,
         ),
       );
-      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
       return http.Response.fromStream(streamed);
     }
 
@@ -260,6 +352,9 @@ class ApiService {
         } else {
           await clearAuthSession();
         }
+      }
+      if (response.statusCode > 0 && response.statusCode < 500) {
+        unawaited(ApiOriginResolver.persistCurrentBase());
       }
       return response;
     } catch (e) {

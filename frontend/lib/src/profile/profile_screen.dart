@@ -16,7 +16,9 @@ import '../../widgets/logout_dialog.dart';
 import '../../widgets/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool asTab;
+
+  const ProfileScreen({super.key, this.asTab = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -52,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'preference': data['user']['preference'],
             'role': data['user']['role'] ?? 'user',
             'subscription': data['user']['subscription'] ?? 'free',
+            'created_at': data['user']['created_at'] ?? data['user']['member_since'],
           };
           setState(() {
             _userData = newUserData;
@@ -363,26 +366,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: ListTile(
         leading: Container(
-          padding: const EdgeInsets.all(8),
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: prefColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(Icons.school_outlined, color: prefColor, size: 20),
+          child: Text(
+            displayPref.toUpperCase() == 'PTE' ? '🌐' : 'GB',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
         ),
         title: Text(
-          'Test Preference',
-          style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.primaryText(context),
-              fontWeight: FontWeight.w500),
-        ),
-        subtitle: Text(
           displayPref,
           style: TextStyle(
-              fontSize: 13,
-              color: prefColor,
-              fontWeight: FontWeight.bold),
+              fontSize: 15,
+              color: AppTheme.primaryText(context),
+              fontWeight: FontWeight.w700),
         ),
         trailing: Icon(Icons.chevron_right,
             color: AppTheme.secondaryText(context)),
@@ -398,18 +399,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      drawer: const CustomDrawer(),
+      endDrawer: const CustomDrawer(),
       appBar: AppHeader(
         scaffoldKey: _scaffoldKey,
-        titleWidget: Text(
-          'Profile',
-          style: TextStyle(
-            color: AppTheme.primaryText(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        showProfileAvatar: false,
+        showBackButton: widget.asTab ? false : null,
+        showProfileAvatar: true,
       ),
       body: SafeArea(
         child: _isLoading
@@ -425,21 +419,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Profile',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryText(context),
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => EditProfileModal(
+                                  currentName: _userData['name'] ?? '',
+                                  currentEmail: _userData['email'] ?? '',
+                                  onProfileUpdated: _fetchUserProfileData,
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.edit_outlined, size: 14, color: Color(0xFF007BFF)),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      color: Color(0xFF007BFF),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       ProfileHeader(
                         isDarkMode: AppTheme.isDark(context),
                         userData: _userData,
-                        onEditPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => EditProfileModal(
-                              currentName: _userData['name'] ?? '',
-                              currentEmail: _userData['email'] ?? '',
-                              onProfileUpdated: _fetchUserProfileData,
-                            ),
-                          );
-                        },
+                        onEditPressed: null,
                       ),
                       const SizedBox(height: 25),
                       const StatsRow(),
@@ -458,7 +492,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildAllTestsTile(),
 
                       const SizedBox(height: 30),
-                      // ── Preferences Section ───────────────────────────
+                      Text(
+                        'Test Preference',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryText(context)),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPreferenceTile(),
+                      const SizedBox(height: 24),
                       Text(
                         'Preferences',
                         style: TextStyle(
@@ -467,11 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: AppTheme.primaryText(context)),
                       ),
                       const SizedBox(height: 12),
-                      // Dark mode toggle
                       PreferenceTiles(isDarkMode: AppTheme.isDark(context)),
-                      const SizedBox(height: 12),
-                      // Test Preference tile (with change-request modal)
-                      _buildPreferenceTile(),
 
                       const SizedBox(height: 25),
                       Text(

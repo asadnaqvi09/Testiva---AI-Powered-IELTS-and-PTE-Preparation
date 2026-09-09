@@ -37,7 +37,8 @@ class NotificationProvider extends ChangeNotifier {
       ]);
       _notifications
         ..clear()
-        ..addAll(results[0] as List<NotificationModel>);
+        ..addAll((results[0] as List<NotificationModel>)
+            .where((n) => n.id.isNotEmpty));
       _unreadCount = results[1] as int;
       _seenIds
         ..clear()

@@ -56,7 +56,8 @@ class _StatsRowState extends State<StatsRow> {
         Expanded(
           child: GlobalStatsCard(
             value: _isLoading ? '...' : _dayStreak,
-            label: 'Day Streak',
+            line1: 'Day',
+            line2: 'Streak',
             icon: Icons.local_fire_department,
             iconColor: Colors.orange,
           ),
@@ -67,7 +68,8 @@ class _StatsRowState extends State<StatsRow> {
         Expanded(
           child: GlobalStatsCard(
             value: _isLoading ? '...' : _estBand,
-            label: 'Est. Band',
+            line1: 'Est.',
+            line2: 'Band',
             icon: Icons.workspace_premium_outlined,
             iconColor: Colors.green,
           ),
@@ -78,7 +80,8 @@ class _StatsRowState extends State<StatsRow> {
         Expanded(
           child: GlobalStatsCard(
             value: _isLoading ? '...' : _testsDone,
-            label: 'Tests Done',
+            line1: 'Tests',
+            line2: 'Done',
             icon: Icons.trending_up,
             iconColor: Colors.blue,
           ),

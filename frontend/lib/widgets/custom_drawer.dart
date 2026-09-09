@@ -77,8 +77,8 @@ class _CustomDrawerState extends State<CustomDrawer> {
       backgroundColor: AppTheme.drawerBg(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          topLeft: Radius.circular(28),
+          bottomLeft: Radius.circular(28),
         ),
       ),
       child: Column(
@@ -132,9 +132,14 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.grey),
-                  onPressed: () => Navigator.pop(context),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: AppTheme.circleIconDecor(context),
+                    child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                  ),
                 ),
               ],
             ),
@@ -209,24 +214,28 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     Navigator.pushNamed(context, '/notifications');
                   },
                 ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.star_outline,
+                  text: 'Rate App',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Thanks for supporting Testiva!')),
+                    );
+                  },
+                ),
               ],
             ),
           ),
 
           Padding(
-            padding: const EdgeInsets.all(20),
-            child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: SizedBox(
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Logout',
-                    style: TextStyle(
-                        color: Colors.red, fontWeight: FontWeight.bold)),
-                onTap: () {
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () {
                   final hostContext =
                       Navigator.of(context, rootNavigator: true).overlay!.context;
                   Navigator.pop(context);
@@ -235,6 +244,22 @@ class _CustomDrawerState extends State<CustomDrawer> {
                     builder: (dialogContext) => LogoutDialog(hostContext: hostContext),
                   );
                 },
+                icon: const Icon(Icons.logout, color: Color(0xFFDC2626), size: 18),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: Color(0xFFDC2626),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFF1F2),
+                  side: const BorderSide(color: Color(0xFFFECACA)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
               ),
             ),
           ),

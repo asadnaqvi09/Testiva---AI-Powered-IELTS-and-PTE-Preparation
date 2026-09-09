@@ -6,11 +6,13 @@ import '../models/runtime_question.dart';
 class MockTestCard extends StatelessWidget {
   final MockTest mock;
   final VoidCallback onTap;
+  final bool isLocked;
 
   const MockTestCard({
     super.key,
     required this.mock,
     required this.onTap,
+    this.isLocked = false,
   });
 
   Color _headerColor() {
@@ -22,10 +24,13 @@ class MockTestCard extends StatelessWidget {
     if (title.contains('writing') || cat.contains('writing')) {
       return const Color(0xFF7C3AED);
     }
+    if (title.contains('speaking') || cat.contains('speaking')) {
+      return const Color(0xFFDB2777);
+    }
     if (title.contains('reading') || cat.contains('reading')) {
       return const Color(0xFF2563EB);
     }
-    if (mock.examType == 'PTE') return const Color(0xFF8B5CF6);
+    if (mock.examType == 'PTE') return const Color(0xFF059669);
     return const Color(0xFF2563EB);
   }
 
@@ -33,6 +38,7 @@ class MockTestCard extends StatelessWidget {
     final title = mock.title.toLowerCase();
     if (title.contains('listening')) return Icons.headphones_rounded;
     if (title.contains('writing')) return Icons.edit_note_rounded;
+    if (title.contains('speaking')) return Icons.mic_rounded;
     if (title.contains('reading')) return Icons.menu_book_rounded;
     return Icons.assignment_outlined;
   }
@@ -66,7 +72,11 @@ class MockTestCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: headerColor,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [headerColor, headerColor.withValues(alpha: 0.75)],
+              ),
+            ),
             child: Row(
               children: [
                 Icon(_headerIcon(), color: Colors.white, size: 22),
@@ -77,6 +87,8 @@ class MockTestCard extends StatelessWidget {
                     children: [
                       Text(
                         mock.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -86,6 +98,8 @@ class MockTestCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         _subtitle(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 12,
@@ -94,15 +108,27 @@ class MockTestCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    mock.difficultyLevel,
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                Flexible(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          mock.difficultyLevel,
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (isLocked)
+                        const Icon(Icons.lock_outline, color: Colors.white, size: 16),
+                    ],
                   ),
                 ),
               ],
@@ -113,15 +139,14 @@ class MockTestCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 6,
                   children: [
                     _stat(context, Icons.timer_outlined, '${mock.totalDuration} min'),
-                    const SizedBox(width: 16),
                     _stat(context, Icons.help_outline, '${mock.totalQuestions} questions'),
-                    if (mock.lastAttemptScore != null) ...[
-                      const Spacer(),
+                    if (mock.lastAttemptScore != null)
                       _stat(context, Icons.signal_cellular_alt, 'Band ${mock.lastAttemptScore}', green: true),
-                    ],
                   ],
                 ),
                 if (mock.displayId.isNotEmpty) ...[
@@ -156,24 +181,70 @@ class MockTestCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: onTap,
-                    icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                    label: Text(
-                      mock.cta == 'retake' ? 'Retake Test' : 'Start Test',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                if (isLocked) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: headerColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.lock_outline, size: 16, color: Color(0xFFC2410C)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Upgrade to Basic (Rs399) to unlock mock tests',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              color: Color(0xFF9A3412),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: onTap,
+                      icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+                      label: const Text(
+                        'Upgrade to Unlock',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF475569),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        backgroundColor: const Color(0xFFF8FAFC),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ] else
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: onTap,
+                      icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                      label: Text(
+                        mock.cta == 'retake' ? 'Retake Test' : 'Start Test',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: headerColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

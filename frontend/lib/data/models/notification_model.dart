@@ -11,9 +11,9 @@ class NotificationSender {
 
   factory NotificationSender.fromJson(Map<String, dynamic> json) {
     return NotificationSender(
-      id: json['id'] as String,
-      fullName: json['full_name'] as String? ?? 'Someone',
-      avatarUrl: json['avatar_url'] as String?,
+      id: json['id']?.toString() ?? '',
+      fullName: json['full_name']?.toString() ?? 'Someone',
+      avatarUrl: json['avatar_url']?.toString(),
     );
   }
 }
@@ -42,18 +42,31 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    DateTime createdAt;
+    try {
+      createdAt = DateTime.parse(json['created_at']?.toString() ?? '');
+    } catch (_) {
+      createdAt = DateTime.now();
+    }
+
+    Map<String, dynamic>? senderMap;
+    final rawSender = json['sender'];
+    if (rawSender is Map<String, dynamic>) {
+      senderMap = rawSender;
+    } else if (rawSender is Map) {
+      senderMap = Map<String, dynamic>.from(rawSender);
+    }
+
     return NotificationModel(
-      id: json['id'] as String,
-      type: json['type'] as String,
-      title: json['title'] as String,
-      message: json['message'] as String,
-      isRead: json['is_read'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      postId: json['post_id'] as String?,
-      commentId: json['comment_id'] as String?,
-      sender: json['sender'] != null
-          ? NotificationSender.fromJson(json['sender'] as Map<String, dynamic>)
-          : null,
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'unknown',
+      title: json['title']?.toString() ?? 'Notification',
+      message: json['message']?.toString() ?? '',
+      isRead: json['is_read'] == true,
+      createdAt: createdAt,
+      postId: json['post_id']?.toString(),
+      commentId: json['comment_id']?.toString(),
+      sender: senderMap != null ? NotificationSender.fromJson(senderMap) : null,
     );
   }
 

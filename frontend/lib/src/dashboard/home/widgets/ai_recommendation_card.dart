@@ -86,11 +86,13 @@ class _AIRecommendationCardState extends State<AIRecommendationCard> {
               const Icon(Icons.lightbulb_outline, color: Colors.white70, size: 18),
               const SizedBox(width: 8),
               Text(
-                _isSample ? 'SAMPLE STUDY TIP' : 'STUDY FOCUS',
+                _isSample ? 'AI RECOMMENDATION' : 'AI RECOMMENDATION',
                 style: const TextStyle(
+                  fontFamily: 'Inter',
                   color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
@@ -136,15 +138,17 @@ class _AIRecommendationCardState extends State<AIRecommendationCard> {
             onPressed: widget.onStartTap,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              foregroundColor: const Color(0xFF007BFF),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: const StadiumBorder(),
               elevation: 0,
             ),
             child: Text(
               _cta,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

@@ -52,6 +52,8 @@ class AuthNavigationHelper {
       if (!context.mounted) return;
     }
 
+    // Mobile is always the student app. Admin role never opens Admin-Prototype
+    // or any admin web dashboard from Flutter.
     final preference = user['preference'];
     final hasPreference =
         preference != null && preference.toString().trim().isNotEmpty;

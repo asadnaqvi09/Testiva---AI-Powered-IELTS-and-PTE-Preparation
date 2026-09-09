@@ -1,9 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import 'package:frontend/widgets/brand_mark.dart';
+import 'package:frontend/widgets/circle_icon_button.dart';
 import '../../../profile/profile_screen.dart';
-import '../../../../core/services/api_service.dart';
 import '../../../../core/services/user_notifier.dart';
+import '../../../../providers/notification_provider.dart';
+import 'premium_modal.dart';
 
 class HeaderSection extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
@@ -42,55 +45,40 @@ class _HeaderSectionState extends State<HeaderSection> {
     return 'U';
   }
 
+  void _openMenu() {
+    final state = widget.scaffoldKey.currentState;
+    if (state == null) return;
+    if (state.hasEndDrawer) {
+      state.openEndDrawer();
+    } else {
+      state.openDrawer();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userData = UserNotifier.notifier.value;
     final fullName = (userData['name'] ?? 'User').toString();
     final firstName = fullName.split(' ').first;
     final initials = _getInitials(fullName);
+    final isPremium = userData['isPremium'] == true ||
+        (userData['subscription'] ?? '').toString().toLowerCase() == 'premium';
 
     final now = DateTime.now();
     const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final dateString = '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
+    final unread = context.watch<NotificationProvider>().unreadCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            GestureDetector(
-              onTap: () => widget.scaffoldKey.currentState?.openDrawer(),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.cardBg(context),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: AppTheme.cardShadow(context),
-                ),
-                child: Icon(Icons.menu, size: 20, color: AppTheme.iconColor(context)),
-              ),
+            CircleIconButton(icon: Icons.menu_rounded, onTap: _openMenu),
+            const Expanded(
+              child: Center(child: BrandMark(markSize: 32, fontSize: 17)),
             ),
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF007BFF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.auto_stories, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Testiva',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText(context),
-                ),
-              ),
-            ]),
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -100,73 +88,128 @@ class _HeaderSectionState extends State<HeaderSection> {
               },
               child: CircleAvatar(
                 radius: 18,
-                backgroundColor: const Color(0xFF007BFF),
+                backgroundColor: AppTheme.brandBlue,
                 child: Text(
                   initials,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 25),
-        Column(
+        const SizedBox(height: 22),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(dateString, style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 13)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(
-                  'Hello, $firstName!',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText(context),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dateString,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      color: AppTheme.secondaryText(context),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Text('👋', style: TextStyle(fontSize: 20)),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Hello, $firstName! 👋',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primaryText(context),
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Keep up the great work!',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      color: AppTheme.secondaryText(context),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              'Keep up the great work!',
-              style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
+            CircleIconButton(
+              icon: Icons.notifications_none_rounded,
+              onTap: () => Navigator.pushNamed(context, '/notifications'),
+              badge: unread > 0
+                  ? Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                  : null,
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _premiumBanner(context),
+        if (!isPremium) ...[
+          const SizedBox(height: 18),
+          _upgradeBanner(context),
+        ],
       ],
     );
   }
 
-  Widget _premiumBanner(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-    final bgColor = isDark ? const Color(0xFF2C2410) : const Color(0xFFFFF9E7);
-    final borderColor = isDark ? const Color(0xFF5C4D26) : const Color(0xFFFFE58F);
-    final textColor = isDark ? const Color(0xFFFFD591) : const Color(0xFF874D00);
-    final iconColor = isDark ? const Color(0xFFE8B339) : const Color(0xFFD48806);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.workspace_premium_outlined, color: iconColor, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Unlock IELTS & PTE - Get Premium',
-              style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-            ),
+  Widget _upgradeBanner(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const PremiumModal(),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.isDark(context) ? const Color(0xFF2C2410) : const Color(0xFFFFF8E7),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppTheme.isDark(context) ? const Color(0xFF5C4D26) : const Color(0xFFF5D78E),
           ),
-          Icon(Icons.chevron_right, color: iconColor),
-        ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.workspace_premium_outlined,
+              color: AppTheme.isDark(context) ? const Color(0xFFE8B339) : const Color(0xFFD48806),
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Upgrade to Basic — unlock mock tests Rs399/mo',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  color: AppTheme.isDark(context) ? const Color(0xFFFFD591) : const Color(0xFF874D00),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: AppTheme.isDark(context) ? const Color(0xFFE8B339) : const Color(0xFFD48806),
+            ),
+          ],
+        ),
       ),
     );
   }

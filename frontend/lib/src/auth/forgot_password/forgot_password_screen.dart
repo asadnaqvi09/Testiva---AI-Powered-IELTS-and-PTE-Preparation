@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/utils/dev_otp.dart';
 import 'package:frontend/core/utils/validators.dart';
 import 'package:frontend/widgets/custom_textfield.dart';
 import '../../../widgets/app_button.dart';
@@ -29,7 +31,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    final userEmail = _emailController.text.trim();
+    final userEmail = _emailController.text.trim().toLowerCase();
 
     try {
       final response = await ApiService.post('/auth/forgot-password', {
@@ -40,14 +42,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (response.statusCode == 200 && responseData['success'] == true) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP sent successfully to your email!'), backgroundColor: Colors.green),
-        );
+        final hasDevOtp = !kReleaseMode && responseData['devOtp'] != null;
+        if (hasDevOtp) {
+          showDevOtpSnackBar(context, responseData);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('OTP sent successfully to your email!'), backgroundColor: Colors.green),
+          );
+        }
 
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => OTPScreen(email: userEmail),
+            builder: (context) => OTPScreen(
+              email: userEmail,
+              devOtp: hasDevOtp ? responseData['devOtp']?.toString() : null,
+            ),
           ),
         );
       } else {
@@ -91,7 +101,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 10),
               const Text(
-                "Enter your email address and we'll send you a link to reset your password.",
+                "Enter your email address and we'll send a 4-digit OTP to reset your password.",
                 style: TextStyle(color: Colors.grey, fontSize: 15),
               ),
               const SizedBox(height: 30),
@@ -107,7 +117,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
                   : AppButton(
-                text: 'Send Reset Link',
+                text: 'Send OTP',
                 onPressed: _handleForgotPassword,
               ),
               const SizedBox(height: 40),

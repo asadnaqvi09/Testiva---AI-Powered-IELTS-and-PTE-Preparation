@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:frontend/core/utils/dev_otp.dart';
 import 'package:frontend/widgets/app_button.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
 
   final String? password;
+  final String? devOtp;
 
-  const OtpScreen({required this.email, this.password, super.key});
+  const OtpScreen({required this.email, this.password, this.devOtp, super.key});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -32,6 +34,13 @@ class _OtpScreenState extends State<OtpScreen> {
   void initState() {
     super.initState();
     _startTimer();
+    final initialDevOtp = widget.devOtp;
+    if (initialDevOtp != null && initialDevOtp.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showDevOtpSnackBar(context, {'devOtp': initialDevOtp});
+      });
+    }
   }
 
   void _startTimer() {
@@ -79,11 +88,14 @@ class _OtpScreenState extends State<OtpScreen> {
       final responseData = jsonDecode(response.body);
       if (mounted) {
         if (response.statusCode == 200 && responseData['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('A fresh OTP has been sent!'),
-                backgroundColor: Colors.green),
-          );
+          showDevOtpSnackBar(context, responseData);
+          if (responseData['devOtp'] == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('A fresh OTP has been sent!'),
+                  backgroundColor: Colors.green),
+            );
+          }
           _startTimer();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -12,14 +12,14 @@ class LoginHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isLogin ? 'Welcome Back' : 'Create Account',
+          isLogin ? 'Welcome Back! 👋' : 'Join Testiva ✨',
           style: AppTypography.display(),
         ),
         const SizedBox(height: 8),
         Text(
           isLogin
               ? 'Sign in to continue your learning journey'
-              : 'Start your IELTS and PTE prep with Testiva',
+              : 'Create your free account today',
           style: AppTypography.body(color: const Color(0xFF64748B)),
         ),
       ],
