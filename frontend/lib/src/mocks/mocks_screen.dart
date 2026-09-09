@@ -210,7 +210,7 @@ class _MocksScreenState extends State<MocksScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      endDrawer: const CustomDrawer(),
+      drawer: const CustomDrawer(),
       appBar: AppHeader(scaffoldKey: _scaffoldKey, showBackButton: false),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

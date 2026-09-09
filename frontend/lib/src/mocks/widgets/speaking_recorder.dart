@@ -102,7 +102,8 @@ class _SpeakingRecorderWidgetState extends State<SpeakingRecorderWidget> {
     setState(() => _error = null);
     final allowed = await _ensureMicPermission();
     if (!allowed) {
-      setState(() => _error = 'Microphone permission is required to record.');
+      setState(() => _error =
+          'Microphone permission is required. Enable it in Settings → Apps → Testiva → Permissions.');
       return;
     }
     final prep = widget.question.effectivePrepSeconds;

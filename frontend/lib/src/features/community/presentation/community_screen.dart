@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../providers/notification_provider.dart';
 import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_header.dart';
 import '../../../../widgets/app_theme.dart';
@@ -411,10 +413,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final unread = context.watch<NotificationProvider>().unreadCount;
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      endDrawer: const CustomDrawer(),
+      drawer: const CustomDrawer(),
       appBar: AppHeader(scaffoldKey: _scaffoldKey, showBackButton: false),
       body: SafeArea(
         child: Column(
@@ -466,7 +470,39 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(context, '/notifications'),
-                        child: const Icon(Icons.notifications_none_rounded, color: Color(0xFF007BFF)),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(
+                              Icons.notifications_none_rounded,
+                              color: Color(0xFF007BFF),
+                              size: 26,
+                            ),
+                            if (unread > 0)
+                              Positioned(
+                                right: -4,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEF4444),
+                                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                                  ),
+                                  child: Text(
+                                    unread > 99 ? '99+' : '$unread',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -513,6 +549,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             return CommunityPostCard(
                               key: ValueKey(post.id),
                               post: post,
+                              onDeleted: () {
+                                setState(() {
+                                  _posts = _posts.where((p) => p.id != post.id).toList();
+                                });
+                              },
+                              onUpdated: (updated) {
+                                setState(() {
+                                  _posts = _posts
+                                      .map((p) => p.id == updated.id ? updated : p)
+                                      .toList();
+                                });
+                              },
                             );
                           },
                         ),

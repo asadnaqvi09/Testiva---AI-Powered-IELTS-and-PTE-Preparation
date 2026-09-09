@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/utils/dev_otp.dart';
@@ -26,7 +25,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-
   Future<void> _handleForgotPassword() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -40,36 +38,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       final responseData = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && responseData['success'] == true) {
+      if (response.statusCode == 200 &&
+          responseData['success'] == true &&
+          isOtpEmailSent(responseData)) {
         if (!mounted) return;
-        final hasDevOtp = !kReleaseMode && responseData['devOtp'] != null;
-        if (hasDevOtp) {
-          showDevOtpSnackBar(context, responseData);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('OTP sent successfully to your email!'), backgroundColor: Colors.green),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(otpSendSuccessMessage(
+              fallback: 'OTP sent to your Gmail. Check your inbox.',
+            )),
+            backgroundColor: Colors.green,
+          ),
+        );
 
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => OTPScreen(
-              email: userEmail,
-              devOtp: hasDevOtp ? responseData['devOtp']?.toString() : null,
-            ),
+            builder: (context) => OTPScreen(email: userEmail),
           ),
         );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(responseData['message'] ?? 'Failed to send OTP'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              responseData['message'] is String &&
+                      (responseData['message'] as String).isNotEmpty &&
+                      !(responseData['message'] as String)
+                          .toLowerCase()
+                          .contains('app password') &&
+                      !(responseData['message'] as String)
+                          .toLowerCase()
+                          .contains('dev otp')
+                  ? responseData['message']
+                  : kOtpSendFailedMessage,
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: ${e.toString()}'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text(kOtpSendFailedMessage),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -96,13 +110,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Reset Password',
+                'Forgot Password?',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               const Text(
-                "Enter your email address and we'll send a 4-digit OTP to reset your password.",
-                style: TextStyle(color: Colors.grey, fontSize: 15),
+                "Enter the Gmail you signed up with. We'll send a 4-digit OTP there. After you verify it, you'll set a new password — because you no longer know the old one.",
+                style: TextStyle(color: Colors.grey, fontSize: 15, height: 1.4),
               ),
               const SizedBox(height: 30),
               AppTextField(

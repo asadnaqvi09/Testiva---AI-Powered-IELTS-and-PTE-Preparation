@@ -5,6 +5,20 @@ import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/widgets/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+class _PlanOption {
+  final String keyName;
+  final String title;
+  final String subtitle;
+  final String price;
+
+  const _PlanOption({
+    required this.keyName,
+    required this.title,
+    required this.subtitle,
+    required this.price,
+  });
+}
+
 class PremiumModal extends StatefulWidget {
   const PremiumModal({super.key});
 
@@ -13,9 +27,90 @@ class PremiumModal extends StatefulWidget {
 }
 
 class _PremiumModalState extends State<PremiumModal> {
+  static const _fallbackPlans = [
+    _PlanOption(
+      keyName: 'basic_ielts',
+      title: 'Basic IELTS',
+      subtitle: 'All IELTS singular + full mocks',
+      price: 'Rs 399',
+    ),
+    _PlanOption(
+      keyName: 'basic_pte',
+      title: 'Basic PTE',
+      subtitle: 'All PTE full mocks',
+      price: 'Rs 399',
+    ),
+    _PlanOption(
+      keyName: 'premium',
+      title: 'Premium',
+      subtitle: 'IELTS + PTE unlocked',
+      price: 'Rs 699',
+    ),
+  ];
+
   String _selectedPlan = 'basic_ielts';
   bool _loading = false;
+  bool _loadingPlans = true;
   String? _error;
+  List<_PlanOption> _plans = List.of(_fallbackPlans);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlans();
+  }
+
+  String _subtitleFor(Map<String, dynamic> plan) {
+    final unlocked = plan['unlocked_exam']?.toString().toUpperCase();
+    switch (unlocked) {
+      case 'IELTS':
+        return 'All IELTS singular + full mocks';
+      case 'PTE':
+        return 'All PTE full mocks';
+      case 'BOTH':
+        return 'IELTS + PTE unlocked';
+      default:
+        return plan['subscription']?.toString() ?? 'Exam track unlock';
+    }
+  }
+
+  Future<void> _loadPlans() async {
+    try {
+      final response = await ApiService.get('/payments/plans');
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && body['success'] == true) {
+        final raw = body['data'];
+        if (raw is List && raw.isNotEmpty) {
+          final parsed = <_PlanOption>[];
+          for (final item in raw) {
+            if (item is! Map) continue;
+            final map = Map<String, dynamic>.from(item);
+            final key = map['plan']?.toString();
+            if (key == null || key.isEmpty) continue;
+            parsed.add(
+              _PlanOption(
+                keyName: key,
+                title: map['label']?.toString() ?? key,
+                subtitle: _subtitleFor(map),
+                price: map['price_label']?.toString() ?? '',
+              ),
+            );
+          }
+          if (parsed.isNotEmpty && mounted) {
+            setState(() {
+              _plans = parsed;
+              _selectedPlan = parsed.first.keyName;
+              _loadingPlans = false;
+            });
+            return;
+          }
+        }
+      }
+    } catch (_) {
+      // Keep hardcoded fallbacks.
+    }
+    if (mounted) setState(() => _loadingPlans = false);
+  }
 
   Future<void> _startCheckout() async {
     setState(() {
@@ -88,6 +183,8 @@ class _PremiumModalState extends State<PremiumModal> {
         final user = Map<String, dynamic>.from(body['user'] as Map? ?? {});
         if (user.isNotEmpty) {
           AuthNavigationHelper.syncUserNotifier(user);
+        } else {
+          await AuthNavigationHelper.refreshEntitlements();
         }
         if (!mounted) return;
         Navigator.pop(context);
@@ -147,26 +244,18 @@ class _PremiumModalState extends State<PremiumModal> {
             style: TextStyle(color: AppTheme.secondaryText(context)),
           ),
           const SizedBox(height: 20),
-          _planTile(
-            keyName: 'basic_ielts',
-            title: 'Basic IELTS',
-            subtitle: 'All IELTS singular + full mocks',
-            price: 'Rs 399',
-          ),
-          const SizedBox(height: 12),
-          _planTile(
-            keyName: 'basic_pte',
-            title: 'Basic PTE',
-            subtitle: 'All PTE full mocks',
-            price: 'Rs 399',
-          ),
-          const SizedBox(height: 12),
-          _planTile(
-            keyName: 'premium',
-            title: 'Premium',
-            subtitle: 'IELTS + PTE unlocked',
-            price: 'Rs 699',
-          ),
+          if (_loadingPlans)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            ...[
+              for (var i = 0; i < _plans.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                _planTile(_plans[i]),
+              ],
+            ],
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
@@ -176,7 +265,7 @@ class _PremiumModalState extends State<PremiumModal> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: _loading ? null : _startCheckout,
+              onPressed: _loading || _loadingPlans ? null : _startCheckout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF007BFF),
                 foregroundColor: Colors.white,
@@ -204,15 +293,10 @@ class _PremiumModalState extends State<PremiumModal> {
     );
   }
 
-  Widget _planTile({
-    required String keyName,
-    required String title,
-    required String subtitle,
-    required String price,
-  }) {
-    final selected = _selectedPlan == keyName;
+  Widget _planTile(_PlanOption plan) {
+    final selected = _selectedPlan == plan.keyName;
     return InkWell(
-      onTap: () => setState(() => _selectedPlan = keyName),
+      onTap: () => setState(() => _selectedPlan = plan.keyName),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -237,12 +321,12 @@ class _PremiumModalState extends State<PremiumModal> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
+                  Text(plan.title,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.primaryText(context),
                       )),
-                  Text(subtitle,
+                  Text(plan.subtitle,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.secondaryText(context),
@@ -250,7 +334,7 @@ class _PremiumModalState extends State<PremiumModal> {
                 ],
               ),
             ),
-            Text(price,
+            Text(plan.price,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF007BFF),

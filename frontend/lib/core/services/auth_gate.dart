@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/src/auth/auth_screen.dart';
 import 'package:frontend/src/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Launch gate: always show onboarding (first launch) or login.
-/// Saved tokens are never used to skip into Home / Dashboard.
+/// Launch gate: always show the Figma-style welcome/onboarding on cold start.
+/// Get Started / Guest navigate to AuthScreen; successful sign-in enters the app.
+/// Tokens alone never skip into Home / Dashboard.
+///
+/// We intentionally do **not** persist a "has seen onboarding" flag — that made
+/// the welcome screen disappear forever after one tap during FYP demos.
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
-  static const seenOnboardingPrefsKey = 'has_seen_onboarding';
-
-  static Future<void> markOnboardingSeen() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(seenOnboardingPrefsKey, true);
-  }
+  static const _legacySeenKeys = [
+    'has_seen_onboarding',
+    'has_seen_onboarding_v2',
+  ];
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -32,16 +33,16 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _bootstrap() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final seenOnboarding =
-          prefs.getBool(AuthGate.seenOnboardingPrefsKey) ?? false;
-      if (seenOnboarding) {
-        _go(const AuthScreen(startOnLogin: true, allowBack: false));
-      } else {
-        _go(const OnboardingScreen());
+      // Clear legacy permanent-skip flags so stale prefs cannot hide welcome.
+      for (final key in AuthGate._legacySeenKeys) {
+        if (prefs.containsKey(key)) {
+          await prefs.remove(key);
+        }
       }
     } catch (_) {
-      _go(const OnboardingScreen());
+      // Ignore prefs errors — still show onboarding.
     }
+    _go(const OnboardingScreen());
   }
 
   void _go(Widget page) {

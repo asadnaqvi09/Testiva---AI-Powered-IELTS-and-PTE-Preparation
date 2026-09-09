@@ -57,6 +57,7 @@ class RuntimeQuestion {
   bool get isWriting => kind == QuestionKind.writing;
   bool get isSpeaking => kind == QuestionKind.speaking;
   bool get isObjective => !isWriting && !isSpeaking;
+  bool get isListening => sectionType == 'listening';
   bool get hasPassage => passageText.trim().isNotEmpty;
   bool get hasAudio => audioUrl != null && audioUrl!.isNotEmpty;
   bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
@@ -102,6 +103,15 @@ class TestRuntimeParser {
       final sectionName = sec['section_name'] as String? ?? sectionType;
       final instructions = sec['instructions'] as String? ?? '';
       final questions = sec['questions'] as List? ?? [];
+      String? sectionAudio;
+      for (final rawQ in questions) {
+        if (rawQ is! Map) continue;
+        final u = rawQ['audio_url']?.toString() ?? '';
+        if (u.isNotEmpty) {
+          sectionAudio = u;
+          break;
+        }
+      }
 
       for (final q in questions) {
         final qt = (q['question_type'] as String? ?? '').toLowerCase();
@@ -144,7 +154,12 @@ class TestRuntimeParser {
           text: q['question_text'] as String? ?? '',
           options: options,
           passageText: passage.isNotEmpty ? passage : instructions,
-          audioUrl: q['audio_url'] as String?,
+          audioUrl: () {
+            final own = q['audio_url'] as String?;
+            if (own != null && own.isNotEmpty) return own;
+            if (sectionType == 'listening') return sectionAudio;
+            return own;
+          }(),
           imageUrl: q['image_url'] as String?,
           minWords: int.tryParse(q['min_words']?.toString() ?? '') ?? 0,
           maxWords: int.tryParse(q['max_words']?.toString() ?? '') ?? 0,

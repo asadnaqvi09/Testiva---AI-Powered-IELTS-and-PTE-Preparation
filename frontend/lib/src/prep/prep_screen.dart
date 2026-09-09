@@ -193,7 +193,7 @@ class _PrepScreenState extends State<PrepScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppTheme.scaffoldBg(context),
-      endDrawer: const CustomDrawer(),
+      drawer: const CustomDrawer(),
       appBar: AppHeader(scaffoldKey: _scaffoldKey, showBackButton: false),
       body: RefreshIndicator(
         onRefresh: _fetchLiveModules,

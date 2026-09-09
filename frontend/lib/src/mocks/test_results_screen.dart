@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../widgets/app_theme.dart';
+import '../dashboard/home/widgets/skill_scores_row.dart';
 import 'models/runtime_question.dart';
 
 class TestResultsScreen extends StatefulWidget {
@@ -201,6 +202,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
     final mainInfo = _resultData!['main_info'] as Map<String, dynamic>? ?? {};
     final stats = _resultData!['stats'] as Map<String, dynamic>? ?? {};
     final scoresBreakdown = _resultData!['scores_breakdown'] as Map<String, dynamic>? ?? {};
+    final moduleStats = _resultData!['module_stats'] as Map<String, dynamic>? ?? {};
     final aiAnalysis = _resultData!['ai_analysis'] as Map<String, dynamic>? ?? {};
     final reviewList = _resultData!['review'] as List? ?? [];
 
@@ -218,6 +220,16 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
     final double lScore = _parseDouble(scoresBreakdown['listening']);
     final double wScore = _parseDouble(scoresBreakdown['writing']);
     final double sScore = _parseDouble(scoresBreakdown['speaking']);
+    final readingMod = moduleStats['reading'] as Map<String, dynamic>? ?? {};
+    final listeningMod = moduleStats['listening'] as Map<String, dynamic>? ?? {};
+    final writingMod = moduleStats['writing'] as Map<String, dynamic>? ?? {};
+    final speakingMod = moduleStats['speaking'] as Map<String, dynamic>? ?? {};
+    final rCorrect = _parseInt(readingMod['correct']);
+    final rTotal = _parseInt(readingMod['total']);
+    final lCorrect = _parseInt(listeningMod['correct']);
+    final lTotal = _parseInt(listeningMod['total']);
+    final writingPending = writingMod['pending'] == true;
+    final speakingPending = speakingMod['pending'] == true;
 
     String aiFeedback = aiAnalysis['feedback'] as String? ?? '';
     if (aiFeedback.isEmpty) {
@@ -333,17 +345,42 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  SkillScoresRow(
+                    skills: [
+                      SkillScore(
+                        label: 'Reading',
+                        icon: Icons.menu_book_outlined,
+                        color: Colors.purple,
+                        band: rScore,
+                        subtitle: rTotal > 0 ? '$rCorrect/$rTotal' : '',
+                      ),
+                      SkillScore(
+                        label: 'Listening',
+                        icon: Icons.headphones_outlined,
+                        color: Colors.green,
+                        band: lScore,
+                        subtitle: lTotal > 0 ? '$lCorrect/$lTotal' : '',
+                      ),
+                      SkillScore(
+                        label: 'Writing',
+                        icon: Icons.edit_outlined,
+                        color: Colors.orange,
+                        band: wScore,
+                        pending: writingPending && wScore <= 0,
+                        subtitle: writingPending && wScore <= 0 ? 'AI…' : '',
+                      ),
+                      SkillScore(
+                        label: 'Speaking',
+                        icon: Icons.mic_none_rounded,
+                        color: Colors.pink,
+                        band: sScore,
+                        pending: speakingPending && sScore <= 0,
+                        subtitle: speakingPending && sScore <= 0 ? 'AI…' : '',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   if (totalQuestions > 0) _buildBreakdownRow('Accuracy', accuracyValue, accuracyString, Colors.blue),
-                  if (rScore > 0 || totalQuestions > 0) _buildBreakdownRow('Reading', rScore / 9.0, 'Band $rScore', Colors.purple),
-                  if (lScore > 0) _buildBreakdownRow('Listening', lScore / 9.0, 'Band $lScore', Colors.green),
-                  if (wScore > 0)
-                    _buildBreakdownRow('Writing', wScore / 9.0, 'Band $wScore', Colors.orange)
-                  else if (_isPending)
-                    _buildBreakdownRow('Writing', 0, 'Pending AI…', Colors.orange),
-                  if (sScore > 0)
-                    _buildBreakdownRow('Speaking', sScore / 9.0, 'Band $sScore', Colors.pink)
-                  else if (_isPending)
-                    _buildBreakdownRow('Speaking', 0, 'Pending AI…', Colors.pink),
                 ],
               ),
             ),

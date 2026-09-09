@@ -28,9 +28,36 @@ class LogoutDialog extends StatelessWidget {
           ),
         ],
       ),
-      content: Text(
-        'Are you sure you want to log out of Testiva AI? Your current active learning session parameters will be saved securely.',
-        style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Are you sure you want to log out of Testiva AI? Your current active learning session parameters will be saved securely.',
+            style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 14),
+          ),
+          const SizedBox(height: 14),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await LogoutHelper.performLogoutAllDevices(hostContext);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFB91C1C),
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Logout all devices',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
       ),
       actionsPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
       actions: [

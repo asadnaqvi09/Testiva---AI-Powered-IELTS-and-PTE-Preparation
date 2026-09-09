@@ -105,7 +105,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('New Password', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          const Text('Set your new password to login', style: TextStyle(color: Colors.grey)),
+          const Text(
+            'Because you forgot your old password, create a new one to sign in again.',
+            style: TextStyle(color: Colors.grey, height: 1.4),
+          ),
           const SizedBox(height: 40),
           _field('New Password', Icons.lock_outline, _pass, true),
           const SizedBox(height: 20),

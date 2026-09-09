@@ -48,10 +48,10 @@ class _HeaderSectionState extends State<HeaderSection> {
   void _openMenu() {
     final state = widget.scaffoldKey.currentState;
     if (state == null) return;
-    if (state.hasEndDrawer) {
-      state.openEndDrawer();
-    } else {
+    if (state.hasDrawer) {
       state.openDrawer();
+    } else if (state.hasEndDrawer) {
+      state.openEndDrawer();
     }
   }
 
@@ -75,6 +75,7 @@ class _HeaderSectionState extends State<HeaderSection> {
       children: [
         Row(
           children: [
+            // Menu on the LEFT — same side as Scaffold.drawer
             CircleIconButton(icon: Icons.menu_rounded, onTap: _openMenu),
             const Expanded(
               child: Center(child: BrandMark(markSize: 32, fontSize: 17)),

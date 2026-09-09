@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/fcm_token_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/src/auth/signup/preference_selection_screen.dart';
 import 'package:frontend/src/dashboard/dashboard_screen.dart';
@@ -8,7 +12,8 @@ class AuthNavigationHelper {
     final unlocked = user['unlocked_exam']?.toString();
     final subscription = user['subscription'] ?? 'free';
     UserNotifier.notifier.value = {
-      'id': user['id'],
+      ...UserNotifier.notifier.value,
+      'id': user['id'] ?? UserNotifier.notifier.value['id'],
       'name': user['full_name'] ?? user['name'] ?? 'User',
       'email': user['email'] ?? '',
       'preference': user['preference'],
@@ -20,6 +25,32 @@ class AuthNavigationHelper {
           unlocked?.toUpperCase() == 'BOTH',
       'avatar_url': user['avatar_url'],
     };
+  }
+
+  /// Refresh subscription / unlocked_exam from `GET /payments/me`.
+  static Future<void> refreshEntitlements() async {
+    try {
+      final response = await ApiService.get('/payments/me');
+      if (response.statusCode != 200) return;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (body['success'] != true) return;
+      final data = body['data'];
+      if (data is! Map) return;
+      final unlocked = data['unlocked_exam']?.toString();
+      final subscription = data['subscription'] ?? 'free';
+      UserNotifier.notifier.value = {
+        ...UserNotifier.notifier.value,
+        'subscription': subscription,
+        'preference':
+            data['preference'] ?? UserNotifier.notifier.value['preference'],
+        'unlocked_exam': unlocked,
+        'isPremium':
+            subscription.toString().toLowerCase() == 'premium' ||
+            unlocked?.toUpperCase() == 'BOTH',
+      };
+    } catch (e) {
+      debugPrint('refreshEntitlements: $e');
+    }
   }
 
   static Route<T> fadeRoute<T>(Widget page) {
@@ -39,6 +70,8 @@ class AuthNavigationHelper {
     String? successMessage,
   }) async {
     syncUserNotifier(user);
+    unawaited(refreshEntitlements());
+    unawaited(FcmTokenService.syncTokenIfAvailable());
     if (!context.mounted) return;
 
     if (successMessage != null && successMessage.isNotEmpty) {
@@ -63,6 +96,11 @@ class AuthNavigationHelper {
         ? const DashboardScreen()
         : PreferenceSelectionScreen(userName: userName);
 
-    Navigator.of(context).pushReplacement(fadeRoute(destination));
+    // Clear AuthGate/Onboarding (and AuthScreen) so Android back cannot return
+    // to the welcome flow after the user has entered the app.
+    Navigator.of(context).pushAndRemoveUntil(
+      fadeRoute(destination),
+      (route) => false,
+    );
   }
 }

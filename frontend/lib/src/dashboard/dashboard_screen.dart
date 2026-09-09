@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,6 @@ import '../mocks/mocks_screen.dart';
 import '../prep/prep_screen.dart';
 import '../features/community/presentation/community_screen.dart';
 import 'package:frontend/core/services/api_service.dart';
-import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/core/services/auth_navigation_helper.dart';
 import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/notification_provider.dart';
@@ -98,6 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           AuthNavigationHelper.syncUserNotifier(
             Map<String, dynamic>.from(user as Map),
           );
+          unawaited(AuthNavigationHelper.refreshEntitlements());
 
           if (user['preference'] == null && mounted) {
             final userName = user['full_name'] ?? user['name'] ?? 'User';
@@ -142,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      endDrawer: const CustomDrawer(),
+      drawer: const CustomDrawer(),
       body: IndexedStack(
         index: _selectedIndex,
         children: screens,

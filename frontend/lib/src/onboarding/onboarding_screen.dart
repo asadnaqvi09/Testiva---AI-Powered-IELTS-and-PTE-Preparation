@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/constants/app_colors.dart';
-import 'package:frontend/core/services/auth_gate.dart';
 import '../auth/auth_screen.dart';
 import './widgets/onboarding_header.dart';
 import './widgets/onboarding_stats.dart';
@@ -65,9 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  Future<void> _goToAuth({bool startOnLogin = true}) async {
-    await AuthGate.markOnboardingSeen();
-    if (!mounted) return;
+  void _goToAuth({bool startOnLogin = true}) {
     Navigator.push(
       context,
       MaterialPageRoute(

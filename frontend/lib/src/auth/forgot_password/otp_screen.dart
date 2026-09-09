@@ -8,8 +8,7 @@ import 'reset_password_screen.dart';
 
 class OTPScreen extends StatefulWidget {
   final String email;
-  final String? devOtp;
-  const OTPScreen({super.key, required this.email, this.devOtp});
+  const OTPScreen({super.key, required this.email});
   @override
   State<OTPScreen> createState() => _OTPScreenState();
 }
@@ -25,13 +24,6 @@ class _OTPScreenState extends State<OTPScreen> {
   void initState() {
     super.initState();
     _startT();
-    final initialDevOtp = widget.devOtp;
-    if (initialDevOtp != null && initialDevOtp.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        showDevOtpSnackBar(context, {'devOtp': initialDevOtp});
-      });
-    }
   }
 
   void _startT() {
@@ -50,12 +42,10 @@ class _OTPScreenState extends State<OTPScreen> {
     });
   }
 
-
   Future<void> _verifyOTP() async {
     if (!_isComplete) return;
 
     setState(() => _isLoading = true);
-
 
     String otpCode = _ctrls.map((c) => c.text).join();
 
@@ -71,9 +61,8 @@ class _OTPScreenState extends State<OTPScreen> {
       if (response.statusCode == 200 && responseData['success'] == true) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP Verified Successfully!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('OTP verified. Now set a new password.'), backgroundColor: Colors.green),
         );
-
 
         Navigator.push(
             context,
@@ -90,13 +79,12 @@ class _OTPScreenState extends State<OTPScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Verification failed: ${e.toString()}'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Verification failed. Please try again.'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   Future<void> _resendOTP() async {
     try {
@@ -105,14 +93,18 @@ class _OTPScreenState extends State<OTPScreen> {
       });
       final responseData = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && responseData['success'] == true) {
+      if (response.statusCode == 200 &&
+          responseData['success'] == true &&
+          isOtpEmailSent(responseData)) {
         if (!mounted) return;
-        showDevOtpSnackBar(context, responseData);
-        if (responseData['devOtp'] == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('A new OTP has been sent to your email.'), backgroundColor: Colors.green),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(otpSendSuccessMessage(
+              fallback: 'A new OTP has been sent to your email.',
+            )),
+            backgroundColor: Colors.green,
+          ),
+        );
         setState(() {
           _sec = 60;
         });
@@ -120,13 +112,19 @@ class _OTPScreenState extends State<OTPScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(responseData['message'] ?? 'Failed to resend OTP'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text(kOtpSendFailedMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection error: ${e.toString()}'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text(kOtpSendFailedMessage),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -148,9 +146,12 @@ class _OTPScreenState extends State<OTPScreen> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Verification Code', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const Text('Enter OTP', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          Text('Sent to ${widget.email}', style: const TextStyle(color: Colors.grey)),
+          Text(
+            'We sent a 4-digit code to ${widget.email}. Enter it here, then you\'ll create a new password.',
+            style: const TextStyle(color: Colors.grey, height: 1.4),
+          ),
           const SizedBox(height: 40),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: List.generate(4, (i) => _box(i))),
           const SizedBox(height: 30),
