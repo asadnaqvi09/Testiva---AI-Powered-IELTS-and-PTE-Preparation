@@ -1,5 +1,5 @@
-/// Local FYP catalog used when the dashboard API is unreachable or returns
-/// an auth/DB error. IDs for IELTS items match `Backend/src/database/testiva.sql`.
+/// Local FYP catalog used when the dashboard API is unreachable or offline
+/// with no SQLite cache. IDs for IELTS items match `Backend/src/database/testiva.sql`.
 class DemoMockCatalog {
   static const List<Map<String, dynamic>> items = [
     {
@@ -11,8 +11,13 @@ class DemoMockCatalog {
       'difficulty_level': 'medium',
       'total_duration': 60,
       'min_required_band': 6.0,
-      'total_questions': 8,
-      'sub_question_type_indicators': ['mcq', 'true_false', 'yes_no', 'short_answer'],
+      'total_questions': 5,
+      'sub_question_type_indicators': [
+        'mcq',
+        'true_false',
+        'yes_no',
+        'short_answer',
+      ],
       'last_attempt': null,
       'cta': 'start',
     },
@@ -25,11 +30,10 @@ class DemoMockCatalog {
       'difficulty_level': 'medium',
       'total_duration': 60,
       'min_required_band': 6.0,
-      'total_questions': 12,
+      'total_questions': 2,
       'sub_question_type_indicators': [
         'chart_description',
-        'opinion',
-        'request_information',
+        'provide_opinion',
       ],
       'last_attempt': null,
       'cta': 'start',
@@ -44,7 +48,11 @@ class DemoMockCatalog {
       'total_duration': 90,
       'min_required_band': 65,
       'total_questions': 20,
-      'sub_question_type_indicators': ['mcq', 'short_answer', 'sentence_completion'],
+      'sub_question_type_indicators': [
+        'mcq',
+        'short_answer',
+        'sentence_completion',
+      ],
       'last_attempt': null,
       'cta': 'start',
     },
@@ -56,6 +64,17 @@ class DemoMockCatalog {
     return items
         .where((m) => (m['exam_type']?.toString().toUpperCase() ?? '') == key)
         .map((m) => Map<String, dynamic>.from(m))
+        .toList();
+  }
+
+  // clean and optimized code — only mocks with bundled offline runtime
+  static List<Map<String, dynamic>> offlineReady(String examType) {
+    const offlineIds = {
+      'd2319e2d-12d4-440a-8af0-75fa93f537eb',
+      '047684a1-5841-4c06-90cc-44dcde456ae5',
+    };
+    return forExamType(examType)
+        .where((m) => offlineIds.contains(m['id']?.toString()))
         .toList();
   }
 }

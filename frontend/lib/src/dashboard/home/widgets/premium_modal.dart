@@ -51,6 +51,8 @@ class _PremiumModalState extends State<PremiumModal> {
   String _selectedPlan = 'basic_ielts';
   bool _loading = false;
   bool _loadingPlans = true;
+  bool _stripeConfigured = true;
+  String? _pendingSessionId;
   String? _error;
   List<_PlanOption> _plans = List.of(_fallbackPlans);
 
@@ -79,6 +81,10 @@ class _PremiumModalState extends State<PremiumModal> {
       final response = await ApiService.get('/payments/plans');
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200 && body['success'] == true) {
+        // clean and optimized code — surface Stripe readiness for demos
+        final configured = body['stripe_configured'];
+        if (configured is bool) _stripeConfigured = configured;
+
         final raw = body['data'];
         if (raw is List && raw.isNotEmpty) {
           final parsed = <_PlanOption>[];
@@ -101,6 +107,10 @@ class _PremiumModalState extends State<PremiumModal> {
               _plans = parsed;
               _selectedPlan = parsed.first.keyName;
               _loadingPlans = false;
+              if (!_stripeConfigured) {
+                _error =
+                    'Stripe key missing in Backend .env (STRIPE_SECRET_KEY).';
+              }
             });
             return;
           }
@@ -109,7 +119,14 @@ class _PremiumModalState extends State<PremiumModal> {
     } catch (_) {
       // Keep hardcoded fallbacks.
     }
-    if (mounted) setState(() => _loadingPlans = false);
+    if (mounted) {
+      setState(() {
+        _loadingPlans = false;
+        if (!_stripeConfigured) {
+          _error = 'Stripe key missing in Backend .env (STRIPE_SECRET_KEY).';
+        }
+      });
+    }
   }
 
   Future<void> _startCheckout() async {
@@ -126,6 +143,7 @@ class _PremiumModalState extends State<PremiumModal> {
         setState(() {
           _error = body['message']?.toString() ??
               'Unable to start checkout. Check Stripe config.';
+          _stripeConfigured = response.statusCode != 503;
         });
         return;
       }
@@ -135,8 +153,10 @@ class _PremiumModalState extends State<PremiumModal> {
         setState(() => _error = 'Checkout URL missing from server');
         return;
       }
+      _pendingSessionId = sessionId;
       final uri = Uri.parse(url);
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched =
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched) {
         setState(() => _error = 'Could not open Stripe Checkout');
         return;
@@ -180,9 +200,14 @@ class _PremiumModalState extends State<PremiumModal> {
           await ApiService.get('/payments/confirm?session_id=$sessionId');
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200 && body['success'] == true) {
-        final user = Map<String, dynamic>.from(body['user'] as Map? ?? {});
-        if (user.isNotEmpty) {
-          AuthNavigationHelper.syncUserNotifier(user);
+        final userMap = body['user'] is Map
+            ? Map<String, dynamic>.from(body['user'] as Map)
+            : (body['data'] is Map && (body['data'] as Map)['user'] is Map)
+                ? Map<String, dynamic>.from(
+                    (body['data'] as Map)['user'] as Map)
+                : <String, dynamic>{};
+        if (userMap.isNotEmpty) {
+          AuthNavigationHelper.syncUserNotifier(userMap);
         } else {
           await AuthNavigationHelper.refreshEntitlements();
         }
@@ -240,7 +265,7 @@ class _PremiumModalState extends State<PremiumModal> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Pay for IELTS, PTE, or both. You only see mocks for what you unlock.',
+            'Pay for IELTS, PTE, or both. Free users can also be upgraded manually in DB for testing.',
             style: TextStyle(color: AppTheme.secondaryText(context)),
           ),
           const SizedBox(height: 20),
@@ -258,14 +283,24 @@ class _PremiumModalState extends State<PremiumModal> {
             ],
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+            Text(_error!,
+                style: const TextStyle(color: Colors.red, fontSize: 13)),
+          ],
+          if (_pendingSessionId != null && !_loading) ...[
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => _confirmSession(_pendingSessionId!),
+              child: const Text("I've paid — confirm again"),
+            ),
           ],
           const Spacer(),
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: _loading || _loadingPlans ? null : _startCheckout,
+              onPressed: _loading || _loadingPlans || !_stripeConfigured
+                  ? null
+                  : _startCheckout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF007BFF),
                 foregroundColor: Colors.white,

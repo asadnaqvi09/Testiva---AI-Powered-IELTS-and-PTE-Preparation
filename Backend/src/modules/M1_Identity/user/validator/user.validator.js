@@ -12,6 +12,16 @@ export const updateProfileSchema = Joi.object({
   preferences: Joi.string().valid("IELTS", "PTE").optional()
 });
 
+export const updateUiSettingsSchema = Joi.object({
+  theme: Joi.string().valid("light", "dark", "system").optional(),
+  notif_prefs: Joi.object({
+    newUser: Joi.boolean().optional(),
+    subChange: Joi.boolean().optional(),
+    newPost: Joi.boolean().optional(),
+    preferenceChange: Joi.boolean().optional(),
+  }).optional(),
+}).or("theme", "notif_prefs");
+
 export const changePasswordSchema = Joi.object({
   current_password: Joi.string().required(),
   new_password: passwordSchema,

@@ -149,6 +149,7 @@ export const fetchMobileMocksDashboard = async (req, res) => {
       difficulty_level: r.difficulty_level,
       total_duration: r.total_duration,
       min_required_band: r.min_required_band,
+      is_premium: Boolean(r.is_premium),
       total_questions: r.total_questions,
       sub_question_type_indicators: r.sub_question_types || [],
       last_attempt: r.last_attempt_id
@@ -200,6 +201,13 @@ export const getTestPreview = async (req, res) => {
   }
 };
 
+function assertPaidPlanForPremiumTest(access, isPremium) {
+  if (!isPremium) return true;
+  if (access.role === "admin") return true;
+  const sub = String(access.subscription || "free").toLowerCase();
+  return sub === "basic" || sub === "premium";
+}
+
 export const getTestRuntime = async (req, res) => {
   try {
     const access = await resolveTestUserAccess(req);
@@ -215,6 +223,13 @@ export const getTestRuntime = async (req, res) => {
       if (!adminReview && !assertExamAccess(access, cached.exam_type)) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
+      // clean and optimized code — premium-flagged mocks need basic/premium
+      if (!adminReview && !assertPaidPlanForPremiumTest(access, cached.is_premium)) {
+        return res.status(403).json({
+          success: false,
+          message: "This mock requires a Basic or Premium plan.",
+        });
+      }
       return res.status(200).json({ success: true, data: cached });
     }
     const data = await testModel.getStructuredTest(id, { includeCorrect: adminReview });
@@ -223,6 +238,12 @@ export const getTestRuntime = async (req, res) => {
       if (!data.is_published) return res.status(403).json({ success: false, message: "Not available" });
       if (!assertExamAccess(access, data.exam_type)) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
+      }
+      if (!assertPaidPlanForPremiumTest(access, data.is_premium)) {
+        return res.status(403).json({
+          success: false,
+          message: "This mock requires a Basic or Premium plan.",
+        });
       }
 
       if (subscription === "free") {
@@ -484,6 +505,12 @@ export const getTestById = async (req, res) => {
       if (!assertExamAccess(access, cached.exam_type)) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
+      if (!assertPaidPlanForPremiumTest(access, cached.is_premium)) {
+        return res.status(403).json({
+          success: false,
+          message: "This mock requires a Basic or Premium plan.",
+        });
+      }
       return res.status(200).json({ success: true, data: cached });
     }
     const includeCorrect = access.role === "admin";
@@ -493,6 +520,12 @@ export const getTestById = async (req, res) => {
       if (!testDetails.is_published) return res.status(403).json({ success: false, message: "Not available" });
       if (!assertExamAccess(access, testDetails.exam_type)) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
+      }
+      if (!assertPaidPlanForPremiumTest(access, testDetails.is_premium)) {
+        return res.status(403).json({
+          success: false,
+          message: "This mock requires a Basic or Premium plan.",
+        });
       }
       if (subscription === "free") {
         const allowedSections = ["reading", "writing"];

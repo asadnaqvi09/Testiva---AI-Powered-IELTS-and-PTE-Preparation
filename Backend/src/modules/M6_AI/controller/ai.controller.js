@@ -149,3 +149,31 @@ export const getAiFeedbackSuggestion = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// AI moderation preview endpoint (flow exists for demos / future admin tooling).
+// Admin Community UI does NOT call this — human flag/delete stays the live path.
+// Student post/comment create already runs moderatePost / moderateComment automatically.
+export const previewCommunityModeration = async (req, res) => {
+  try {
+    const { title = "", content = "", kind = "post" } = req.body || {};
+    if (!String(content).trim()) {
+      return res.status(400).json({ success: false, message: "content is required" });
+    }
+
+    const { moderatePost, moderateComment } = await import("../services/moderation.service.js");
+    const result =
+      kind === "comment"
+        ? await moderateComment({ content })
+        : await moderatePost({ title, content });
+
+    return res.status(200).json({
+      success: true,
+      applied: false,
+      message: "Preview only — result was not persisted",
+      data: result,
+    });
+  } catch (error) {
+    console.error("previewCommunityModeration:", error);
+    return res.status(500).json({ success: false, message: error.message || "Moderation preview failed" });
+  }
+};

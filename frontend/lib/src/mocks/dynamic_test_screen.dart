@@ -6,13 +6,16 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/local_db.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/connectivity_service.dart';
+import '../../core/services/offline_audio_cache.dart';
 import '../../core/services/offline_sync_service.dart';
+import '../../data/demo/demo_mock_runtime.dart';
 import '../../widgets/app_theme.dart';
 import '../profile/all_tests_screen.dart';
 import 'models/runtime_question.dart';
 import 'test_results_screen.dart';
 import 'widgets/matching_engine.dart';
 import 'widgets/selection_engine.dart';
+import 'widgets/input_engine.dart';
 import 'widgets/speaking_recorder.dart';
 
 class DynamicTestScreen extends StatefulWidget {
@@ -77,6 +80,11 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
                 durationMinutes: widget.totalDurationMinutes,
                 payload: data,
               );
+              // clean and optimized code — prefetch listening audio for offline
+              unawaited(OfflineAudioCache.cacheFromRuntimePayload(
+                testId: widget.testId,
+                payload: data,
+              ));
               final loaded =
                   TestRuntimeParser.parseRuntimePayload(data);
               if (mounted) {
@@ -97,22 +105,50 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
 
       final cached = await LocalDb.instance.getCachedTestRuntime(widget.testId);
       if (cached != null) {
-        final loaded = TestRuntimeParser.parseRuntimePayload(
-          cached['data'] as Map<String, dynamic>,
+        _applyLoadedQuestions(
+          TestRuntimeParser.parseRuntimePayload(
+            cached['data'] as Map<String, dynamic>,
+          ),
+          fromCache: true,
+          offline: !online,
         );
-        if (mounted) {
-          setState(() {
-            _questions = loaded;
-            _loadedFromCache = true;
-            _isOfflineMode = !online;
-            _isLoading = false;
-          });
-          _syncTextController();
-          if (loaded.isNotEmpty) _startTimer();
-        }
+        return;
+      }
+
+      // clean and optimized code — bundled runtime (no prior online cache needed)
+      final demo = DemoMockRuntime.payloadFor(widget.testId);
+      if (demo != null) {
+        await LocalDb.instance.cacheTestRuntime(
+          testId: widget.testId,
+          title: widget.testTitle,
+          durationMinutes: widget.totalDurationMinutes,
+          payload: demo,
+        );
+        _applyLoadedQuestions(
+          TestRuntimeParser.parseRuntimePayload(demo),
+          fromCache: true,
+          offline: !online,
+        );
+        return;
       }
     } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _applyLoadedQuestions(
+    List<RuntimeQuestion> loaded, {
+    required bool fromCache,
+    required bool offline,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _questions = loaded;
+      _loadedFromCache = fromCache;
+      _isOfflineMode = offline;
+      _isLoading = false;
+    });
+    _syncTextController();
+    if (loaded.isNotEmpty) _startTimer();
   }
 
   void _startTimer() {
@@ -154,7 +190,13 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
       }
       if (_playingAudioUrl != url) {
         await _audioPlayer.stop();
-        await _audioPlayer.play(UrlSource(url));
+        // clean and optimized code — prefer local cache when offline
+        final localPath = await OfflineAudioCache.resolvePlayableSource(url);
+        if (localPath != null) {
+          await _audioPlayer.play(DeviceFileSource(localPath));
+        } else {
+          await _audioPlayer.play(UrlSource(url));
+        }
         _playingAudioUrl = url;
       } else {
         await _audioPlayer.resume();
@@ -163,7 +205,11 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not play audio. Check your connection.')),
+          const SnackBar(
+            content: Text(
+              'Could not play audio. Open this test once online to cache audio.',
+            ),
+          ),
         );
       }
     }
@@ -268,6 +314,12 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         int wc = 0;
         if (q.isWriting && raw is String) wc = _wordCount(raw);
 
+        // clean and optimized code — keep local path for offline sync upload
+        String? localAudioPath;
+        if (q.isSpeaking && raw is SpeakingAnswerState) {
+          localAudioPath = raw.localPath;
+        }
+
         responses.add({
           'question_id': q.id,
           'user_answer': serialized,
@@ -275,6 +327,10 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           if (wc > 0) 'word_count': wc,
           if (audioUrl != null && audioUrl.isNotEmpty)
             'audio_response_url': audioUrl,
+          if ((audioUrl == null || audioUrl.isEmpty) &&
+              localAudioPath != null &&
+              localAudioPath.isNotEmpty)
+            'local_audio_path': localAudioPath,
         });
       }
 
@@ -809,24 +865,15 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           uploadAudio: _uploadSpeakingLocal,
           onChanged: (state) => setState(() => _answers[_currentIndex] = state),
         );
-      default:
-        return Container(
-          decoration: BoxDecoration(
-            color: AppTheme.inputFill(context),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderColor(context)),
-          ),
-          child: TextField(
-            controller: _textController,
-            style: TextStyle(color: AppTheme.primaryText(context)),
-            onChanged: (v) => setState(() => _answers[_currentIndex] = v),
-            decoration: InputDecoration(
-              hintText: 'Type your answer…',
-              hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(14),
-            ),
-          ),
+      case QuestionKind.sentenceCompletion:
+      case QuestionKind.shortAnswer:
+      case QuestionKind.formFill:
+      case QuestionKind.unknown:
+        // clean and optimized code — dedicated short-answer / fill UI
+        return InputEngineWidget(
+          key: ValueKey('input_${q.id}_$_currentIndex'),
+          initialValue: (_answers[_currentIndex] as String?) ?? '',
+          onChanged: (v) => setState(() => _answers[_currentIndex] = v),
         );
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:frontend/core/config/api_origin_resolver.dart';
 import 'package:frontend/core/config/app_config.dart';
 import 'package:frontend/core/constants/app_colors.dart';
@@ -32,7 +33,14 @@ void main() async {
     '[Testiva] API ${AppConfig.apiBaseUrl} (${AppConfig.resolveSource})',
   );
   // Firebase + FCM: graceful if native config missing (desktop / incomplete iOS).
-  await FcmTokenService.ensureFirebaseInitialized();
+  final firebaseReady = await FcmTokenService.ensureFirebaseInitialized();
+  if (firebaseReady) {
+    try {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('[Testiva] FCM background handler skipped: $e');
+    }
+  }
   await FcmTokenService.syncTokenIfAvailable();
   runApp(
     MultiProvider(

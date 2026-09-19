@@ -13,6 +13,7 @@ class MockTest {
   final double? lastAttemptScore;
   final String? lastAttemptStatus;
   final String cta;
+  final bool isPremium;
 
   MockTest({
     required this.id,
@@ -29,6 +30,7 @@ class MockTest {
     this.lastAttemptScore,
     this.lastAttemptStatus,
     required this.cta,
+    this.isPremium = false,
   });
 
   bool get hasAttempt => lastAttemptId != null;
@@ -65,13 +67,17 @@ class MockTest {
       examType: examType == 'PTE' ? 'PTE' : 'IELTS',
       testCategory: json['test_category']?.toString() ?? 'full_mock',
       difficultyLevel: json['difficulty']?.toString() ??
-          json['difficulty_level']?.toString() ?? 'Medium',
+          json['difficulty_level']?.toString() ??
+          'Medium',
       totalDuration: int.tryParse(json['duration']?.toString() ?? '') ??
-          int.tryParse(json['total_duration']?.toString() ?? '') ?? 60,
+          int.tryParse(json['total_duration']?.toString() ?? '') ??
+          60,
       minRequiredBand: double.tryParse(json['min_band']?.toString() ?? '') ??
-          double.tryParse(json['min_required_band']?.toString() ?? '') ?? 5.5,
+          double.tryParse(json['min_required_band']?.toString() ?? '') ??
+          5.5,
       totalQuestions: int.tryParse(json['questions']?.toString() ?? '') ??
-          int.tryParse(json['total_questions']?.toString() ?? '') ?? 0,
+          int.tryParse(json['total_questions']?.toString() ?? '') ??
+          0,
       subQuestionTypeIndicators: _asStringList(
         json['sub_question_type_indicators'] ?? json['sub_question_types'],
       ),
@@ -81,6 +87,9 @@ class MockTest {
           : null,
       lastAttemptStatus: lastAttempt?['status']?.toString(),
       cta: json['cta']?.toString() ?? 'start',
+      isPremium: json['is_premium'] == true ||
+          json['isPremium'] == true ||
+          json['is_premium']?.toString() == 'true',
     );
   }
 }

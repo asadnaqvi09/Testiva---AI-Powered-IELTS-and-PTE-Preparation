@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/services/api_service.dart';
+import '../../providers/notification_provider.dart';
 import '../../widgets/app_theme.dart';
 import '../dashboard/home/widgets/skill_scores_row.dart';
 import 'models/runtime_question.dart';
@@ -34,6 +36,8 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
   bool _isPending = false;
   Timer? _pollTimer;
   int _pollCount = 0;
+  NotificationProvider? _notifProvider;
+  bool _pollTimedOut = false;
 
   @override
   void initState() {
@@ -43,13 +47,40 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
       _fetchResults();
       if (_isPending) _startPolling();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _notifProvider = context.read<NotificationProvider>();
+        _notifProvider?.addListener(_onNotificationUpdate);
+      } catch (_) {}
+    });
+  }
+
+  // clean and optimized code — refresh when AI sync notification arrives
+  void _onNotificationUpdate() {
+    if (!_isPending || widget.isOfflineSaved) return;
+    final hit = _notifProvider?.notifications.any(
+          (n) =>
+              n.isTestResultSynced &&
+              (n.attemptId == widget.attemptId || widget.attemptId.isEmpty),
+        ) ??
+        false;
+    if (hit) {
+      _fetchResults(silent: true);
+    }
   }
 
   void _startPolling() {
     _pollTimer?.cancel();
+    _pollCount = 0;
+    _pollTimedOut = false;
+    // ~6 minutes (90 × 4s) — Gemini + Bull can be slow on demo machines
     _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (_pollCount >= 30) {
+      if (_pollCount >= 90) {
         _pollTimer?.cancel();
+        if (mounted) {
+          setState(() => _pollTimedOut = true);
+        }
         return;
       }
       _pollCount++;
@@ -60,6 +91,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _notifProvider?.removeListener(_onNotificationUpdate);
     super.dispose();
   }
 
@@ -77,6 +109,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
             setState(() {
               _resultData = data;
               _isPending = pending;
+              if (!pending) _pollTimedOut = false;
             });
           }
           if (!pending) _pollTimer?.cancel();
@@ -275,14 +308,23 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFFED7AA)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                    SizedBox(width: 12),
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'AI is evaluating your writing and speaking responses. Scores will update automatically…',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF9A3412)),
+                        _pollTimedOut
+                            ? 'Still evaluating… Tap refresh or open All Tests when the notification arrives.'
+                            : 'AI is evaluating your writing and speaking responses. Scores will update automatically…',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9A3412),
+                        ),
                       ),
                     ),
                   ],

@@ -542,11 +542,13 @@ export const resendOTP = async (req, res) => {
 
 export const googleAuth = async (req, res) => {
   try {
-    const { idToken } = req.body;
-    if (!idToken)
+    // clean and optimized code — accept Flutter camelCase or snake_case
+    const idToken = req.body?.idToken || req.body?.id_token;
+    if (!idToken) {
       return res
         .status(400)
-        .json({ success: false, message: "Token required" });
+        .json({ success: false, message: "Google idToken required" });
+    }
     const googleUser = await verifyGoogleToken(idToken);
     if (googleUser.email_verified !== true) {
       return res.status(400).json({
@@ -564,6 +566,18 @@ export const googleAuth = async (req, res) => {
           message:
             "This email is already registered with a password. Please log in with your email and password.",
         });
+      }
+      // Refresh avatar/name from Google for existing Google accounts
+      if (googleUser.avatar_url || googleUser.full_name) {
+        await pool.query(
+          `UPDATE users SET
+             avatar_url = COALESCE($2, avatar_url),
+             full_name = COALESCE($3, full_name),
+             updated_at = NOW()
+           WHERE id = $1`,
+          [user.id, googleUser.avatar_url, googleUser.full_name],
+        );
+        user = (await findUserById(user.id)) || user;
       }
     } else {
       user = await createGoogleUser({

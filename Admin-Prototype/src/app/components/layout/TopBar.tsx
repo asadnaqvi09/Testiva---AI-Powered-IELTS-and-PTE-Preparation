@@ -2,26 +2,22 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Search, Bell, Menu, ChevronDown, Settings, LogOut,
   UserPlus, CreditCard, MessageSquare, FileText, Check, Loader2,
+  Users, BookOpen, LayoutDashboard,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router';
 import { useNotifications, type Notification } from '../../hooks/useNotifications';
+import { adminSearchAPI } from '../../services/api';
+import { normalizeNotifPrefs, notifTypeAllowed } from '../../utils/uiSettings';
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'B2C Admin',
-  super_admin: 'Super Admin',
-  institute_admin: 'Institute Admin',
-};
-
-const NAV_SEARCH_ITEMS: { label: string; path: string; roles?: string[]; keywords: string }[] = [
+const NAV_PAGES = [
   { label: 'Dashboard', path: '/dashboard', keywords: 'home overview' },
-  { label: 'Users', path: '/users', roles: ['admin', 'super_admin'], keywords: 'students accounts subscription unlock' },
-  { label: 'Students', path: '/users', roles: ['institute_admin'], keywords: 'students accounts' },
+  { label: 'Users', path: '/users', keywords: 'students accounts subscription unlock' },
   { label: 'Mock Tests', path: '/mocks', keywords: 'tests exams builder' },
   { label: 'Preparation', path: '/preparation', keywords: 'prep modules content' },
   { label: 'Analytics', path: '/analytics', keywords: 'stats reports metrics' },
-  { label: 'Community', path: '/community', roles: ['admin', 'super_admin'], keywords: 'posts feed' },
-  { label: 'Subscriptions', path: '/subscriptions', roles: ['admin', 'super_admin'], keywords: 'billing plans unlock' },
+  { label: 'Community', path: '/community', keywords: 'posts feed moderation' },
+  { label: 'Subscriptions', path: '/subscriptions', keywords: 'billing plans unlock' },
   { label: 'Settings', path: '/settings', keywords: 'profile password theme' },
 ];
 
@@ -33,20 +29,29 @@ const NOTIF_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: s
   default: { icon: <Bell size={14} />, color: '#6B7280', bg: '#F3F4F6' },
 };
 
+const TYPE_ICON: Record<string, React.ReactNode> = {
+  user: <Users size={14} />,
+  mock: <FileText size={14} />,
+  prep: <BookOpen size={14} />,
+  post: <MessageSquare size={14} />,
+  page: <LayoutDashboard size={14} />,
+};
+
 function getNotificationRoute(notification: Notification): string | null {
   switch (notification.type) {
     case 'admin_new_user':
+    case 'preference_change_request':
       return '/users';
     case 'admin_new_post':
       return '/community';
-    case 'preference_change_request':
-      return '/users';
     case 'admin_subscription_changed':
       return '/subscriptions';
     default:
       return null;
   }
 }
+
+type SearchHit = { id: string; label: string; sub?: string; type: string; path: string };
 
 interface TopBarProps {
   onMenuToggle: () => void;
@@ -56,25 +61,76 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { notifications, unreadCount, loading, markAsRead, markAllRead, refresh } = useNotifications();
+  const notifPrefs = normalizeNotifPrefs(user?.notifPrefs);
 
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [remoteHits, setRemoteHits] = useState<SearchHit[]>([]);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const searchResults = useMemo(() => {
+  // Filter bell items using server-backed prefs
+  const visibleNotifications = useMemo(
+    () => notifications.filter((n) => notifTypeAllowed(n.type, notifPrefs)),
+    [notifications, notifPrefs],
+  );
+
+  const visibleUnread = useMemo(
+    () => visibleNotifications.filter((n) => !n.is_read).length,
+    [visibleNotifications],
+  );
+
+  // Page matches (instant) + API hits (debounced)
+  const pageHits = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-    return NAV_SEARCH_ITEMS.filter(item => {
-      if (item.roles && user && !item.roles.includes(user.role)) return false;
-      const haystack = `${item.label} ${item.keywords} ${item.path}`.toLowerCase();
-      return haystack.includes(q);
-    }).slice(0, 8);
-  }, [searchQuery, user]);
+    if (!q) return [] as SearchHit[];
+    return NAV_PAGES
+      .filter((item) => `${item.label} ${item.keywords} ${item.path}`.toLowerCase().includes(q))
+      .slice(0, 4)
+      .map((item) => ({
+        id: item.path,
+        label: item.label,
+        sub: item.path,
+        type: 'page',
+        path: item.path,
+      }));
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setRemoteHits([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await adminSearchAPI(q);
+        if (res?.success && res.data) {
+          setRemoteHits([
+            ...(res.data.users || []),
+            ...(res.data.mocks || []),
+            ...(res.data.prep || []),
+            ...(res.data.posts || []),
+          ]);
+        } else {
+          setRemoteHits([]);
+        }
+      } catch {
+        setRemoteHits([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const searchResults = useMemo(() => [...pageHits, ...remoteHits].slice(0, 12), [pageHits, remoteHits]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -108,12 +164,13 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
     if (diffInSeconds < 60) return 'just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return date.toLocaleDateString();
   };
+
+  const badgeCount = Math.min(visibleUnread || unreadCount, 99);
 
   return (
     <div className="sticky top-0 z-40 flex items-center gap-4 px-4 lg:px-6 h-16 border-b bg-white border-gray-200">
@@ -132,27 +189,35 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
               setShowSearch(true);
             }}
             onFocus={() => setShowSearch(true)}
-            placeholder="Search pages…"
+            placeholder="Search users, mocks, prep, posts…"
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
           />
           {showSearch && searchQuery.trim() && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-              {searchResults.length === 0 ? (
-                <p className="px-4 py-3 text-sm text-gray-400">No matching pages</p>
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-80 overflow-y-auto">
+              {searchLoading && searchResults.length === 0 ? (
+                <div className="px-4 py-3 flex items-center gap-2 text-sm text-gray-400">
+                  <Loader2 size={14} className="animate-spin" /> Searching…
+                </div>
+              ) : searchResults.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-gray-400">No matches</p>
               ) : (
                 searchResults.map(item => (
                   <button
-                    key={`${item.path}-${item.label}`}
+                    key={`${item.type}-${item.id}-${item.path}`}
                     type="button"
                     onClick={() => {
                       navigate(item.path);
                       setSearchQuery('');
                       setShowSearch(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center justify-between"
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3"
                   >
-                    <span className="font-medium text-gray-800">{item.label}</span>
-                    <span className="text-xs text-gray-400">{item.path}</span>
+                    <span className="text-gray-400">{TYPE_ICON[item.type] || <Search size={14} />}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-800 block truncate">{item.label}</span>
+                      {item.sub && <span className="text-xs text-gray-400 truncate block">{item.sub}</span>}
+                    </span>
+                    <span className="text-[10px] uppercase text-gray-400 font-medium">{item.type}</span>
                   </button>
                 ))
               )}
@@ -169,9 +234,9 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
             aria-label="Notifications"
           >
             <Bell size={20} className="text-gray-700" />
-            {unreadCount > 0 && (
+            {badgeCount > 0 && (
               <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-white flex items-center justify-center bg-red-500 text-[10px] font-bold border-2 border-white">
-                {unreadCount > 99 ? '99+' : unreadCount}
+                {badgeCount > 99 ? '99+' : badgeCount}
               </span>
             )}
           </button>
@@ -180,7 +245,7 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
             <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <span className="font-semibold text-sm text-gray-800">Admin Notifications</span>
-                {unreadCount > 0 && (
+                {visibleUnread > 0 && (
                   <button
                     onClick={markAllRead}
                     className="text-[11px] font-medium text-blue-600 hover:underline"
@@ -193,8 +258,8 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
               <div className="max-h-80 overflow-y-auto">
                 {loading ? (
                   <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-gray-300" /></div>
-                ) : notifications.length > 0 ? (
-                  notifications.map((n) => {
+                ) : visibleNotifications.length > 0 ? (
+                  visibleNotifications.map((n) => {
                     const config = NOTIF_CONFIG[n.type] || NOTIF_CONFIG.default;
                     const route = getNotificationRoute(n);
                     return (
@@ -239,12 +304,16 @@ export function TopBar({ onMenuToggle }: TopBarProps) {
             onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }}
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-sm">
-              {user?.name?.charAt(0) || 'U'}
+            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-sm overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                user?.name?.charAt(0) || 'U'
+              )}
             </div>
             <div className="hidden sm:block text-left mr-1">
               <p className="text-sm font-semibold text-gray-900 leading-none">{user?.name}</p>
-              <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{ROLE_LABELS[user?.role || ''] || 'Member'}</p>
+              <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">Admin</p>
             </div>
             <ChevronDown size={14} className="text-gray-400" />
           </button>

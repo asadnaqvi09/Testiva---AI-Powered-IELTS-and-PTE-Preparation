@@ -9,6 +9,20 @@ import { processAudioToText } from "../M6_AI/processors (Input Cleaning)/speakin
 import { getSocketServer } from "../../config/socket.js";
 import { handleTestResultSyncedNotification } from "../M9_Notification/engine/notification.engine.js";
 
+// clean and optimized code — normalize AI feedback fields (array | object | string)
+const formatFeedbackText = (value) => {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.map(String).filter(Boolean).join(" ");
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value).trim();
+};
+
 const resolveSpeakingTranscript = async (resp) => {
   const existing =
     resp.user_answer?.transcribed_text ||
@@ -120,9 +134,9 @@ syncQueue.process(async (job) => {
     const examType = scoreMeta?.exam_type || testMeta?.test_type || "IELTS";
     const isPte = String(examType).toUpperCase() === "PTE";
     const isSingular = (scoreMeta?.test_category || "") === "singular_module";
-    let calculatedWritingScore = Number(testData.writing_score) || 0;
-    let calculatedSpeakingScore = Number(testData.speaking_score) || 0;
     let cumulativeFeedback = [];
+    const writingScores = [];
+    const speakingScores = [];
     for (const resp of responses) {
       const qType = (resp.question_type || "").toLowerCase();
       const subType = (resp.sub_question_type || "").toLowerCase();
@@ -137,8 +151,16 @@ syncQueue.process(async (job) => {
         try {
           const essayText = resp.user_answer?.text_essay || (typeof resp.user_answer === "string" ? resp.user_answer : "");
           const fb = await writingEvaluation.evaluateWriting(userId, attemptId, examType, resp.question_text, essayText, { skipScoreUpdate: true });
-          calculatedWritingScore = fb.overall_band_score;
-          cumulativeFeedback.push(`[Writing Feedback]: ${fb.general_critique || fb.improvement_suggestions}`);
+          // clean and optimized code — collect all task bands then average
+          const band = Number(fb.overall_band_score) || 0;
+          if (band > 0) writingScores.push(band);
+          const critique = formatFeedbackText(fb.improvement_suggestions || fb.detailed_analysis);
+          cumulativeFeedback.push(`[Writing Feedback]: ${critique}`);
+          await Progress.updateResponseAiFeedback(
+            attemptId,
+            resp.question_id,
+            critique || `Writing band ${band}`,
+          ).catch((e) => console.warn("[AI] per-question writing feedback:", e.message));
         } catch (err) {
           console.error(`[AI RECOVERY ERROR]: Attempt ID ${attemptId} Writing Evaluation failure: `, err);
         }
@@ -149,17 +171,31 @@ syncQueue.process(async (job) => {
             console.warn(`[AI RECOVERY]: Attempt ${attemptId} speaking q ${resp.question_id} had empty transcript`);
           }
           const fb = await speakingEvaluation.evaluateSpeakingTask(userId, attemptId, sData, { skipScoreUpdate: true });
-          calculatedSpeakingScore = fb.overall_band_score;
-          cumulativeFeedback.push(`[Speaking Feedback]: ${fb.general_critique || fb.improvement_suggestions}`);
+          const band = Number(fb.overall_band_score) || 0;
+          if (band > 0) speakingScores.push(band);
+          const critique = formatFeedbackText(fb.improvement_suggestions || fb.detailed_analysis);
+          cumulativeFeedback.push(`[Speaking Feedback]: ${critique}`);
+          await Progress.updateResponseAiFeedback(
+            attemptId,
+            resp.question_id,
+            critique || `Speaking band ${band}`,
+          ).catch((e) => console.warn("[AI] per-question speaking feedback:", e.message));
         } catch (err) {
           console.error(`[AI RECOVERY ERROR]: Attempt ID ${attemptId} Speaking Evaluation failure: `, err);
         }
       }
     }
+    const avgOrZero = (scores) => {
+      if (!scores.length) return 0;
+      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+      return isPte ? Math.round(mean) : Math.round(mean * 2) / 2;
+    };
+    let calculatedWritingScore = avgOrZero(writingScores) || Number(testData.writing_score) || 0;
+    let calculatedSpeakingScore = avgOrZero(speakingScores) || Number(testData.speaking_score) || 0;
     const rScore = Number(testMeta?.reading_score) || Number(testData.reading_score) || 0;
     const lScore = Number(testMeta?.listening_score) || Number(testData.listening_score) || 0;
-    const wScore = calculatedWritingScore || Number(testData.writing_score) || 0;
-    const sScore = calculatedSpeakingScore || Number(testData.speaking_score) || 0;
+    const wScore = calculatedWritingScore;
+    const sScore = calculatedSpeakingScore;
     let computedBand;
     if (isSingular) {
       computedBand = sScore || wScore || rScore || lScore || 0;

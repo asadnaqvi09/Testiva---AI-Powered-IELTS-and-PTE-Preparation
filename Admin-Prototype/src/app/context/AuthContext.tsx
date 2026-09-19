@@ -1,21 +1,33 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { loginAPI, logoutAPI, setTokens, clearTokens, getAccessToken, getRefreshToken } from '../services/api';
+import {
+  loginAPI,
+  logoutAPI,
+  setTokens,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  getUserProfileAPI,
+} from '../services/api';
 import { socketService } from '../services/socket.service';
+import {
+  applyTheme,
+  normalizeNotifPrefs,
+  type NotifPrefs,
+} from '../utils/uiSettings';
 
-export type AdminRole = 'admin' | 'super_admin' | 'institute_admin';
-export type AppMode = 'b2c' | 'b2b';
+export type AdminRole = 'admin';
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
   role: AdminRole;
-  mode: AppMode;
   avatar?: string;
-  institute?: string;
   subscription?: string;
   preference?: string | null;
   bio?: string | null;
+  theme?: string;
+  notifPrefs?: NotifPrefs;
 }
 
 interface AuthContextType {
@@ -29,9 +41,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ADMIN_ROLES = new Set(['admin', 'super_admin']);
-
-const isAdminRole = (role: string) => ADMIN_ROLES.has(role);
+const isAdminRole = (role: string) => role === 'admin';
 
 const clearAdminSession = () => {
   socketService.disconnect();
@@ -39,33 +49,59 @@ const clearAdminSession = () => {
   localStorage.removeItem('authUser');
 };
 
+const mapApiUser = (raw: any): AuthUser => ({
+  id: raw.id,
+  name: raw.full_name || raw.name || '',
+  email: raw.email,
+  role: 'admin',
+  subscription: raw.subscription,
+  preference: raw.preference,
+  bio: raw.bio,
+  avatar: raw.avatar_url || raw.avatar,
+  theme: raw.theme || 'light',
+  notifPrefs: normalizeNotifPrefs(raw.notif_prefs || raw.notifPrefs),
+});
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const initializeAuth = () => {
-    const stored = localStorage.getItem('authUser');
-    const token = getAccessToken();
-    if (stored && token) {
+  // Hydrate session + pull fresh profile (theme / notif prefs) from API
+  useEffect(() => {
+    const boot = async () => {
+      const stored = localStorage.getItem('authUser');
+      const token = getAccessToken();
+      if (!stored || !token) {
+        setLoading(false);
+        return;
+      }
       try {
-        const parsedUser = JSON.parse(stored) as AuthUser;
-        if (!isAdminRole(parsedUser.role)) {
+        const parsed = JSON.parse(stored) as AuthUser;
+        if (!isAdminRole(parsed.role)) {
           clearAdminSession();
           setUser(null);
-        } else {
-          setUser(parsedUser);
-          socketService.connect(token);
+          setLoading(false);
+          return;
+        }
+        setUser(parsed);
+        applyTheme(parsed.theme || 'light');
+        socketService.connect(token);
+
+        const res = await getUserProfileAPI().catch(() => null);
+        if (res?.success && res.user) {
+          const fresh = mapApiUser(res.user);
+          setUser(fresh);
+          localStorage.setItem('authUser', JSON.stringify(fresh));
+          applyTheme(fresh.theme || 'light');
         }
       } catch {
         clearAdminSession();
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    initializeAuth();
+    };
+    boot();
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
@@ -77,19 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { success: false, message: 'Admin access only. This account does not have admin privileges.' };
         }
         setTokens(res.accessToken, res.refreshToken);
-        const authUser: AuthUser = {
-          id: res.user.id,
-          name: res.user.full_name,
-          email: res.user.email,
-          role: res.user.role as AdminRole,
-          mode: 'b2c',
-          subscription: res.user.subscription,
-          preference: res.user.preference,
-          bio: res.user.bio,
-          avatar: res.user.avatar_url,
-        };
+        let authUser = mapApiUser(res.user);
+
+        // Enrich with settings fields from profile if login payload omits them
+        const profile = await getUserProfileAPI().catch(() => null);
+        if (profile?.success && profile.user) {
+          authUser = mapApiUser(profile.user);
+        }
+
         setUser(authUser);
         localStorage.setItem('authUser', JSON.stringify(authUser));
+        applyTheme(authUser.theme || 'light');
         socketService.connect(res.accessToken);
         return { success: true };
       }
@@ -116,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => {
       if (!prev) return null;
       const updated = { ...prev, ...newData };
+      if (newData.theme) applyTheme(newData.theme);
       localStorage.setItem('authUser', JSON.stringify(updated));
       return updated;
     });

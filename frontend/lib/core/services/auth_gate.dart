@@ -3,7 +3,7 @@ import 'package:frontend/src/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Launch gate: always show the Figma-style welcome/onboarding on cold start.
-/// Get Started / Guest navigate to AuthScreen; successful sign-in enters the app.
+/// Get Started opens AuthScreen; successful sign-in enters the app.
 /// Tokens alone never skip into Home / Dashboard.
 ///
 /// We intentionally do **not** persist a "has seen onboarding" flag — that made

@@ -202,6 +202,57 @@ const BASE = '/api/v1';
     });
   }
 
+  // Theme + notification filter prefs (server-backed)
+  export async function updateUserSettingsAPI(body: {
+    theme?: string;
+    notif_prefs?: Record<string, boolean>;
+  }) {
+    return apiFetch<{
+      success: boolean;
+      message: string;
+      user: any;
+    }>('/user/settings', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  export async function getAdminAnalyticsAPI() {
+    return apiFetch<{
+      success: boolean;
+      data: any;
+    }>('/admin/analytics');
+  }
+
+  export async function adminSearchAPI(q: string) {
+    return apiFetch<{
+      success: boolean;
+      data: {
+        users: Array<{ id: string; label: string; sub?: string; type: string; path: string }>;
+        mocks: Array<{ id: string; label: string; sub?: string; type: string; path: string }>;
+        prep: Array<{ id: string; label: string; sub?: string; type: string; path: string }>;
+        posts: Array<{ id: string; label: string; sub?: string; type: string; path: string }>;
+      };
+    }>(`/admin/search?q=${encodeURIComponent(q)}`);
+  }
+
+  export async function getPaymentPlansAPI() {
+    return apiFetch<{
+      success: boolean;
+      data: Array<{
+        plan: string;
+        label: string;
+        price?: number;
+        price_label: string;
+        currency?: string;
+        unlocked_exam: string;
+        subscription: string;
+        desc?: string;
+      }>;
+      stripe_configured?: boolean;
+    }>('/payments/plans');
+  }
+
   export async function changeUserPasswordAPI(body: any) {
     return apiFetch<{
       success: boolean;

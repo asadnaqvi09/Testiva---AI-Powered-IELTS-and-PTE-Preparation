@@ -3,7 +3,9 @@ import { Search, Trash2, Flag, MessageSquare, Heart, X, AlertTriangle, Loader2, 
 import { adminGetPosts, adminFlagPost, adminUnflagPost, adminDeletePost } from '../services/api';
 import { toast } from 'sonner';
 
-const TOPIC_TAGS = ['All', 'IELTS', 'PTE', 'General'];;
+// Human moderation only (flag / unflag / delete).
+// AI moderation preview exists at POST /api/v1/ai/moderate/preview but is intentionally not called here.
+const TOPIC_TAGS = ['All', 'IELTS', 'PTE', 'General'];
 
 export function Community() {
   const [posts, setPosts] = useState<any[]>([]);

@@ -1,10 +1,37 @@
 import pool from "../../../../config/db.js";
-import { findUserById, updateUserProfile, updateUserPassword, uploadUserAvatar, updateUserFcmToken, getUserHistoricalResults, createAppFeedback } from "../../user.model.js";
+import {
+  findUserById,
+  updateUserProfile,
+  updateUserPassword,
+  uploadUserAvatar,
+  updateUserFcmToken,
+  getUserHistoricalResults,
+  createAppFeedback,
+  updateUserUiSettings,
+  normalizeNotifPrefs,
+} from "../../user.model.js";
 import { processAndUploadAvatar } from "../services/image.service.js";
 import { handleAdminPreferenceChangeNotification } from "../../../M9_Notification/engine/notification.engine.js";
 import { sendPreferenceChangeEmail } from "../../../../email_templates/email.service.js";
 import * as userValidator from "../validator/user.validator.js";
 import { resolveSubscription, resolveUnlockedExam } from "../../../../utils/helpers.js";
+
+const shapeUser = (user) => ({
+  id: user.id,
+  full_name: user.full_name,
+  email: user.email,
+  bio: user.bio,
+  avatar_url: user.avatar_url,
+  role: user.role,
+  preference: user.preference,
+  subscription: resolveSubscription(user),
+  unlocked_exam: resolveUnlockedExam(user),
+  is_email_verified: user.is_email_verified,
+  theme: user.theme || "light",
+  notif_prefs: normalizeNotifPrefs(user.notif_prefs),
+  created_at: user.created_at,
+  updated_at: user.updated_at,
+});
 
 export const getProfileController = async (req, res) => {
   try {
@@ -19,6 +46,8 @@ export const getProfileController = async (req, res) => {
         preference: req.user.preference || 'IELTS',
         bio: 'Demo Mode Profile',
         avatar_url: null,
+        theme: 'light',
+        notif_prefs: normalizeNotifPrefs(null),
       };
       return res.status(200).json({ success: true, user: demoUser });
     }
@@ -28,20 +57,7 @@ export const getProfileController = async (req, res) => {
     }
     res.status(200).json({
       success: true,
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        bio: user.bio,
-        avatar_url: user.avatar_url,
-        role: user.role,
-        preference: user.preference,
-        subscription: resolveSubscription(user),
-        unlocked_exam: resolveUnlockedExam(user),
-        is_email_verified: user.is_email_verified,
-        created_at: user.created_at,
-        updated_at: user.updated_at,
-      },
+      user: shapeUser(user),
     });
   } catch (error) {
     if (req.user?.id?.toString().startsWith('demo-user-')) {
@@ -54,6 +70,8 @@ export const getProfileController = async (req, res) => {
           role: req.user.role || 'user',
           subscription: req.user.subscription || 'free',
           preference: req.user.preference || 'IELTS',
+          theme: 'light',
+          notif_prefs: normalizeNotifPrefs(null),
         }
       });
     }
@@ -80,13 +98,35 @@ export const updateProfileController = async (req, res) => {
     }
     const userId = req.user.id;
     const updatedUser = await updateUserProfile(userId, value);
-    res.status(200).json({ success: true, message: "Profile updated successfully", user: updatedUser });
+    res.status(200).json({ success: true, message: "Profile updated successfully", user: shapeUser(updatedUser) });
   } catch (err) {
     if (err.message === "User not found") {
       return res.status(404).json({ success: false, message: err.message });
     }
     console.log("Error in Profile Controller : ", err.message);
     res.status(500).json({ success: false, message: "Profile update failed" });
+  }
+};
+
+// Save theme + notification filter prefs (admin TopBar / Settings)
+export const updateUiSettingsController = async (req, res) => {
+  try {
+    const { error, value } = userValidator.updateUiSettingsSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+    const updated = await updateUserUiSettings(req.user.id, value);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Settings saved",
+      user: shapeUser(updated),
+    });
+  } catch (err) {
+    console.error("updateUiSettingsController:", err.message);
+    return res.status(500).json({ success: false, message: "Failed to save settings" });
   }
 };
 

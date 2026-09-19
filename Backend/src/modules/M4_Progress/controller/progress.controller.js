@@ -39,7 +39,13 @@ export const uploadSpeakingAudio = async (req, res) => {
     });
   } catch (error) {
     console.error("uploadSpeakingAudio:", error);
-    return res.status(500).json({ success: false, message: error.message || "Upload failed" });
+    // clean and optimized code — surface missing Cloudinary keys clearly
+    const raw = error.message || "Upload failed";
+    const missingKey =
+      /api_key|api_secret|cloud_name|Must supply/i.test(raw)
+        ? "Cloudinary key missing or invalid in Backend .env"
+        : raw;
+    return res.status(500).json({ success: false, message: missingKey });
   }
 };
 
@@ -54,22 +60,21 @@ export const submitTest = async (req, res) => {
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
     if (value.is_offline) {
       await addSyncJob({ userId, testData: value });
-      return res.status(202).json({ success: true, message: "Offline data queued for sync" });
+      return res.status(202).json({
+        success: true,
+        message: "Offline data queued for sync",
+        data: { status: "pending" },
+      });
     }
-    const subjectiveWordCount = (ans) => {
-      if (ans == null) return 0;
-      if (typeof ans === "string") return ans.trim().split(/\s+/).filter(Boolean).length;
-      if (typeof ans === "object" && ans.text_essay) {
-        return String(ans.text_essay).trim().split(/\s+/).filter(Boolean).length;
-      }
-      return 0;
-    };
-    const hasSubjectiveSection = value.responses.some(
-      (resp) =>
-        resp.audio_response_url ||
-        resp.audio_url ||
-        subjectiveWordCount(resp.user_answer) > 15,
+
+    // clean and optimized code — AI queue by question type (not word-count heuristic)
+    const hasAudio = value.responses.some(
+      (resp) => Boolean(resp.audio_response_url || resp.audio_url),
     );
+    const hasAiQuestions = await progressModel.responsesNeedAiEvaluation(
+      value.responses.map((r) => r.question_id),
+    );
+    const hasSubjectiveSection = hasAudio || hasAiQuestions;
 
     const client = await pool.connect();
     try {
@@ -211,6 +216,19 @@ export const getTestResult = async (req, res) => {
           listening: attempt.listening_score ?? 0,
           writing: attempt.writing_score ?? 0,
           speaking: attempt.speaking_score ?? 0,
+        },
+        // clean and optimized code — Flutter pending chips
+        module_stats: {
+          writing: {
+            pending:
+              attempt.status === "pending" &&
+              Number(attempt.writing_score || 0) <= 0,
+          },
+          speaking: {
+            pending:
+              attempt.status === "pending" &&
+              Number(attempt.speaking_score || 0) <= 0,
+          },
         },
         ai_analysis: {
           feedback: attempt.feedback,

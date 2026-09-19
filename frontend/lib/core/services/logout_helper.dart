@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/google_auth_service.dart';
 import 'package:frontend/core/services/socket_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/providers/notification_provider.dart';
@@ -16,6 +17,8 @@ class LogoutHelper {
     notificationProvider?.reset();
     UserNotifier.notifier.value = {};
     socketService.disconnect();
+    // clean and optimized code — clear Google session so picker works next time
+    await GoogleAuthService.signOut();
     navigator.pushNamedAndRemoveUntil('/', (route) => false);
   }
 

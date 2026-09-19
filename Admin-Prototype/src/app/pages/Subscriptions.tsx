@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, TrendingUp, Users, Unlock, Loader2 } from 'lucide-react';
-import { getDashboardStats } from '../services/api';
+import { getDashboardStats, getPaymentPlansAPI } from '../services/api';
 import { toast } from 'sonner';
-
-const PLANS = [
-  { id: 'basic', name: 'Basic', price: 399, color: '#007BFF', tests: 'IELTS or PTE', desc: 'Single-exam unlock via Stripe' },
-  { id: 'premium', name: 'Premium', price: 699, color: '#28A745', tests: 'IELTS + PTE', desc: 'Full unlock (BOTH exams)' },
-];
 
 function StatCard({ icon, label, value, sub, color }: {
   icon: React.ReactNode; label: string; value: string | number; sub: string; color: string;
@@ -27,8 +22,26 @@ function StatCard({ icon, label, value, sub, color }: {
   );
 }
 
+const PLAN_COLORS: Record<string, string> = {
+  basic: '#007BFF',
+  basic_ielts: '#007BFF',
+  basic_pte: '#8B5CF6',
+  premium: '#28A745',
+};
+
+type PlanCard = {
+  plan: string;
+  label: string;
+  price_label: string;
+  unlocked_exam: string;
+  subscription: string;
+  desc?: string;
+};
+
 export function Subscriptions() {
   const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState<PlanCard[]>([]);
+  const [stripeOk, setStripeOk] = useState(false);
   const [dbMetrics, setDbMetrics] = useState({
     totalUsers: 0,
     freeUsers: 0,
@@ -40,31 +53,41 @@ export function Subscriptions() {
   });
 
   useEffect(() => {
-    async function fetchLiveSubs() {
+    async function load() {
       try {
         setLoading(true);
-        const res = await getDashboardStats().catch(() => null);
-        if (res?.success && res.data) {
+        const [statsRes, plansRes] = await Promise.all([
+          getDashboardStats().catch(() => null),
+          getPaymentPlansAPI().catch(() => null),
+        ]);
+
+        if (statsRes?.success && statsRes.data) {
           setDbMetrics({
-            totalUsers: parseInt(res.data.total_users || '0', 10),
-            freeUsers: parseInt(res.data.free_users || '0', 10),
-            basicUsers: parseInt(res.data.basic_users || '0', 10),
-            premiumUsers: parseInt(res.data.premium_users || '0', 10),
-            unlockedIelts: parseInt(res.data.unlocked_ielts || '0', 10),
-            unlockedPte: parseInt(res.data.unlocked_pte || '0', 10),
-            unlockedBoth: parseInt(res.data.unlocked_both || '0', 10),
+            totalUsers: parseInt(statsRes.data.total_users || '0', 10),
+            freeUsers: parseInt(statsRes.data.free_users || '0', 10),
+            basicUsers: parseInt(statsRes.data.basic_users || '0', 10),
+            premiumUsers: parseInt(statsRes.data.premium_users || '0', 10),
+            unlockedIelts: parseInt(statsRes.data.unlocked_ielts || '0', 10),
+            unlockedPte: parseInt(statsRes.data.unlocked_pte || '0', 10),
+            unlockedBoth: parseInt(statsRes.data.unlocked_both || '0', 10),
           });
         } else {
           toast.error('Could not load subscription stats.');
         }
-      } catch (err) {
-        console.error('Billing sync failure:', err);
-        toast.error('Could not load subscription stats.');
+
+        if (plansRes?.success && Array.isArray(plansRes.data)) {
+          setPlans(plansRes.data);
+          setStripeOk(!!plansRes.stripe_configured);
+        } else {
+          toast.error('Could not load payment plans.');
+        }
+      } catch {
+        toast.error('Could not load subscription data.');
       } finally {
         setLoading(false);
       }
     }
-    fetchLiveSubs();
+    load();
   }, []);
 
   const totalActiveSubs = dbMetrics.basicUsers + dbMetrics.premiumUsers;
@@ -83,7 +106,7 @@ export function Subscriptions() {
       <div>
         <h1 style={{ color: '#1A1A1A' }}>Subscriptions</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Live tier and exam-unlock counts (manage individuals on Users)
+          Live tier counts and plans from the payments API (manage individuals on Users)
         </p>
       </div>
 
@@ -109,23 +132,26 @@ export function Subscriptions() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {PLANS.map(plan => (
-          <div key={plan.id} className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{plan.name}</h3>
-              <span className="text-sm font-bold" style={{ color: plan.color }}>₨{plan.price}/mo</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {plans.map(plan => {
+          const color = PLAN_COLORS[plan.plan] || PLAN_COLORS[plan.subscription] || '#007BFF';
+          return (
+            <div key={plan.plan} className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>{plan.label}</h3>
+                <span className="text-sm font-bold" style={{ color }}>{plan.price_label}/mo</span>
+              </div>
+              <p className="text-sm text-gray-600">{plan.desc || `${plan.subscription} plan`}</p>
+              <p className="text-xs text-gray-400 mt-2">Unlocks: {plan.unlocked_exam}</p>
             </div>
-            <p className="text-sm text-gray-600">{plan.desc}</p>
-            <p className="text-xs text-gray-400 mt-2">Includes: {plan.tests}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
         <p className="text-sm text-gray-600">
-          Stripe Checkout is live in the mobile app. Detailed billing ledgers and CSV export are outside this MVP —
-          change a user’s plan and <code className="text-xs bg-gray-100 px-1 rounded">unlocked_exam</code> from the Users page.
+          Stripe Checkout is {stripeOk ? 'configured' : 'not configured'} on the backend.
+          Change a user’s plan and unlocked exam from the Users page.
         </p>
       </div>
     </div>

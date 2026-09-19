@@ -1,30 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Lock, Bell, Palette, Eye, EyeOff, Check, AlertCircle, Moon, Sun, Monitor, Loader2, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { updateUserProfileAPI, changeUserPasswordAPI, uploadUserAvatarAPI } from '../services/api';
+import { updateUserProfileAPI, changeUserPasswordAPI, uploadUserAvatarAPI, updateUserSettingsAPI } from '../services/api';
+import { applyTheme, normalizeNotifPrefs, type NotifPrefs } from '../utils/uiSettings';
 import { toast } from 'sonner';
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'B2C Admin',
-  super_admin: 'B2B Super Admin',
-  author: 'Author / Content Creator',
-  institute_admin: 'Institute Admin'
-};
-
-const NOTIF_SETTINGS = [
-  { id: 'newUser', label: 'New User Registrations', desc: 'Highlight new-signup alerts in the TopBar bell' },
-  { id: 'subChange', label: 'Subscription Changes', desc: 'Highlight plan-change alerts in the TopBar bell' },
+const NOTIF_SETTINGS: { id: keyof NotifPrefs; label: string; desc: string }[] = [
+  { id: 'newUser', label: 'New User Registrations', desc: 'Show new-signup alerts in the TopBar bell' },
+  { id: 'subChange', label: 'Subscription Changes', desc: 'Show plan-change alerts in the TopBar bell' },
+  { id: 'newPost', label: 'New Community Posts', desc: 'Show new-post alerts in the TopBar bell' },
+  { id: 'preferenceChange', label: 'Preference Change Requests', desc: 'Show IELTS/PTE switch requests in the TopBar bell' },
 ];
-
-const NOTIF_STORAGE_KEY = 'testiva_admin_notif_prefs';
-
-function loadNotifPrefs(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, boolean>;
-  } catch { /* ignore */ }
-  return { newUser: true, subChange: true };
-}
 
 export function Settings() {
   const { user, updateUser } = useAuth();
@@ -33,8 +19,9 @@ export function Settings() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(loadNotifPrefs);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(() => normalizeNotifPrefs(user?.notifPrefs));
+  const [theme, setTheme] = useState(user?.theme || 'light');
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [profileForm, setProfileForm] = useState({
@@ -48,35 +35,46 @@ export function Settings() {
   const [passError, setPassError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      setProfileForm({
-        full_name: user.name || '',
-        email: user.email || '',
-        bio: user.bio || '',
-        avatar_url: user.avatar || '',
-      });
-    }
+    if (!user) return;
+    setProfileForm({
+      full_name: user.name || '',
+      email: user.email || '',
+      bio: user.bio || '',
+      avatar_url: user.avatar || '',
+    });
+    setNotifPrefs(normalizeNotifPrefs(user.notifPrefs));
+    setTheme(user.theme || 'light');
   }, [user]);
+
+  const persistSettings = async (payload: { theme?: string; notif_prefs?: NotifPrefs }) => {
+    setSettingsSaving(true);
+    try {
+      const res = await updateUserSettingsAPI(payload);
+      if (!res?.success) throw new Error(res?.message || 'Save failed');
+      const nextTheme = res.user?.theme || payload.theme || theme;
+      const nextPrefs = normalizeNotifPrefs(res.user?.notif_prefs || payload.notif_prefs);
+      setTheme(nextTheme);
+      setNotifPrefs(nextPrefs);
+      applyTheme(nextTheme);
+      updateUser({ theme: nextTheme, notifPrefs: nextPrefs });
+      toast.success('Settings saved');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save settings');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   const handleThemeChange = (selectedTheme: string) => {
     setTheme(selectedTheme);
-    localStorage.setItem('theme', selectedTheme);
-    const root = window.document.documentElement;
-    if (selectedTheme === 'dark' || (selectedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    toast.success(`Theme set to ${selectedTheme}`);
+    applyTheme(selectedTheme);
+    persistSettings({ theme: selectedTheme });
   };
 
-  const handleToggleNotif = (id: string) => {
-    setNotifPrefs(prev => {
-      const next = { ...prev, [id]: !prev[id] };
-      localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(next));
-      toast.success('Preference saved on this device');
-      return next;
-    });
+  const handleToggleNotif = (id: keyof NotifPrefs) => {
+    const next = { ...notifPrefs, [id]: !notifPrefs[id] };
+    setNotifPrefs(next);
+    persistSettings({ notif_prefs: next });
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,6 +153,7 @@ export function Settings() {
       const res = await changeUserPasswordAPI({
         current_password: passForm.current,
         new_password: passForm.newPass,
+        confirm_password: passForm.confirm,
       });
       if (res?.success) {
         toast.success('Password updated successfully!');
@@ -226,7 +225,7 @@ export function Settings() {
               />
             </div>
             <p className="text-sm font-semibold truncate text-gray-900">{profileForm.full_name || 'User'}</p>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{ROLE_LABELS[user?.role || ''] || 'Member'}</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">Admin</p>
             <p className="text-[10px] text-gray-400 mt-2">Hover avatar to upload</p>
           </div>
         </div>
@@ -302,7 +301,8 @@ export function Settings() {
             <div className="bg-white rounded-xl border shadow-sm p-6">
               <h3 className="font-semibold text-base text-gray-900 mb-1">Notification Preferences</h3>
               <p className="text-xs text-gray-400 mb-4">
-                Stored on this browser only. Server still delivers admin notifications; these toggles control local display emphasis.
+                Saved to your account. Controls which alert types appear in the TopBar bell.
+                {settingsSaving ? ' Saving…' : ''}
               </p>
               <div className="space-y-1">
                 {NOTIF_SETTINGS.map(n => (
@@ -312,8 +312,9 @@ export function Settings() {
                       <p className="text-xs text-gray-400">{n.desc}</p>
                     </div>
                     <button
+                      disabled={settingsSaving}
                       onClick={() => handleToggleNotif(n.id)}
-                      className="w-10 h-5.5 rounded-full relative transition-all"
+                      className="w-10 h-5.5 rounded-full relative transition-all disabled:opacity-50"
                       style={{ background: notifPrefs[n.id] !== false ? '#007BFF' : '#E5E7EB' }}
                       aria-label={`Toggle ${n.label}`}
                     >
@@ -329,14 +330,15 @@ export function Settings() {
           {activeTab === 'appearance' && (
             <div className="bg-white rounded-xl border shadow-sm p-6 space-y-5">
               <h3 className="font-semibold text-base text-gray-900">Theme Settings</h3>
+              <p className="text-xs text-gray-400 -mt-3">Synced to your account across sessions</p>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { id: 'light', label: 'Light', icon: <Sun size={16} /> },
                   { id: 'dark', label: 'Dark', icon: <Moon size={16} /> },
                   { id: 'system', label: 'System', icon: <Monitor size={16} /> },
                 ].map(t => (
-                  <button key={t.id} onClick={() => handleThemeChange(t.id)}
-                    className="flex flex-col items-center gap-2 p-3.5 rounded-xl border-2 transition-all text-center"
+                  <button key={t.id} disabled={settingsSaving} onClick={() => handleThemeChange(t.id)}
+                    className="flex flex-col items-center gap-2 p-3.5 rounded-xl border-2 transition-all text-center disabled:opacity-50"
                     style={theme === t.id ? { borderColor: '#007BFF', background: '#007BFF05' } : { borderColor: '#E5E7EB' }}>
                     <span style={{ color: theme === t.id ? '#007BFF' : '#9CA3AF' }}>{t.icon}</span>
                     <span className="text-xs font-semibold">{t.label}</span>

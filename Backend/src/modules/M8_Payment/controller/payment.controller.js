@@ -27,23 +27,32 @@ export const listPlans = async (_req, res) => {
         {
           plan: "basic_ielts",
           label: "Basic IELTS",
+          price: 399,
           price_label: "Rs 399",
+          currency: "PKR",
           unlocked_exam: "IELTS",
           subscription: "basic",
+          desc: "Single-exam unlock via Stripe (IELTS)",
         },
         {
           plan: "basic_pte",
           label: "Basic PTE",
+          price: 399,
           price_label: "Rs 399",
+          currency: "PKR",
           unlocked_exam: "PTE",
           subscription: "basic",
+          desc: "Single-exam unlock via Stripe (PTE)",
         },
         {
           plan: "premium",
           label: "Premium (IELTS + PTE)",
+          price: 699,
           price_label: "Rs 699",
+          currency: "PKR",
           unlocked_exam: "BOTH",
           subscription: "premium",
+          desc: "Full unlock for both exams",
         },
       ],
       stripe_configured: isStripeConfigured(),
@@ -123,9 +132,13 @@ export const createCheckoutSession = async (req, res) => {
     });
   } catch (error) {
     console.error("createCheckoutSession:", error);
+    const raw = error.message || "Failed to create checkout session";
+    const missingKey = /STRIPE|api[_ ]?key|Invalid API Key/i.test(raw)
+      ? "Stripe key missing or invalid in Backend .env"
+      : raw;
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to create checkout session",
+      message: missingKey,
     });
   }
 };
@@ -235,22 +248,30 @@ export const confirmCheckoutSession = async (req, res) => {
     const result = await applyCheckoutSessionEntitlement(session);
     const user = result.user || (await findUserById(req.user.id));
 
+    // clean and optimized code — unlock payload for Flutter PremiumModal
+    const unlockedUser = {
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      role: user.role,
+      subscription: resolveSubscription(user),
+      preference: user.preference,
+      unlocked_exam: resolveUnlockedExam(user),
+    };
+
     return res.json({
       success: true,
       alreadyProcessed: result.alreadyProcessed,
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        subscription: resolveSubscription(user),
-        preference: user.preference,
-        unlocked_exam: resolveUnlockedExam(user),
-      },
+      user: unlockedUser,
+      data: { user: unlockedUser },
     });
   } catch (error) {
     console.error("confirmCheckoutSession:", error);
-    return res.status(500).json({ success: false, message: error.message || "Confirm failed" });
+    const raw = error.message || "Confirm failed";
+    const missingKey = /STRIPE|api[_ ]?key|Invalid API Key/i.test(raw)
+      ? "Stripe key missing or invalid in Backend .env"
+      : raw;
+    return res.status(500).json({ success: false, message: missingKey });
   }
 };
 

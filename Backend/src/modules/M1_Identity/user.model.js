@@ -1,7 +1,19 @@
 import pool from "../../config/db.js";
 import bcrypt from "bcrypt";
 
-const USER_FIELDS = `id,full_name,email,bio,avatar_url,role,subscription,preference,unlocked_exam,auth_provider,is_email_verified,token_version,last_login_at,created_at,updated_at`;
+const USER_FIELDS = `id,full_name,email,bio,avatar_url,role,subscription,preference,unlocked_exam,auth_provider,is_email_verified,token_version,last_login_at,created_at,updated_at,theme,notif_prefs`;
+
+const DEFAULT_NOTIF_PREFS = {
+  newUser: true,
+  subChange: true,
+  newPost: true,
+  preferenceChange: true,
+};
+
+export const normalizeNotifPrefs = (prefs) => ({
+  ...DEFAULT_NOTIF_PREFS,
+  ...(prefs && typeof prefs === "object" ? prefs : {}),
+});
 
 export const findUserByEmail = async (email) => {
   const result = await pool.query(
@@ -77,6 +89,24 @@ export const updateUserProfile = async (id, { full_name, bio }) => {
      WHERE id=$3
      RETURNING ${USER_FIELDS}`,
     [full_name, bio, id]
+  );
+  return result.rows[0] || null;
+};
+
+// Persist theme + TopBar notification preference filters
+export const updateUserUiSettings = async (id, { theme, notif_prefs }) => {
+  const result = await pool.query(
+    `UPDATE users
+     SET theme = COALESCE($2, theme),
+         notif_prefs = COALESCE($3::jsonb, notif_prefs),
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING ${USER_FIELDS}`,
+    [
+      id,
+      theme ?? null,
+      notif_prefs != null ? JSON.stringify(normalizeNotifPrefs(notif_prefs)) : null,
+    ]
   );
   return result.rows[0] || null;
 };
@@ -183,6 +213,123 @@ export const getAdminStats = async () => {
      FROM users`
   );
   return result.rows[0];
+};
+
+// Deep analytics snapshot for Admin Analytics page
+export const getAdminDeepAnalytics = async () => {
+  const [users, tests, prep, posts, attempts, registrations] = await Promise.all([
+    pool.query(
+      `SELECT
+         COUNT(*) AS total_users,
+         COUNT(*) FILTER (WHERE subscription='free') AS free_users,
+         COUNT(*) FILTER (WHERE subscription='basic') AS basic_users,
+         COUNT(*) FILTER (WHERE subscription='premium') AS premium_users,
+         COUNT(*) FILTER (WHERE last_login_at >= NOW() - INTERVAL '7 days') AS active_users,
+         COUNT(*) FILTER (WHERE unlocked_exam = 'IELTS') AS unlocked_ielts,
+         COUNT(*) FILTER (WHERE unlocked_exam = 'PTE') AS unlocked_pte,
+         COUNT(*) FILTER (WHERE unlocked_exam = 'BOTH') AS unlocked_both,
+         COUNT(*) FILTER (WHERE preference = 'IELTS') AS pref_ielts,
+         COUNT(*) FILTER (WHERE preference = 'PTE') AS pref_pte
+       FROM users`
+    ),
+    pool.query(
+      `SELECT
+         COUNT(*) AS total_mocks,
+         COUNT(*) FILTER (WHERE is_published = true) AS published_mocks,
+         COUNT(*) FILTER (WHERE is_published = false) AS draft_mocks,
+         COUNT(*) FILTER (WHERE exam_type = 'IELTS') AS ielts_mocks,
+         COUNT(*) FILTER (WHERE exam_type = 'PTE') AS pte_mocks
+       FROM tests`
+    ),
+    pool.query(
+      `SELECT
+         COUNT(*) AS total_prep,
+         COUNT(*) FILTER (WHERE LOWER(status) = 'published') AS published_prep,
+         COUNT(*) FILTER (WHERE test_type = 'IELTS') AS ielts_prep,
+         COUNT(*) FILTER (WHERE test_type = 'PTE') AS pte_prep
+       FROM preparations`
+    ),
+    pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE deleted_at IS NULL) AS total_posts,
+         COUNT(*) FILTER (WHERE deleted_at IS NULL AND is_flagged = true) AS flagged_posts,
+         COUNT(*) FILTER (WHERE deleted_at IS NOT NULL) AS deleted_posts
+       FROM posts`
+    ),
+    pool.query(
+      `SELECT
+         COUNT(*) AS total_attempts,
+         COUNT(*) FILTER (WHERE status = 'completed') AS completed_attempts,
+         COUNT(*) FILTER (WHERE is_offline = true) AS offline_attempts,
+         COALESCE(ROUND(AVG(overall_band_score) FILTER (WHERE status = 'completed'), 1), 0) AS avg_band
+       FROM test_attempts`
+    ),
+    pool.query(
+      `SELECT TO_CHAR(day, 'YYYY-MM-DD') AS day, count
+       FROM (
+         SELECT DATE(created_at) AS day, COUNT(*)::int AS count
+         FROM users
+         WHERE created_at >= NOW() - INTERVAL '14 days'
+         GROUP BY DATE(created_at)
+         ORDER BY day ASC
+       ) t`
+    ),
+  ]);
+
+  return {
+    users: users.rows[0],
+    mocks: tests.rows[0],
+    prep: prep.rows[0],
+    community: posts.rows[0],
+    attempts: attempts.rows[0],
+    registrations_14d: registrations.rows,
+  };
+};
+
+// Global TopBar search across users / mocks / prep / posts
+export const adminGlobalSearch = async (q, limit = 5) => {
+  const like = `%${q}%`;
+  const [users, mocks, prep, posts] = await Promise.all([
+    pool.query(
+      `SELECT id, full_name AS label, email AS sub
+       FROM users
+       WHERE full_name ILIKE $1 OR email ILIKE $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [like, limit]
+    ),
+    pool.query(
+      `SELECT id, title AS label, exam_type::text AS sub
+       FROM tests
+       WHERE title ILIKE $1
+       ORDER BY updated_at DESC
+       LIMIT $2`,
+      [like, limit]
+    ),
+    pool.query(
+      `SELECT id, title AS label, section::text AS sub
+       FROM preparations
+       WHERE title ILIKE $1 OR COALESCE(summary, '') ILIKE $1
+       ORDER BY updated_at DESC
+       LIMIT $2`,
+      [like, limit]
+    ),
+    pool.query(
+      `SELECT id, title AS label, topic_tag::text AS sub
+       FROM posts
+       WHERE deleted_at IS NULL AND (title ILIKE $1 OR content ILIKE $1)
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [like, limit]
+    ),
+  ]);
+
+  return {
+    users: users.rows.map((r) => ({ ...r, type: "user", path: "/users" })),
+    mocks: mocks.rows.map((r) => ({ ...r, type: "mock", path: "/mocks" })),
+    prep: prep.rows.map((r) => ({ ...r, type: "prep", path: "/preparation" })),
+    posts: posts.rows.map((r) => ({ ...r, type: "post", path: "/community" })),
+  };
 };
 
 export const fetchAllUsers = async (limit, offset, search = "", subscription = "", preference = "") => {

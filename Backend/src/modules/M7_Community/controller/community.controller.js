@@ -5,6 +5,9 @@ import * as ShareModel from '../models/share.model.js';
 import * as FlagModel from '../models/flag.model.js';
 import { validateCreatePost, validateUpdatePost, validatePostId, validateGetPosts, validateSharePost, validateCreateComment, validateUpdateComment, validateCommentId, validateAdminFlagPost, validateAdminDeletePost } from '../validator/community.validator.js';
 import { getOnlineCount } from '../../M6_AI/services/presence.service.js';
+// AI moderation runs on student create/update only (moderatePost / moderateComment).
+// Admin flag/unflag/delete below is human moderation — does not call Gemini.
+// Preview API (unused by Admin UI): POST /api/v1/ai/moderate/preview
 import { moderatePost, moderateComment } from '../../M6_AI/services/moderation.service.js';
 import { sendPostFlaggedEmail } from '../../../email_templates/email.service.js';
 import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
@@ -352,6 +355,7 @@ export const adminGetPosts = async (req, res) => {
   }
 };
 
+// Human moderation (Admin Community page) — no AI call
 export const adminFlagPost = async (req, res) => {
   try {
     const { postId } = validatePostId(req.params);

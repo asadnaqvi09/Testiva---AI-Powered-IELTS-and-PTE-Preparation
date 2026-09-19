@@ -6,6 +6,7 @@ import '../../core/database/local_db.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/services/user_notifier.dart';
+import '../../data/demo/demo_mock_catalog.dart';
 import '../../data/models/mock_test_model.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/custom_drawer.dart';
@@ -55,6 +56,21 @@ class _MocksScreenState extends State<MocksScreen> {
     final sub = user['subscription']?.toString().toLowerCase();
     final unlocked = user['unlocked_exam']?.toString().toUpperCase();
     return role == 'admin' || sub == 'premium' || unlocked == 'BOTH';
+  }
+
+  bool _isPaidPlan() {
+    final sub =
+        UserNotifier.notifier.value['subscription']?.toString().toLowerCase();
+    final role =
+        UserNotifier.notifier.value['role']?.toString().toLowerCase();
+    return role == 'admin' || sub == 'basic' || sub == 'premium';
+  }
+
+  // clean and optimized code — exam track OR premium-flagged mock
+  bool _isMockLocked(MockTest mock) {
+    if (!_canAccessExam(mock.examType)) return true;
+    if (mock.isPremium && !_isPaidPlan()) return true;
+    return false;
   }
 
   bool _canAccessExam(String examType) {
@@ -128,6 +144,11 @@ class _MocksScreenState extends State<MocksScreen> {
                 examType: examType,
                 items: allowed,
               );
+              if (allowed.isEmpty) {
+                // clean and optimized code — keep demos usable when DB has no published mocks
+                _applyDemoMocks(examType);
+                return;
+              }
               _applyMockList(allowed);
               return;
             }
@@ -138,20 +159,41 @@ class _MocksScreenState extends State<MocksScreen> {
         } catch (e) {
           final loaded = await _loadCachedMocks(examType);
           if (loaded) return;
-          _errorMessage = 'Connection error: $e';
+          // clean and optimized code — offline-first seed (no prior online required)
+          _applyDemoMocks(examType);
         }
       } else {
         final loaded = await _loadCachedMocks(examType);
         if (!loaded) {
-          _errorMessage =
-              'You are offline. Open mock tests once while online to cache them.';
+          _applyDemoMocks(examType);
         }
       }
     } catch (e) {
-      _errorMessage = 'Connection error: $e';
+      final examType = _examQuery;
+      if (examType != null) {
+        final loaded = await _loadCachedMocks(examType);
+        if (loaded) return;
+        _applyDemoMocks(examType);
+      } else {
+        _errorMessage = 'Connection error: $e';
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _applyDemoMocks(String examType) {
+    final demo = DemoMockCatalog.offlineReady(examType);
+    if (demo.isEmpty) {
+      setState(() {
+        _mocks = [];
+        _errorMessage =
+            'No offline mocks for this track. Connect once to sync, or unlock via Premium.';
+      });
+      return;
+    }
+    _errorMessage = '';
+    _applyMockList(demo);
   }
 
   void _applyMockList(List list) {
@@ -363,7 +405,7 @@ class _MocksScreenState extends State<MocksScreen> {
                           padding: const EdgeInsets.all(16),
                           itemCount: _mocks.length,
                           itemBuilder: (context, index) {
-                            final locked = !_canAccessExam(_mocks[index].examType);
+                            final locked = _isMockLocked(_mocks[index]);
                             return MockTestCard(
                               mock: _mocks[index],
                               isLocked: locked,

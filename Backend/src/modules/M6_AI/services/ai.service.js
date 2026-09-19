@@ -4,6 +4,19 @@ import { processAudioToText } from "../processors (Input Cleaning)/speaking.proc
 import pool from "../../../config/db.js";
 import * as progressModel from "../../M4_Progress/models/progress.model.js";
 
+const formatFeedbackText = (value) => {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.map(String).filter(Boolean).join(" ");
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value).trim();
+};
+
 const resolveSpeakingTranscript = async (resp) => {
   const existing =
     resp.user_answer?.transcribed_text ||
@@ -43,10 +56,10 @@ export const processEvaluation = async (userId, attemptId, testType, moduleType,
 };
 
 // =================================================================
-// REFACTORED CORE ENGINE: Full Mock / Offline Sync Process Router
+// Alternate full-test AI path (manual/API). Live mocks use M5 sync.worker.js.
+// Kept for backward compatibility — averages multi-task bands like the worker.
 // =================================================================
 export const processFullTestAI = async (attemptId) => {
-  // 1. Test Info aur User Responses fetch karein jahan AI checking chahiye
   const attempt = await progressModel.getAttemptById(attemptId);
   if (!attempt) throw new Error("Attempt not found for AI processing");
 
@@ -54,11 +67,10 @@ export const processFullTestAI = async (attemptId) => {
   
   console.log(`[AI Service] Processing asynchronous payload for Test Type: ${attempt.test_type}`);
 
-  let writingScore = null;
-  let speakingScore = null;
+  const writingScores = [];
+  const speakingScores = [];
   let feedbackTexts = [];
 
-  // 2. Filter & Process Writing Tasks
   const writingResponses = responses.filter((r) => {
     const qt = (r.question_type || "").toLowerCase();
     const sub = (r.sub_question_type || "").toLowerCase();
@@ -83,25 +95,28 @@ export const processFullTestAI = async (attemptId) => {
   for (const wr of writingResponses) {
     try {
       console.log(`[AI Service] Evaluating Writing Question ID: ${wr.question_id}`);
-      
-      // --- ITEM #10 FIX: Enforce isolated background validation limits ---
       const fb = await writingEvaluation.evaluateWriting(
         attempt.user_id, 
         attemptId, 
         attempt.test_type, 
         wr.question_text, 
         wr.user_answer?.text_essay || wr.user_answer,
-        { skipScoreUpdate: true } // Prevents loop cycles from overwriting master scores
+        { skipScoreUpdate: true }
       );
-      
-      writingScore = fb.overall_band_score;
-      feedbackTexts.push(`Writing Feedback: ${fb.improvement_suggestions || fb.general_critique}`);
+      const band = Number(fb.overall_band_score) || 0;
+      if (band > 0) writingScores.push(band);
+      const critique = formatFeedbackText(fb.improvement_suggestions || fb.detailed_analysis);
+      feedbackTexts.push(`Writing Feedback: ${critique}`);
+      await progressModel.updateResponseAiFeedback(
+        attemptId,
+        wr.question_id,
+        critique || `Writing band ${band}`,
+      ).catch(() => {});
     } catch (err) {
       console.error("Async Mock Writing Processing Failed:", err);
     }
   }
 
-  // 3. Filter & Process Speaking Tasks (Gemini STT when transcript missing)
   const speakingResponses = responses.filter((r) => {
     const qt = (r.question_type || "").toLowerCase();
     const sub = (r.sub_question_type || "").toLowerCase();
@@ -111,46 +126,52 @@ export const processFullTestAI = async (attemptId) => {
     try {
       console.log(`[AI Service] Evaluating Speaking Question ID: ${sr.question_id}`);
       const transcriptionData = await resolveSpeakingTranscript(sr);
-
-      // --- ITEM #10 FIX: Enforce isolated background validation limits ---
       const fb = await speakingEvaluation.evaluateSpeakingTask(
         attempt.user_id, 
         attemptId, 
         transcriptionData,
-        { skipScoreUpdate: true } // Isolates transactional footprint inside the loop
+        { skipScoreUpdate: true }
       );
-      
-      speakingScore = fb.overall_band_score;
-      feedbackTexts.push(`Speaking Feedback: ${fb.improvement_suggestions || fb.general_critique}`);
+      const band = Number(fb.overall_band_score) || 0;
+      if (band > 0) speakingScores.push(band);
+      const critique = formatFeedbackText(fb.improvement_suggestions || fb.detailed_analysis);
+      feedbackTexts.push(`Speaking Feedback: ${critique}`);
+      await progressModel.updateResponseAiFeedback(
+        attemptId,
+        sr.question_id,
+        critique || `Speaking band ${band}`,
+      ).catch(() => {});
     } catch (err) {
       console.error("Async Mock Speaking Processing Failed:", err);
     }
   }
 
-  // 4. SMART BAND CALCULATOR (IELTS/PTE Compliant)
   const freshAttempt = await progressModel.getAttemptById(attemptId);
   const scoreMeta = await progressModel.getAttemptScoreMeta(attemptId);
   const examType = (scoreMeta?.exam_type || attempt.test_type || "").toUpperCase();
+  const isPte = examType === "PTE";
   const isSingular = (scoreMeta?.test_category || "") === "singular_module";
+
+  const avgOrZero = (scores) => {
+    if (!scores.length) return 0;
+    const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+    return isPte ? Math.round(mean) : Math.round(mean * 2) / 2;
+  };
   
   const rScore = Number(freshAttempt.reading_score) || 0;
   const lScore = Number(freshAttempt.listening_score) || 0;
-  const wScore = writingScore !== null ? Number(writingScore) : (Number(freshAttempt.writing_score) || 0);
-  const sScore = speakingScore !== null ? Number(speakingScore) : (Number(freshAttempt.speaking_score) || 0);
+  const wScore = avgOrZero(writingScores) || Number(freshAttempt.writing_score) || 0;
+  const sScore = avgOrZero(speakingScores) || Number(freshAttempt.speaking_score) || 0;
 
   let overallBand = isSingular
     ? (sScore || wScore || rScore || lScore || 0)
     : (rScore + lScore + wScore + sScore) / 4;
-  if (examType !== "PTE") {
-    // IELTS rounding mechanism logic integration
+  if (!isPte) {
     overallBand = Math.round(overallBand * 2) / 2;
   } else {
-    // PTE whole integer rounding rule
     overallBand = Math.round(overallBand);
   }
 
-  // 5. Finalize Single Atomic Score Updates
-  // Yahan master final execution query pure objective aur subjective variables ko finalize karegi
   await progressModel.updateAttemptScores(attemptId, {
     overall_band_score: overallBand,
     reading_score: rScore,
@@ -161,7 +182,6 @@ export const processFullTestAI = async (attemptId) => {
     status: "completed"
   });
 
-  // Global transactional database lock parameters update
   const finalClient = await pool.connect();
   try {
     await finalClient.query(

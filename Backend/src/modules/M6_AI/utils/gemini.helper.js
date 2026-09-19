@@ -2,6 +2,18 @@ import { model } from "../../../config/gemini.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// clean and optimized code — map SDK errors to missing-key messaging
+const normalizeGeminiError = (err) => {
+  const message = String(err?.message || err || "");
+  if (
+    !process.env.GEMINI_API_KEY ||
+    /API[_ ]?KEY|api key|PERMISSION_DENIED|UNAUTHENTICATED|401|403/i.test(message)
+  ) {
+    return new Error("Gemini key missing or invalid in Backend .env (GEMINI_API_KEY)");
+  }
+  return err instanceof Error ? err : new Error(message);
+};
+
 const isRetryableGeminiError = (err) => {
   const message = String(err?.message || err || "");
   return (
@@ -28,6 +40,9 @@ export const parseGeminiJson = (rawText) => {
 };
 
 const runGeminiWithRetry = async (content, maxAttempts = 3) => {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("Gemini key missing or invalid in Backend .env (GEMINI_API_KEY)");
+  }
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -35,15 +50,15 @@ const runGeminiWithRetry = async (content, maxAttempts = 3) => {
       const text = (await result.response).text().trim();
       return parseGeminiJson(text);
     } catch (err) {
-      lastError = err;
+      lastError = normalizeGeminiError(err);
       if (isRetryableGeminiError(err) && attempt < maxAttempts) {
         await sleep(1000 * attempt);
         continue;
       }
-      throw err;
+      throw lastError;
     }
   }
-  throw lastError;
+  throw normalizeGeminiError(lastError);
 };
 
 export const generateJsonFromPrompt = async (prompt, maxAttempts = 3) =>

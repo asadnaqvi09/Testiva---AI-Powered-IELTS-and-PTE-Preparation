@@ -1,5 +1,12 @@
 import pool from '../../../../config/db.js'
-import { fetchAllUsers, findUserById, getAdminStats, updateUserSubscriptionStatus } from '../../user.model.js'
+import {
+  fetchAllUsers,
+  findUserById,
+  getAdminStats,
+  getAdminDeepAnalytics,
+  adminGlobalSearch,
+  updateUserSubscriptionStatus,
+} from '../../user.model.js'
 import { v4 as uuidv4, validate as validateUUID } from "uuid";
 
 export const getDashboardStats = async (req, res) => {
@@ -17,6 +24,39 @@ export const getDashboardStats = async (req, res) => {
                 message: "Internal Server Error"
             })
     }
+};
+
+// Deep platform metrics for Analytics page
+export const getAnalytics = async (req, res) => {
+  try {
+    const data = await getAdminDeepAnalytics();
+    return res.status(200).json({
+      success: true,
+      message: "Analytics fetched",
+      data,
+    });
+  } catch (error) {
+    console.error("getAnalytics:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// TopBar global search
+export const searchAdmin = async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 2) {
+      return res.status(200).json({
+        success: true,
+        data: { users: [], mocks: [], prep: [], posts: [] },
+      });
+    }
+    const data = await adminGlobalSearch(q, 5);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("searchAdmin:", error);
+    return res.status(500).json({ success: false, message: "Search failed" });
+  }
 };
 
 export const getAllUsers = async (req, res) => {

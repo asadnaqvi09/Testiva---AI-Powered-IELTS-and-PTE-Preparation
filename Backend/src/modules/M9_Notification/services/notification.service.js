@@ -21,8 +21,13 @@ export const sendNotification = async ({io,recipientId,senderId = null,type,titl
     const userResult = await pool.query('SELECT fcm_token FROM users WHERE id = $1', [recipientId]);
     const fcmToken = userResult.rows[0]?.fcm_token;
     if (fcmToken) {
-      sendPushNotification(fcmToken, title, message, { type, postId: postId || "", commentId: commentId || "" })
-        .catch(err => console.error("[FCM Async Error]:", err.message));
+      // clean and optimized code — include attempt id for test_result deep links
+      sendPushNotification(fcmToken, title, message, {
+        type: type || "",
+        postId: postId || "",
+        commentId: commentId || "",
+        attemptId: type === "test_result_synced" ? (postId || "") : "",
+      }).catch(err => console.error("[FCM Async Error]:", err.message));
     }
   } catch (err) {
     console.error("[FCM DB Error]: Failed to fetch FCM token:", err.message);
@@ -43,5 +48,24 @@ export const sendBulkNotifications = async (params) => {
       });
     });
   }
+  // clean and optimized code — best-effort FCM for bulk recipients
+  setImmediate(async () => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT id, fcm_token FROM users
+         WHERE id = ANY($1::uuid[]) AND fcm_token IS NOT NULL AND fcm_token <> ''`,
+        [recipientIds],
+      );
+      for (const row of rows) {
+        sendPushNotification(row.fcm_token, title, message, {
+          type: type || "",
+          postId: postId || "",
+          commentId: commentId || "",
+        }).catch((err) => console.error("[FCM Bulk Error]:", err.message));
+      }
+    } catch (err) {
+      console.error("[FCM Bulk DB Error]:", err.message);
+    }
+  });
   return notifications;
 };

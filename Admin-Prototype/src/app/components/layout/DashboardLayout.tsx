@@ -11,7 +11,7 @@ export function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+  if (user?.role !== 'admin') {
     return <Navigate to="/login" replace />;
   }
 

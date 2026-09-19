@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticate } from "../../../middleware/auth.middleware.js";
+import { authorizeRoles } from "../../../middleware/role.middleware.js";
 import { aiLimiter } from "../../../middleware/rateLimiter.middleware.js";
 import * as aiController from "../controller/ai.controller.js";
 
@@ -10,5 +11,14 @@ router.post("/evaluate/speaking", aiLimiter, authenticate, aiController.evaluate
 router.post("/response-feedback", aiLimiter, authenticate, aiController.patchResponseAiFeedback);
 router.get("/recommendation", authenticate, aiController.getAiRecommendation);
 router.get("/feedback-suggestion", authenticate, aiController.getAiFeedbackSuggestion);
+
+// Preview-only AI moderation (not used by Admin Community human moderation UI)
+router.post(
+  "/moderate/preview",
+  aiLimiter,
+  authenticate,
+  authorizeRoles("admin"),
+  aiController.previewCommunityModeration
+);
 
 export default router;

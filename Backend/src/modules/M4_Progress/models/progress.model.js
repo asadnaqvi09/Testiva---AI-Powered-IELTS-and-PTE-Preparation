@@ -55,12 +55,43 @@ const isAiEvaluated = (question) => {
   return AI_EVALUATED_TYPES.includes(qType) || AI_EVALUATED_SUBS.includes(sub);
 };
 
+// clean and optimized code
+export const isAiEvaluatedQuestion = isAiEvaluated;
+
+export const responsesNeedAiEvaluation = async (questionIds, client = pool) => {
+  const ids = (questionIds || []).filter(Boolean);
+  if (!ids.length) return false;
+  const { rows } = await client.query(
+    `SELECT question_type, sub_question_type FROM questions WHERE id = ANY($1::uuid[])`,
+    [ids],
+  );
+  return rows.some(isAiEvaluated);
+};
+
 const normalize = (v) => {
   if (v === null || v === undefined) return "";
   if (typeof v === "string") return v.trim().toLowerCase();
   if (Array.isArray(v)) return v.map((x) => String(x).toLowerCase().trim()).sort().join(",");
   if (typeof v === "object") return JSON.stringify(v);
   return String(v).toLowerCase().trim();
+};
+
+// clean and optimized code — matching pairs from Flutter [{key,value}]
+const scoreMatchingPairs = (correctRaw, userAnswer) => {
+  const toPairs = (raw) => {
+    if (!Array.isArray(raw)) return null;
+    const pairs = raw
+      .filter((item) => item && typeof item === "object")
+      .map((item) => [normalize(item.key), normalize(item.value)]);
+    return pairs.length ? pairs : null;
+  };
+  const correctPairs = toPairs(correctRaw);
+  const userPairs = toPairs(userAnswer);
+  if (!correctPairs || !userPairs) return null;
+  if (correctPairs.length !== userPairs.length) return false;
+  const correctMap = Object.fromEntries(correctPairs);
+  const userMap = Object.fromEntries(userPairs);
+  return Object.keys(correctMap).every((k) => correctMap[k] === userMap[k]);
 };
 
 const scoreObjective = (question, user_answer) => {
@@ -81,12 +112,20 @@ const scoreObjective = (question, user_answer) => {
     ["short_answer", "matching", "sentence_completion", "form_fill"].includes(sub)
   ) {
     const raw = question.correct_answer;
-    const acceptable = Array.isArray(raw)
-      ? raw.map((a) => normalize(a))
-      : String(raw).split(/[|/]/).map((a) => normalize(a));
-    if (acceptable.includes(normalize(user_answer))) {
+    const pairMatch = scoreMatchingPairs(raw, user_answer);
+    if (pairMatch === true) {
       is_correct = true;
       marks_obtained = Number(question.marks) || 0;
+    } else if (pairMatch === false) {
+      is_correct = false;
+    } else {
+      const acceptable = Array.isArray(raw)
+        ? raw.map((a) => normalize(a))
+        : String(raw).split(/[|/]/).map((a) => normalize(a));
+      if (acceptable.includes(normalize(user_answer))) {
+        is_correct = true;
+        marks_obtained = Number(question.marks) || 0;
+      }
     }
   }
   return { is_correct, marks_obtained };

@@ -40,7 +40,10 @@ class OfflineSyncService {
         final localId = row['local_id'] as String;
         final payload =
             jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
-        final body = Map<String, dynamic>.from(payload)..['is_offline'] = true;
+
+        // clean and optimized code — upload local speaking audio before sync
+        final prepared = await _preparePayloadForUpload(payload);
+        final body = Map<String, dynamic>.from(prepared)..['is_offline'] = true;
 
         try {
           final response =
@@ -85,6 +88,40 @@ class OfflineSyncService {
     return uploaded;
   }
 
+  /// Uploads any `local_audio_path` entries and strips client-only fields.
+  Future<Map<String, dynamic>> _preparePayloadForUpload(
+    Map<String, dynamic> payload,
+  ) async {
+    final responses = payload['responses'];
+    if (responses is! List) return payload;
+
+    final nextResponses = <Map<String, dynamic>>[];
+    for (final raw in responses) {
+      if (raw is! Map) continue;
+      final resp = Map<String, dynamic>.from(raw);
+      final existingUrl = resp['audio_response_url']?.toString() ?? '';
+      final localPath = resp['local_audio_path']?.toString() ?? '';
+
+      if (existingUrl.isEmpty && localPath.isNotEmpty) {
+        try {
+          final url = await ApiService.uploadSpeakingAudio(localPath);
+          if (url != null && url.isNotEmpty) {
+            resp['audio_response_url'] = url;
+          }
+        } catch (e) {
+          debugPrint('[OfflineSync] Speaking upload failed: $e');
+        }
+      }
+      resp.remove('local_audio_path');
+      nextResponses.add(resp);
+    }
+
+    return {
+      ...payload,
+      'responses': nextResponses,
+    };
+  }
+
   Future<int> retryFailedAttempts() async {
     await LocalDb.instance.resetFailedAttempts();
     return syncPendingAttempts();
@@ -114,6 +151,7 @@ class OfflineSyncService {
           final started = map['client_started_at']?.toString() ??
               map['created_at']?.toString();
           if (started != null &&
+              clientStartedAt.length >= 19 &&
               started.startsWith(clientStartedAt.substring(0, 19))) {
             final attemptId = map['attempt_id']?.toString();
             if (attemptId != null && attemptId.isNotEmpty) {

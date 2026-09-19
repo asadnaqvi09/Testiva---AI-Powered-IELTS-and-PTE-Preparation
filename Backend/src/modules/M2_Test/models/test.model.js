@@ -197,7 +197,7 @@ export async function listMobilePublished(userId, examTypes) {
   const attemptUserId = UUID_RE.test(String(userId || "")) ? userId : NIL_UUID;
   const { rows } = await pool.query(
     `SELECT t.id, t.display_id, t.title, t.exam_type, t.test_category, t.difficulty_level,
-            t.total_duration, t.min_required_band,
+            t.total_duration, t.min_required_band, t.is_premium,
             (SELECT COUNT(*)::int FROM questions q
               INNER JOIN test_sections ts ON q.section_id = ts.id WHERE ts.test_id = t.id) AS total_questions,
             sq.sub_question_types,

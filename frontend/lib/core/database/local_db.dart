@@ -17,40 +17,61 @@ class LocalDb {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       join(dbPath, 'testiva_offline.db'),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE cached_tests (
-            test_id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            duration_minutes INTEGER NOT NULL DEFAULT 60,
-            payload_json TEXT NOT NULL,
-            cached_at TEXT NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE cached_mock_dashboard (
-            exam_type TEXT PRIMARY KEY,
-            payload_json TEXT NOT NULL,
-            cached_at TEXT NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE offline_attempts (
-            local_id TEXT PRIMARY KEY,
-            test_id TEXT NOT NULL,
-            test_title TEXT NOT NULL,
-            exam_type TEXT,
-            client_started_at TEXT NOT NULL,
-            client_completed_at TEXT NOT NULL,
-            payload_json TEXT NOT NULL,
-            sync_status TEXT NOT NULL DEFAULT 'pending',
-            server_attempt_id TEXT,
-            created_at TEXT NOT NULL
-          )
-        ''');
+        await _createV1Tables(db);
+        await _createAudioCacheTable(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _createAudioCacheTable(db);
+        }
       },
     );
+  }
+
+  Future<void> _createV1Tables(Database db) async {
+    await db.execute('''
+      CREATE TABLE cached_tests (
+        test_id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL DEFAULT 60,
+        payload_json TEXT NOT NULL,
+        cached_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE cached_mock_dashboard (
+        exam_type TEXT PRIMARY KEY,
+        payload_json TEXT NOT NULL,
+        cached_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE offline_attempts (
+        local_id TEXT PRIMARY KEY,
+        test_id TEXT NOT NULL,
+        test_title TEXT NOT NULL,
+        exam_type TEXT,
+        client_started_at TEXT NOT NULL,
+        client_completed_at TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'pending',
+        server_attempt_id TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createAudioCacheTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cached_audio (
+        remote_url TEXT PRIMARY KEY,
+        local_path TEXT NOT NULL,
+        test_id TEXT,
+        cached_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> cacheTestRuntime({
@@ -88,6 +109,37 @@ class LocalDb {
       'duration_minutes': row['duration_minutes'],
       'data': jsonDecode(row['payload_json'] as String) as Map<String, dynamic>,
     };
+  }
+
+  // clean and optimized code — listening audio for offline playback
+  Future<void> saveCachedAudio({
+    required String remoteUrl,
+    required String localPath,
+    String? testId,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'cached_audio',
+      {
+        'remote_url': remoteUrl,
+        'local_path': localPath,
+        'test_id': testId,
+        'cached_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String?> getCachedAudioPath(String remoteUrl) async {
+    final db = await database;
+    final rows = await db.query(
+      'cached_audio',
+      where: 'remote_url = ?',
+      whereArgs: [remoteUrl],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['local_path']?.toString();
   }
 
   Future<void> cacheMockDashboard({

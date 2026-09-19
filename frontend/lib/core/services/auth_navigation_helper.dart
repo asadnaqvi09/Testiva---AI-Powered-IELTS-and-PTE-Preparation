@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/fcm_token_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
+import 'package:frontend/providers/notification_provider.dart';
 import 'package:frontend/src/auth/signup/preference_selection_screen.dart';
 import 'package:frontend/src/dashboard/dashboard_screen.dart';
 
@@ -20,9 +22,14 @@ class AuthNavigationHelper {
       'unlocked_exam': unlocked,
       'role': user['role'] ?? 'user',
       'subscription': subscription,
+      // clean and optimized code — basic unlocks track; premium unlocks both
       'isPremium':
           subscription.toString().toLowerCase() == 'premium' ||
           unlocked?.toUpperCase() == 'BOTH',
+      'isPaid':
+          ['basic', 'premium'].contains(
+            subscription.toString().toLowerCase(),
+          ),
       'avatar_url': user['avatar_url'],
     };
   }
@@ -47,10 +54,25 @@ class AuthNavigationHelper {
         'isPremium':
             subscription.toString().toLowerCase() == 'premium' ||
             unlocked?.toUpperCase() == 'BOTH',
+        'isPaid':
+            ['basic', 'premium'].contains(
+              subscription.toString().toLowerCase(),
+            ),
       };
     } catch (e) {
       debugPrint('refreshEntitlements: $e');
     }
+  }
+
+  // clean and optimized code — socket + FCM after Google/email login
+  static void _bootstrapRealtime(BuildContext context) {
+    try {
+      final notif = context.read<NotificationProvider>();
+      unawaited(notif.onAuthChanged());
+    } catch (e) {
+      debugPrint('Notification bootstrap skipped: $e');
+    }
+    unawaited(FcmTokenService.syncTokenIfAvailable());
   }
 
   static Route<T> fadeRoute<T>(Widget page) {
@@ -71,7 +93,7 @@ class AuthNavigationHelper {
   }) async {
     syncUserNotifier(user);
     unawaited(refreshEntitlements());
-    unawaited(FcmTokenService.syncTokenIfAvailable());
+    _bootstrapRealtime(context);
     if (!context.mounted) return;
 
     if (successMessage != null && successMessage.isNotEmpty) {

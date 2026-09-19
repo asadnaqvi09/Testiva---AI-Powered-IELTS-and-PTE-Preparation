@@ -109,8 +109,7 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Welcome back, {user?.full_name || user?.name || 'Administrator'} 
-            {user?.institute && <span className="text-blue-500"> · {user.institute}</span>}
+            Welcome back, {user?.name || 'Administrator'}
           </p>
         </div>
       </div>

@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:frontend/core/config/app_config.dart';
 import 'api_service.dart';
 import 'auth_navigation_helper.dart';
 
 class GoogleAuthService {
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId:
+  /// Must match Backend `GOOGLE_CLIENT_ID` (Web OAuth client / serverClientId).
+  /// Override: `flutter run --dart-define=GOOGLE_SERVER_CLIENT_ID=....apps.googleusercontent.com`
+  static const String serverClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue:
         '298829936456-ftno9o41s987ca986oek9hrmjst0odfo.apps.googleusercontent.com',
-    scopes: ['email', 'profile'],
   );
+
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: serverClientId,
+    scopes: const ['email', 'profile'],
+  );
+
+  static Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+  }
 
   static void _showLoadingOverlay(BuildContext context) {
     showDialog<void>(
@@ -48,8 +62,7 @@ class GoogleAuthService {
     var overlayShown = false;
 
     try {
-      // Account picker must run first. Awaiting showDialog blocks forever
-      // because that Future only completes when the overlay is dismissed.
+      // Account picker must run first (overlay dialog would block forever).
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
 
@@ -62,7 +75,10 @@ class GoogleAuthService {
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null || idToken.isEmpty) {
-        throw Exception('Could not fetch Google ID Token. Please try again.');
+        throw Exception(
+          'Could not fetch Google ID Token. Ensure GOOGLE_CLIENT_ID on the '
+          'backend matches serverClientId ($serverClientId).',
+        );
       }
 
       final response = await ApiService.post('/auth/google', {
@@ -85,8 +101,11 @@ class GoogleAuthService {
         if (!context.mounted) return;
 
         final user = ApiService.userFromAuthPayload(payload);
-        if (user.isEmpty) {
+        if (user['email'] == null || user['email'].toString().isEmpty) {
           user['email'] = googleUser.email;
+        }
+        if (user['full_name'] == null || user['full_name'].toString().isEmpty) {
+          user['full_name'] = googleUser.displayName ?? googleUser.email;
         }
 
         await AuthNavigationHelper.navigateAfterAuth(
@@ -118,16 +137,23 @@ class GoogleAuthService {
 
       final String errorMessage = e.toString();
       String debugMessage = 'Google Sign-In failed: $errorMessage';
-      if (errorMessage.contains('API_EXCEPTION') || errorMessage.contains('10')) {
+      if (errorMessage.contains('API_EXCEPTION') ||
+          errorMessage.contains('ApiException: 10') ||
+          errorMessage.contains(': 10')) {
         debugMessage =
-            'Google Sign-In configuration error: Please check if your SHA-1 matches Google Cloud Console and clear app data.';
+            'Google Sign-In config error (code 10). Check SHA-1 in Firebase/'
+            'Google Cloud Console, package name, and clear app data. Host: ${AppConfig.apiOrigin}';
+      } else if (errorMessage.contains('audience') ||
+          errorMessage.contains('GOOGLE_CLIENT_ID')) {
+        debugMessage =
+            'Google token audience mismatch. Set Backend GOOGLE_CLIENT_ID to the Web client ID used as serverClientId.';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(debugMessage),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 6),
         ),
       );
     }

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Plus, Edit2, Trash2, Eye, ChevronUp, ChevronDown, Filter, X, AlertCircle, RefreshCw, Check, Ban } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { getAllUsersAPI, updateUserSubscriptionAPI, setUserPreferenceAPI } from '../services/api'; 
 import { toast } from 'sonner';
 
@@ -18,8 +17,6 @@ const UNLOCK_OPTIONS = [
 const PLAN_LABELS: Record<string, string> = { free: 'Free', basic: 'Basic ₨399', premium: 'Premium ₨699' };
 
 export function Users() {
-  const { user } = useAuth();
-  const isInstAdmin = user?.role === 'institute_admin';
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState('');
@@ -176,11 +173,11 @@ export function Users() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{isInstAdmin ? 'Student Management' : 'User Management'}</h1>
+          <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>User Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">{filteredAndSortedUsers.length} active students tracked live</p>
         </div>
         <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-all" style={{ background: '#007BFF' }}>
-          <Plus size={16} /> Add {isInstAdmin ? 'Student' : 'User'}
+          <Plus size={16} /> Add User
         </button>
       </div>
 

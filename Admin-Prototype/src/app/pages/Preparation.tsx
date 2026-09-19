@@ -5,7 +5,6 @@ import {
   Layers, Tag, AlertCircle, Lock, Loader2
 } from 'lucide-react';
 import { getPrepLessons, getPrepDetails, createPrepLesson, updatePrepLesson, deletePrepLesson, uploadPrepPdf } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
 const TEST_TYPES = ['IELTS', 'PTE'];
@@ -69,11 +68,10 @@ const emptyForm = (): FormState => ({
 });
 
 function ContentFormBody({
-  form, setForm, userRole, fileInputRef, onFileChange, onRemoveFile,
+  form, setForm, fileInputRef, onFileChange, onRemoveFile,
 }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
-  userRole?: string;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFile: (id: string) => void;
@@ -143,20 +141,6 @@ function ContentFormBody({
                 <option value="draft">Draft</option>
               </select>
             </div>
-            {userRole === 'institute_admin' && (
-              <label className="flex items-center gap-2 cursor-pointer mt-4">
-                <input
-                  type="checkbox"
-                  checked={form.instituteOnly}
-                  onChange={e => setForm(p => ({ ...p, instituteOnly: e.target.checked }))}
-                  className="w-4 h-4 rounded"
-                  style={{ accentColor: '#007BFF' }}
-                />
-                <span className="text-sm text-gray-600 flex items-center gap-1">
-                  <Lock size={12} className="text-gray-400" /> Visible only to my students
-                </span>
-              </label>
-            )}
           </div>
         </div>
       </section>
@@ -284,7 +268,6 @@ function ContentFormBody({
 }
 
 export function Preparation() {
-  const { user } = useAuth();
   const [prepList, setPrepList] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -658,7 +641,6 @@ export function Preparation() {
             <ContentFormBody
               form={form}
               setForm={setForm}
-              userRole={user?.role}
               fileInputRef={createFileRef}
               onFileChange={e => handleFileChange(e, setForm)}
               onRemoveFile={id => setForm(p => ({ ...p, mediaFiles: p.mediaFiles.filter(m => m.id !== id) }))}
@@ -704,7 +686,6 @@ export function Preparation() {
             <ContentFormBody
               form={editForm}
               setForm={setEditForm}
-              userRole={user?.role}
               fileInputRef={editFileRef}
               onFileChange={e => handleFileChange(e, setEditForm)}
               onRemoveFile={id => setEditForm(p => ({ ...p, mediaFiles: p.mediaFiles.filter(m => m.id !== id) }))}

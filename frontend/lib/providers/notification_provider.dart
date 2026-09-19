@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:frontend/core/services/fcm_token_service.dart';
 import 'package:frontend/core/services/notification_service.dart';
 import 'package:frontend/core/services/socket_service.dart';
 import 'package:frontend/data/models/notification_model.dart';
@@ -14,6 +16,7 @@ class NotificationProvider extends ChangeNotifier {
   String? pendingAttemptId;
 
   final Set<String> _seenIds = {};
+  void Function(dynamic)? _socketHandler;
 
   List<NotificationModel> get notifications => List.unmodifiable(_notifications);
   int get unreadCount => _unreadCount;
@@ -22,9 +25,21 @@ class NotificationProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (_initialized) return;
-    await refresh();
-    await _connectSocket();
     _initialized = true;
+    await refresh();
+    await _connectSocket(force: true);
+    // clean and optimized code — sync FCM after inbox is live
+    unawaited(FcmTokenService.syncTokenIfAvailable());
+    FcmTokenService.onForegroundMessage = _onForegroundPush;
+    FcmTokenService.onNotificationOpened = _onNotificationOpened;
+    unawaited(FcmTokenService.consumeInitialMessage());
+  }
+
+  /// Call after login / preference change so sockets use the fresh JWT.
+  Future<void> onAuthChanged() async {
+    _initialized = false;
+    socketService.disconnect();
+    await initialize();
   }
 
   Future<void> refresh() async {
@@ -51,10 +66,10 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _connectSocket() async {
-    await socketService.connect();
+  Future<void> _connectSocket({bool force = false}) async {
+    await socketService.connect(force: force);
 
-    void handleNew(dynamic data) {
+    _socketHandler ??= (dynamic data) {
       if (data is! Map) return;
       final raw = data['notification'];
       if (raw is! Map) return;
@@ -78,15 +93,53 @@ class NotificationProvider extends ChangeNotifier {
       } catch (e) {
         debugPrint('[Notifications] Socket parse error: $e');
       }
-    }
+    };
 
     void attach() {
-      socketService.off('notification:new', handleNew);
-      socketService.on('notification:new', handleNew);
+      final handler = _socketHandler;
+      if (handler == null) return;
+      socketService.off('notification:new', handler);
+      socketService.on('notification:new', handler);
     }
 
     attach();
     socketService.onConnect(attach);
+  }
+
+  void _onForegroundPush(Map<String, dynamic> data) {
+    // Refresh inbox when a push arrives while the app is open.
+    unawaited(refresh());
+    _applyPushNavigationHints(data);
+  }
+
+  void _onNotificationOpened(Map<String, dynamic> data) {
+    unawaited(refresh());
+    _applyPushNavigationHints(data, navigate: true);
+  }
+
+  void _applyPushNavigationHints(
+    Map<String, dynamic> data, {
+    bool navigate = false,
+  }) {
+    final type = data['type']?.toString() ?? '';
+    if (type == 'test_result_synced') {
+      final attemptId =
+          data['postId']?.toString() ?? data['attemptId']?.toString();
+      if (attemptId != null && attemptId.isNotEmpty) {
+        pendingAttemptId = attemptId;
+        if (navigate) {
+          pendingDashboardTab = 4;
+          pendingOpenAllTests = true;
+        }
+        notifyListeners();
+      }
+      return;
+    }
+    if (!navigate) return;
+    final postId = data['postId']?.toString();
+    if (postId != null && postId.isNotEmpty) {
+      requestCommunityNavigation(postId: postId);
+    }
   }
 
   Future<void> markAsRead(String id) async {
@@ -186,6 +239,12 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   void reset() {
+    FcmTokenService.onForegroundMessage = null;
+    FcmTokenService.onNotificationOpened = null;
+    if (_socketHandler != null) {
+      socketService.off('notification:new', _socketHandler);
+    }
+    _socketHandler = null;
     socketService.disconnect();
     _notifications.clear();
     _seenIds.clear();
