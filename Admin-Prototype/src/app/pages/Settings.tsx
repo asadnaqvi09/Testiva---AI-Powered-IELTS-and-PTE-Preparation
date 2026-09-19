@@ -108,6 +108,8 @@ export function Settings() {
       setAvatarUploading(false);
     }
   };
+
+  const handleSaveProfile = async () => {
     if (!profileForm.full_name.trim()) {
       toast.error('Name field is required.');
       return;
