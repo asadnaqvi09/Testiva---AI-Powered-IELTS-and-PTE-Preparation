@@ -72,9 +72,27 @@ export const evaluateSpeaking = async (req, res) => {
       });
     }
 
+    const responses = await progressModel.getAttemptResponses(attempt_id);
+    const speaking = responses.find((r) => {
+      const qt = (r.question_type || "").toLowerCase();
+      const sub = (r.sub_question_type || "").toLowerCase();
+      return qt === "speaking" || ["part_1", "part_2", "part_3"].includes(sub);
+    });
+    let content = speaking?.content;
+    if (typeof content === "string") {
+      try {
+        content = JSON.parse(content);
+      } catch {
+        content = {};
+      }
+    }
+    if (!content || typeof content !== "object") content = {};
+
     const data = await aiService.processEvaluation(userId, attempt_id, "IELTS", "speaking", {
       transcribedText: finalTranscript,
       durationSeconds: finalDuration,
+      questionText: speaking?.question_text || "",
+      cueCard: content.cue_card || content.cueCard || "",
     });
     return res.status(200).json({
       success: true,

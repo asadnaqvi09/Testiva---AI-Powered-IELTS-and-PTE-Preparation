@@ -17,7 +17,7 @@ export const normalizeNotifPrefs = (prefs) => ({
 
 export const findUserByEmail = async (email) => {
   const result = await pool.query(
-    `SELECT ${USER_FIELDS}, password_hash FROM users WHERE email=$1`,
+    `SELECT ${USER_FIELDS}, password_hash FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`,
     [email]
   );
   return result.rows[0] || null;

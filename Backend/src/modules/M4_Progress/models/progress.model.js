@@ -1,4 +1,5 @@
 import pool from "../../../config/db.js";
+import { scoreObjectiveQuestion } from "../../M6_AI/evaluators/objective.grade.js";
 
 export const startNewAttempt = async (data, client = pool) => {
   const { user_id, test_id, client_started_at, is_offline = false } = data;
@@ -55,7 +56,6 @@ const isAiEvaluated = (question) => {
   return AI_EVALUATED_TYPES.includes(qType) || AI_EVALUATED_SUBS.includes(sub);
 };
 
-// clean and optimized code
 export const isAiEvaluatedQuestion = isAiEvaluated;
 
 export const responsesNeedAiEvaluation = async (questionIds, client = pool) => {
@@ -66,69 +66,6 @@ export const responsesNeedAiEvaluation = async (questionIds, client = pool) => {
     [ids],
   );
   return rows.some(isAiEvaluated);
-};
-
-const normalize = (v) => {
-  if (v === null || v === undefined) return "";
-  if (typeof v === "string") return v.trim().toLowerCase();
-  if (Array.isArray(v)) return v.map((x) => String(x).toLowerCase().trim()).sort().join(",");
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v).toLowerCase().trim();
-};
-
-// clean and optimized code — matching pairs from Flutter [{key,value}]
-const scoreMatchingPairs = (correctRaw, userAnswer) => {
-  const toPairs = (raw) => {
-    if (!Array.isArray(raw)) return null;
-    const pairs = raw
-      .filter((item) => item && typeof item === "object")
-      .map((item) => [normalize(item.key), normalize(item.value)]);
-    return pairs.length ? pairs : null;
-  };
-  const correctPairs = toPairs(correctRaw);
-  const userPairs = toPairs(userAnswer);
-  if (!correctPairs || !userPairs) return null;
-  if (correctPairs.length !== userPairs.length) return false;
-  const correctMap = Object.fromEntries(correctPairs);
-  const userMap = Object.fromEntries(userPairs);
-  return Object.keys(correctMap).every((k) => correctMap[k] === userMap[k]);
-};
-
-const scoreObjective = (question, user_answer) => {
-  let is_correct = false;
-  let marks_obtained = 0;
-  const qType = (question.question_type || "").toLowerCase();
-  const sub = (question.sub_question_type || "").toLowerCase();
-  if (
-    ["mcq", "multi_select", "true_false", "yes_no", "tf_not_given", "yn_not_given"].includes(qType) ||
-    ["mcq", "multi_select", "tf_not_given", "yn_not_given"].includes(sub)
-  ) {
-    if (normalize(user_answer) === normalize(question.correct_answer)) {
-      is_correct = true;
-      marks_obtained = Number(question.marks) || 0;
-    }
-  } else if (
-    ["fill_blank", "short_answer", "match_the_column", "matching", "sentence_completion", "form_fill"].includes(qType) ||
-    ["short_answer", "matching", "sentence_completion", "form_fill"].includes(sub)
-  ) {
-    const raw = question.correct_answer;
-    const pairMatch = scoreMatchingPairs(raw, user_answer);
-    if (pairMatch === true) {
-      is_correct = true;
-      marks_obtained = Number(question.marks) || 0;
-    } else if (pairMatch === false) {
-      is_correct = false;
-    } else {
-      const acceptable = Array.isArray(raw)
-        ? raw.map((a) => normalize(a))
-        : String(raw).split(/[|/]/).map((a) => normalize(a));
-      if (acceptable.includes(normalize(user_answer))) {
-        is_correct = true;
-        marks_obtained = Number(question.marks) || 0;
-      }
-    }
-  }
-  return { is_correct, marks_obtained };
 };
 
 export const saveUserResponse = async (data, client = pool) => {
@@ -153,7 +90,7 @@ export const saveUserResponse = async (data, client = pool) => {
     const aiQuestion = isAiEvaluated(question);
     const { is_correct, marks_obtained } = aiQuestion
       ? { is_correct: null, marks_obtained: null }
-      : scoreObjective(question, user_answer);
+      : scoreObjectiveQuestion(question, user_answer);
     await dbClient.query(`DELETE FROM user_responses WHERE attempt_id = $1::uuid AND question_id = $2::uuid`, [
       attempt_id,
       question_id,
@@ -265,7 +202,32 @@ export const getUserStats = async (userId) => {
      FROM user_progress_stats WHERE user_id = $1::uuid`,
     [userId],
   );
-  return result.rows[0] || null;
+  const stats = result.rows[0] || {
+    total_tests_taken: 0,
+    average_band_score: 0,
+    highest_score: 0,
+    last_test_date: null,
+  };
+  const latest = await pool.query(
+    `SELECT reading_score, listening_score, writing_score, speaking_score, overall_band_score
+     FROM test_attempts
+     WHERE user_id = $1::uuid AND status = 'completed'
+     ORDER BY updated_at DESC NULLS LAST, created_at DESC
+     LIMIT 1`,
+    [userId],
+  );
+  const last = latest.rows[0] || {};
+  return {
+    ...stats,
+    dayStreak: 0,
+    streak_days: 0,
+    latest_skills: {
+      reading: Number(last.reading_score) || 0,
+      listening: Number(last.listening_score) || 0,
+      writing: Number(last.writing_score) || 0,
+      speaking: Number(last.speaking_score) || 0,
+    },
+  };
 };
 
 export const getAttemptById = async (id) => {
@@ -282,7 +244,7 @@ export const getAttemptResponses = async (attemptId, client = pool) => {
     `SELECT ur.id, ur.attempt_id, ur.question_id, ur.user_answer, ur.audio_response_url, ur.is_correct, ur.marks_obtained,
             ur.word_count, ur.time_spent_seconds, ur.ai_feedback_per_question, ur.client_created_at,
             q.question_text, q.question_type, q.sub_question_type, q.correct_answer, q.marks AS total_marks, q.order_number,
-            q.word_limit_instruction, ts.section_type
+            q.word_limit_instruction, q.content, q.min_words, q.max_words, ts.section_type
      FROM user_responses ur
      JOIN questions q ON ur.question_id = q.id
      JOIN test_sections ts ON q.section_id = ts.id

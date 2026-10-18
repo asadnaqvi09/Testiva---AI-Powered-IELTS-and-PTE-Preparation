@@ -17,14 +17,18 @@ class LocalDb {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       join(dbPath, 'testiva_offline.db'),
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createV1Tables(db);
         await _createAudioCacheTable(db);
+        await _createInProgressDraftsTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _createAudioCacheTable(db);
+        }
+        if (oldVersion < 3) {
+          await _createInProgressDraftsTable(db);
         }
       },
     );
@@ -72,6 +76,87 @@ class LocalDb {
         cached_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _createInProgressDraftsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS in_progress_drafts (
+        draft_key TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        test_id TEXT NOT NULL,
+        attempt_local_id TEXT NOT NULL,
+        current_index INTEGER NOT NULL DEFAULT 0,
+        section_index INTEGER NOT NULL DEFAULT 0,
+        remaining_seconds INTEGER NOT NULL DEFAULT 0,
+        answers_json TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  /// Mid-test answer persistence (local-only; does not touch offline sync flags).
+  Future<void> saveInProgressDraft({
+    required String draftKey,
+    required String userId,
+    required String testId,
+    required String attemptLocalId,
+    required int currentIndex,
+    required int sectionIndex,
+    required int remainingSeconds,
+    required Map<String, dynamic> answers,
+    required String startedAt,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'in_progress_drafts',
+      {
+        'draft_key': draftKey,
+        'user_id': userId,
+        'test_id': testId,
+        'attempt_local_id': attemptLocalId,
+        'current_index': currentIndex,
+        'section_index': sectionIndex,
+        'remaining_seconds': remainingSeconds,
+        'answers_json': jsonEncode(answers),
+        'started_at': startedAt,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getInProgressDraft(String draftKey) async {
+    final db = await database;
+    final rows = await db.query(
+      'in_progress_drafts',
+      where: 'draft_key = ?',
+      whereArgs: [draftKey],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    return {
+      'draft_key': row['draft_key'],
+      'user_id': row['user_id'],
+      'test_id': row['test_id'],
+      'attempt_local_id': row['attempt_local_id'],
+      'current_index': row['current_index'],
+      'section_index': row['section_index'],
+      'remaining_seconds': row['remaining_seconds'],
+      'answers': jsonDecode(row['answers_json'] as String),
+      'started_at': row['started_at'],
+      'updated_at': row['updated_at'],
+    };
+  }
+
+  Future<void> clearInProgressDraft(String draftKey) async {
+    final db = await database;
+    await db.delete(
+      'in_progress_drafts',
+      where: 'draft_key = ?',
+      whereArgs: [draftKey],
+    );
   }
 
   Future<void> cacheTestRuntime({

@@ -93,16 +93,81 @@ class SpeakingAnswerState {
   }
 }
 
-class TestRuntimeParser {
-  static List<RuntimeQuestion> parseRuntimePayload(Map<String, dynamic> data) {
-    final sections = data['sections'] as List? ?? [];
-    final List<RuntimeQuestion> out = [];
+/// Ordered exam section slice over the flat question list.
+class RuntimeSectionInfo {
+  final String id;
+  final String sectionType;
+  final String sectionName;
+  final int timeLimitMinutes;
+  final int startIndex;
+  final int endIndex; // exclusive
 
-    for (final sec in sections) {
+  const RuntimeSectionInfo({
+    required this.id,
+    required this.sectionType,
+    required this.sectionName,
+    required this.timeLimitMinutes,
+    required this.startIndex,
+    required this.endIndex,
+  });
+
+  int get questionCount => endIndex > startIndex ? endIndex - startIndex : 0;
+}
+
+/// Full runtime parse result (questions + section timers metadata).
+class ParsedTestRuntime {
+  final List<RuntimeQuestion> questions;
+  final List<RuntimeSectionInfo> sections;
+  final String testCategory;
+  final String examType;
+  final int totalDurationMinutes;
+
+  const ParsedTestRuntime({
+    required this.questions,
+    required this.sections,
+    this.testCategory = 'full_mock',
+    this.examType = 'IELTS',
+    this.totalDurationMinutes = 60,
+  });
+
+  bool get useSectionTimers =>
+      testCategory == 'full_mock' && sections.length > 1;
+}
+
+class TestRuntimeParser {
+  static const Map<String, int> _ieltsDefaultMinutes = {
+    'listening': 30,
+    'reading': 60,
+    'writing': 60,
+    'speaking': 14,
+  };
+
+  static List<RuntimeQuestion> parseRuntimePayload(Map<String, dynamic> data) {
+    return parseFullRuntime(data).questions;
+  }
+
+  static ParsedTestRuntime parseFullRuntime(Map<String, dynamic> data) {
+    final sectionsRaw = data['sections'] as List? ?? [];
+    final List<RuntimeQuestion> out = [];
+    final List<RuntimeSectionInfo> sectionInfos = [];
+    final testCategory =
+        (data['test_category']?.toString() ?? 'full_mock').toLowerCase();
+    final examType = (data['exam_type']?.toString() ?? 'IELTS').toUpperCase();
+    final totalDuration = int.tryParse(
+          data['total_duration']?.toString() ??
+              data['global_time_limit_minutes']?.toString() ??
+              '',
+        ) ??
+        60;
+
+    for (final sec in sectionsRaw) {
+      if (sec is! Map) continue;
       final sectionType = (sec['section_type'] as String? ?? '').toLowerCase();
       final sectionName = sec['section_name'] as String? ?? sectionType;
+      final sectionId = sec['id']?.toString() ?? sectionType;
       final instructions = sec['instructions'] as String? ?? '';
       final questions = sec['questions'] as List? ?? [];
+      final startIndex = out.length;
       String? sectionAudio;
       for (final rawQ in questions) {
         if (rawQ is! Map) continue;
@@ -114,6 +179,7 @@ class TestRuntimeParser {
       }
 
       for (final q in questions) {
+        if (q is! Map) continue;
         final qt = (q['question_type'] as String? ?? '').toLowerCase();
         if (qt == 'placeholder') continue;
 
@@ -173,8 +239,66 @@ class TestRuntimeParser {
               int.tryParse(q['record_time_seconds']?.toString() ?? '') ?? 0,
         ));
       }
+
+      final endIndex = out.length;
+      if (endIndex > startIndex) {
+        final rawLimit =
+            int.tryParse(sec['time_limit_minutes']?.toString() ?? '') ?? 0;
+        sectionInfos.add(RuntimeSectionInfo(
+          id: sectionId,
+          sectionType: sectionType,
+          sectionName: sectionName,
+          timeLimitMinutes: rawLimit,
+          startIndex: startIndex,
+          endIndex: endIndex,
+        ));
+      }
     }
-    return out;
+
+    // Resolve null/zero limits: IELTS defaults or PTE proportional split.
+    final resolved = <RuntimeSectionInfo>[];
+    for (final s in sectionInfos) {
+      resolved.add(RuntimeSectionInfo(
+        id: s.id,
+        sectionType: s.sectionType,
+        sectionName: s.sectionName,
+        timeLimitMinutes: _resolveSectionMinutes(
+          s,
+          examType: examType,
+          totalDuration: totalDuration,
+          sectionCount: sectionInfos.length,
+        ),
+        startIndex: s.startIndex,
+        endIndex: s.endIndex,
+      ));
+    }
+
+    return ParsedTestRuntime(
+      questions: out,
+      sections: resolved,
+      testCategory: testCategory,
+      examType: examType,
+      totalDurationMinutes: totalDuration,
+    );
+  }
+
+  static int _resolveSectionMinutes(
+    RuntimeSectionInfo sec, {
+    required String examType,
+    required int totalDuration,
+    required int sectionCount,
+  }) {
+    if (sec.timeLimitMinutes > 0) return sec.timeLimitMinutes;
+    if (examType != 'PTE') {
+      return _ieltsDefaultMinutes[sec.sectionType] ??
+          (totalDuration > 0 && sectionCount > 0
+              ? (totalDuration / sectionCount).round().clamp(1, 180)
+              : 30);
+    }
+    if (totalDuration > 0 && sectionCount > 0) {
+      return (totalDuration / sectionCount).round().clamp(1, 180);
+    }
+    return 20;
   }
 
   static QuestionKind _resolveKind(String qt, String sub, String sectionType) {

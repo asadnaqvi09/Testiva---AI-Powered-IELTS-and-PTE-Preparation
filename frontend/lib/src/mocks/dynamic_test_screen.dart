@@ -8,6 +8,7 @@ import '../../core/services/api_service.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/services/offline_audio_cache.dart';
 import '../../core/services/offline_sync_service.dart';
+import '../../core/services/user_notifier.dart';
 import '../../data/demo/demo_mock_runtime.dart';
 import '../../widgets/app_theme.dart';
 import '../profile/all_tests_screen.dart';
@@ -38,9 +39,13 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   int _currentIndex = 0;
   late int _remainingSeconds;
   Timer? _countdownTimer;
+  Timer? _draftSaveTimer;
   bool _isPassageExpanded = true;
   final Map<int, dynamic> _answers = {};
   List<RuntimeQuestion> _questions = [];
+  List<RuntimeSectionInfo> _sections = [];
+  int _sectionIndex = 0;
+  bool _useSectionTimers = false;
   bool _isLoading = false;
   late DateTime _startedAt;
   final TextEditingController _textController = TextEditingController();
@@ -49,12 +54,16 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   bool _isAudioPlaying = false;
   bool _loadedFromCache = false;
   bool _isOfflineMode = false;
+  String _draftKey = '';
+  String _attemptLocalId = const Uuid().v4();
 
   @override
   void initState() {
     super.initState();
     _remainingSeconds = widget.totalDurationMinutes * 60;
     _startedAt = DateTime.now();
+    final userId = UserNotifier.notifier.value['id']?.toString() ?? 'local';
+    _draftKey = '${userId}_${widget.testId}';
     _fetchTestDetails();
     _audioPlayer.onPlayerComplete.listen((_) {
       if (mounted) setState(() => _isAudioPlaying = false);
@@ -85,17 +94,13 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
                 testId: widget.testId,
                 payload: data,
               ));
-              final loaded =
-                  TestRuntimeParser.parseRuntimePayload(data);
+              final parsed = TestRuntimeParser.parseFullRuntime(data);
               if (mounted) {
-                setState(() {
-                  _questions = loaded;
-                  _loadedFromCache = false;
-                  _isOfflineMode = false;
-                  _isLoading = false;
-                });
-                _syncTextController();
-                if (loaded.isNotEmpty) _startTimer();
+                await _applyParsedRuntime(
+                  parsed,
+                  fromCache: false,
+                  offline: false,
+                );
               }
               return;
             }
@@ -105,8 +110,8 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
 
       final cached = await LocalDb.instance.getCachedTestRuntime(widget.testId);
       if (cached != null) {
-        _applyLoadedQuestions(
-          TestRuntimeParser.parseRuntimePayload(
+        await _applyParsedRuntime(
+          TestRuntimeParser.parseFullRuntime(
             cached['data'] as Map<String, dynamic>,
           ),
           fromCache: true,
@@ -124,8 +129,8 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           durationMinutes: widget.totalDurationMinutes,
           payload: demo,
         );
-        _applyLoadedQuestions(
-          TestRuntimeParser.parseRuntimePayload(demo),
+        await _applyParsedRuntime(
+          TestRuntimeParser.parseFullRuntime(demo),
           fromCache: true,
           offline: !online,
         );
@@ -135,20 +140,152 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  void _applyLoadedQuestions(
-    List<RuntimeQuestion> loaded, {
+  Future<void> _applyParsedRuntime(
+    ParsedTestRuntime parsed, {
     required bool fromCache,
     required bool offline,
-  }) {
+  }) async {
     if (!mounted) return;
     setState(() {
-      _questions = loaded;
+      _questions = parsed.questions;
+      _sections = parsed.sections;
+      _useSectionTimers = parsed.useSectionTimers;
+      _sectionIndex = 0;
       _loadedFromCache = fromCache;
       _isOfflineMode = offline;
       _isLoading = false;
     });
+
+    final restored = await _tryRestoreDraft();
+    if (!restored) {
+      if (_useSectionTimers && _sections.isNotEmpty) {
+        _remainingSeconds = _sections.first.timeLimitMinutes * 60;
+        _currentIndex = _sections.first.startIndex;
+      } else {
+        _remainingSeconds = widget.totalDurationMinutes * 60;
+        _currentIndex = 0;
+      }
+    }
+
+    if (!mounted) return;
     _syncTextController();
-    if (loaded.isNotEmpty) _startTimer();
+    if (_questions.isNotEmpty) _startTimer();
+  }
+
+  Future<bool> _tryRestoreDraft() async {
+    try {
+      final draft = await LocalDb.instance.getInProgressDraft(_draftKey);
+      if (draft == null) return false;
+      final answersRaw = draft['answers'];
+      if (answersRaw is! Map) return false;
+
+      final restoredAnswers = <int, dynamic>{};
+      answersRaw.forEach((key, value) {
+        final idx = int.tryParse(key.toString());
+        if (idx == null || value is! Map) return;
+        final type = value['type']?.toString() ?? 'raw';
+        if (type == 'speaking') {
+          restoredAnswers[idx] = SpeakingAnswerState(
+            localPath: value['localPath']?.toString(),
+            audioResponseUrl: value['audioResponseUrl']?.toString(),
+          );
+        } else if (type == 'map' && value['value'] is Map) {
+          restoredAnswers[idx] = Map<String, String>.from(
+            (value['value'] as Map).map(
+              (k, v) => MapEntry(k.toString(), v?.toString() ?? ''),
+            ),
+          );
+        } else if (type == 'list' && value['value'] is List) {
+          restoredAnswers[idx] =
+              (value['value'] as List).map((e) => e.toString()).toList();
+        } else {
+          restoredAnswers[idx] = value['value'];
+        }
+      });
+
+      final idx = (draft['current_index'] as num?)?.toInt() ?? 0;
+      final secIdx = (draft['section_index'] as num?)?.toInt() ?? 0;
+      final rem = (draft['remaining_seconds'] as num?)?.toInt() ?? 0;
+      final started = DateTime.tryParse(draft['started_at']?.toString() ?? '');
+      final attemptId = draft['attempt_local_id']?.toString();
+
+      if (!mounted) return false;
+      setState(() {
+        _answers
+          ..clear()
+          ..addAll(restoredAnswers);
+        _currentIndex = idx.clamp(0, _questions.isEmpty ? 0 : _questions.length - 1);
+        _sectionIndex = secIdx.clamp(
+          0,
+          _sections.isEmpty ? 0 : _sections.length - 1,
+        );
+        _remainingSeconds = rem > 0
+            ? rem
+            : (_useSectionTimers && _sections.isNotEmpty
+                ? _sections[_sectionIndex].timeLimitMinutes * 60
+                : widget.totalDurationMinutes * 60);
+        if (started != null) _startedAt = started;
+        if (attemptId != null && attemptId.isNotEmpty) {
+          _attemptLocalId = attemptId;
+        }
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Map<String, dynamic> _serializeDraftAnswers() {
+    final out = <String, dynamic>{};
+    _answers.forEach((i, v) {
+      if (v is SpeakingAnswerState) {
+        out['$i'] = {
+          'type': 'speaking',
+          'localPath': v.localPath,
+          'audioResponseUrl': v.audioResponseUrl,
+        };
+      } else if (v is Map) {
+        out['$i'] = {
+          'type': 'map',
+          'value': Map<String, String>.from(
+            v.map((k, val) => MapEntry(k.toString(), val?.toString() ?? '')),
+          ),
+        };
+      } else if (v is List) {
+        out['$i'] = {
+          'type': 'list',
+          'value': v.map((e) => e.toString()).toList(),
+        };
+      } else {
+        out['$i'] = {'type': 'raw', 'value': v};
+      }
+    });
+    return out;
+  }
+
+  void _scheduleDraftSave() {
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      unawaited(_persistDraft());
+    });
+  }
+
+  Future<void> _persistDraft() async {
+    if (_questions.isEmpty || _draftKey.isEmpty) return;
+    try {
+      final userId = UserNotifier.notifier.value['id']?.toString() ?? 'local';
+      await LocalDb.instance.saveInProgressDraft(
+        draftKey: _draftKey,
+        userId: userId,
+        testId: widget.testId,
+        attemptLocalId: _attemptLocalId,
+        currentIndex: _currentIndex,
+        sectionIndex: _sectionIndex,
+        remainingSeconds: _remainingSeconds,
+        answers: _serializeDraftAnswers(),
+        startedAt: _startedAt.toIso8601String(),
+      );
+    } catch (_) {}
   }
 
   void _startTimer() {
@@ -156,11 +293,101 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
         setState(() => _remainingSeconds--);
+        if (_remainingSeconds % 15 == 0) _scheduleDraftSave();
       } else {
         timer.cancel();
-        _confirmSubmit();
+        _onTimerExpired();
       }
     });
+  }
+
+  void _onTimerExpired() {
+    if (_useSectionTimers && _sectionIndex < _sections.length - 1) {
+      _advanceToSection(_sectionIndex + 1);
+      return;
+    }
+    // Last section / singular module: auto-submit (Acelt intent).
+    unawaited(_submitTest());
+  }
+
+  void _advanceToSection(int nextSectionIndex) {
+    if (nextSectionIndex < 0 || nextSectionIndex >= _sections.length) {
+      unawaited(_submitTest());
+      return;
+    }
+    final next = _sections[nextSectionIndex];
+    setState(() {
+      _sectionIndex = nextSectionIndex;
+      _currentIndex = next.startIndex;
+      _remainingSeconds = next.timeLimitMinutes * 60;
+    });
+    _syncTextController();
+    _startTimer();
+    _scheduleDraftSave();
+  }
+
+  RuntimeSectionInfo? get _currentSection {
+    if (_sections.isEmpty) return null;
+    if (_useSectionTimers) {
+      return _sections[_sectionIndex.clamp(0, _sections.length - 1)];
+    }
+    for (final s in _sections) {
+      if (_currentIndex >= s.startIndex && _currentIndex < s.endIndex) {
+        return s;
+      }
+    }
+    return _sections.first;
+  }
+
+  bool get _isLastQuestionInSection {
+    final sec = _currentSection;
+    if (sec == null) return _currentIndex >= _questions.length - 1;
+    return _currentIndex >= sec.endIndex - 1;
+  }
+
+  bool get _canGoPrevInScope {
+    if (!_useSectionTimers) return _currentIndex > 0;
+    final sec = _currentSection;
+    if (sec == null) return false;
+    return _currentIndex > sec.startIndex;
+  }
+
+  void _goNext() {
+    if (_useSectionTimers) {
+      final sec = _currentSection;
+      if (sec == null) return;
+      if (_currentIndex < sec.endIndex - 1) {
+        setState(() => _currentIndex++);
+        _syncTextController();
+        _scheduleDraftSave();
+        return;
+      }
+      if (_sectionIndex < _sections.length - 1) {
+        _advanceToSection(_sectionIndex + 1);
+        return;
+      }
+      _confirmSubmit();
+      return;
+    }
+    if (_currentIndex < _questions.length - 1) {
+      setState(() => _currentIndex++);
+      _syncTextController();
+      _scheduleDraftSave();
+    } else {
+      _confirmSubmit();
+    }
+  }
+
+  void _goPrev() {
+    if (!_canGoPrevInScope) return;
+    setState(() => _currentIndex--);
+    _syncTextController();
+    _scheduleDraftSave();
+  }
+
+  void _setAnswer(dynamic value) {
+    setState(() => _answers[_currentIndex] = value);
+    _scheduleDraftSave();
   }
 
   void _syncTextController() {
@@ -218,6 +445,8 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _draftSaveTimer?.cancel();
+    unawaited(_persistDraft());
     _textController.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -227,6 +456,14 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
     final m = _remainingSeconds ~/ 60;
     final s = _remainingSeconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  String _timerSubtitle() {
+    if (_useSectionTimers) {
+      final name = _currentSection?.sectionName ?? 'Section';
+      return '$name · ${_formattedTime()}';
+    }
+    return _formattedTime();
   }
 
   int _wordCount(String text) => text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
@@ -285,7 +522,8 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   Future<void> _submitTest() async {
     setState(() => _isLoading = true);
     try {
-      final timeTaken = widget.totalDurationMinutes * 60 - _remainingSeconds;
+      final elapsed = DateTime.now().difference(_startedAt).inSeconds;
+      final timeTaken = elapsed > 0 ? elapsed : 1;
       final perQ = _questions.isEmpty ? 0 : timeTaken ~/ _questions.length;
       final responses = <Map<String, dynamic>>[];
 
@@ -385,6 +623,7 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
                   (resData['data'] as Map?)?['attemptId']?.toString() ?? '';
               final status =
                   (resData['data'] as Map?)?['status']?.toString() ?? 'completed';
+              await LocalDb.instance.clearInProgressDraft(_draftKey);
               if (!mounted) return;
               _navigateToResults(
                 attemptId: attemptId,
@@ -407,6 +646,7 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         clientCompletedAt: body['client_completed_at'] as String,
         payload: body,
       );
+      await LocalDb.instance.clearInProgressDraft(_draftKey);
 
       if (ConnectivityService.instance.isOnline) {
         unawaited(OfflineSyncService.instance.syncPendingAttempts());
@@ -442,11 +682,19 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           isOfflineSaved: isOfflineSaved,
           testTitle: widget.testTitle,
           onRetake: () {
+            unawaited(LocalDb.instance.clearInProgressDraft(_draftKey));
             setState(() {
               _currentIndex = 0;
-              _remainingSeconds = widget.totalDurationMinutes * 60;
+              _sectionIndex = 0;
+              _attemptLocalId = const Uuid().v4();
               _answers.clear();
               _startedAt = DateTime.now();
+              if (_useSectionTimers && _sections.isNotEmpty) {
+                _remainingSeconds = _sections.first.timeLimitMinutes * 60;
+                _currentIndex = _sections.first.startIndex;
+              } else {
+                _remainingSeconds = widget.totalDurationMinutes * 60;
+              }
             });
             _syncTextController();
             Navigator.pop(context);
@@ -520,7 +768,7 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
               style: TextStyle(color: AppTheme.primaryText(context), fontWeight: FontWeight.bold, fontSize: 15),
             ),
             Text(
-              _formattedTime(),
+              _timerSubtitle(),
               style: TextStyle(color: AppTheme.secondaryText(context), fontSize: 12),
             ),
           ],
@@ -774,7 +1022,7 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         return SelectionEngineWidget(
           options: q.options,
           selectedAnswer: _answers[_currentIndex],
-          onChanged: (v) => setState(() => _answers[_currentIndex] = v),
+          onChanged: _setAnswer,
         );
       case QuestionKind.multiSelect:
         final selected = (_answers[_currentIndex] as List<String>?) ?? <String>[];
@@ -785,15 +1033,13 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
               value: checked,
               title: Text(opt, style: TextStyle(color: AppTheme.primaryText(context), fontSize: 14)),
               onChanged: (v) {
-                setState(() {
-                  final next = List<String>.from(selected);
-                  if (v == true) {
-                    next.add(opt);
-                  } else {
-                    next.remove(opt);
-                  }
-                  _answers[_currentIndex] = next;
-                });
+                final next = List<String>.from(selected);
+                if (v == true) {
+                  next.add(opt);
+                } else {
+                  next.remove(opt);
+                }
+                _setAnswer(next);
               },
             );
           }).toList(),
@@ -811,11 +1057,9 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           availableOptions: opts,
           selectedAnswers: selected,
           onOptionChanged: (question, option) {
-            setState(() {
-              final m = Map<String, String>.from(selected);
-              m[question] = option;
-              _answers[_currentIndex] = m;
-            });
+            final m = Map<String, String>.from(selected);
+            m[question] = option;
+            _setAnswer(m);
           },
         );
       case QuestionKind.writing:
@@ -834,7 +1078,10 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
                 controller: _textController,
                 maxLines: 12,
                 style: TextStyle(color: AppTheme.primaryText(context)),
-                onChanged: (v) => setState(() => _answers[_currentIndex] = v),
+                onChanged: (v) {
+                  setState(() => _answers[_currentIndex] = v);
+                  _scheduleDraftSave();
+                },
                 decoration: InputDecoration(
                   hintText: 'Write your response here…',
                   hintStyle: TextStyle(color: AppTheme.secondaryText(context)),
@@ -863,7 +1110,10 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
           question: q,
           initial: initial,
           uploadAudio: _uploadSpeakingLocal,
-          onChanged: (state) => setState(() => _answers[_currentIndex] = state),
+          onChanged: (state) {
+            setState(() => _answers[_currentIndex] = state);
+            _scheduleDraftSave();
+          },
         );
       case QuestionKind.sentenceCompletion:
       case QuestionKind.shortAnswer:
@@ -873,7 +1123,10 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         return InputEngineWidget(
           key: ValueKey('input_${q.id}_$_currentIndex'),
           initialValue: (_answers[_currentIndex] as String?) ?? '',
-          onChanged: (v) => setState(() => _answers[_currentIndex] = v),
+          onChanged: (v) {
+            setState(() => _answers[_currentIndex] = v);
+            _scheduleDraftSave();
+          },
         );
     }
   }
@@ -886,7 +1139,7 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         return ChoiceChip(
           label: Text(opt),
           selected: selected,
-          onSelected: (_) => setState(() => _answers[_currentIndex] = opt),
+          onSelected: (_) => _setAnswer(opt),
           selectedColor: AppTheme.tagText(context),
           labelStyle: TextStyle(color: selected ? Colors.white : AppTheme.primaryText(context)),
         );
@@ -895,6 +1148,14 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
   }
 
   Widget _buildNavBar(BuildContext context, Color nextColor) {
+    final atLastOverall = _currentIndex >= _questions.length - 1;
+    final showSubmit = _useSectionTimers
+        ? (_isLastQuestionInSection && _sectionIndex >= _sections.length - 1)
+        : atLastOverall;
+    final nextLabel = _useSectionTimers && _isLastQuestionInSection && !showSubmit
+        ? 'Next Section'
+        : 'Next';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: BoxDecoration(
@@ -904,25 +1165,19 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          if (_currentIndex > 0)
+          if (_canGoPrevInScope)
             OutlinedButton.icon(
-              onPressed: () {
-                setState(() => _currentIndex--);
-                _syncTextController();
-              },
+              onPressed: _goPrev,
               icon: Icon(Icons.arrow_back, size: 16, color: AppTheme.primaryText(context)),
               label: Text('Prev', style: TextStyle(color: AppTheme.primaryText(context))),
             )
           else
             const SizedBox(width: 80),
-          if (_currentIndex < _questions.length - 1)
+          if (!showSubmit)
             ElevatedButton(
-              onPressed: () {
-                setState(() => _currentIndex++);
-                _syncTextController();
-              },
+              onPressed: _goNext,
               style: ElevatedButton.styleFrom(backgroundColor: nextColor),
-              child: const Text('Next', style: TextStyle(color: Colors.white)),
+              child: Text(nextLabel, style: const TextStyle(color: Colors.white)),
             )
           else
             ElevatedButton(

@@ -2,14 +2,15 @@ import { syncQueue } from "./sync.queue.js";
 import * as Progress from "../M4_Progress/models/progress.model.js";
 import pool from "../../config/db.js";
 import { cacheDelByPrefix } from "../../utils/redisCache.js";
-import { computeAttemptBandScores } from "../../utils/bandScore.js";
+import { computeAttemptBandScores, aggregateWritingBand } from "../../utils/bandScore.js";
+import { evaluateReadingSection } from "../M6_AI/evaluators/reading.evaluator.js";
+import { evaluateListeningSection } from "../M6_AI/evaluators/listening.evaluator.js";
 import * as writingEvaluation from "../M6_AI/evaluators/writing.evaluator.js";
 import * as speakingEvaluation from "../M6_AI/evaluators/speaking.evaluator.js";
-import { processAudioToText } from "../M6_AI/processors (Input Cleaning)/speaking.processor.js";
 import { getSocketServer } from "../../config/socket.js";
 import { handleTestResultSyncedNotification } from "../M9_Notification/engine/notification.engine.js";
 
-// clean and optimized code — normalize AI feedback fields (array | object | string)
+// Normalize AI feedback fields (array | object | string)
 const formatFeedbackText = (value) => {
   if (value == null) return "";
   if (Array.isArray(value)) return value.map(String).filter(Boolean).join(" ");
@@ -23,29 +24,33 @@ const formatFeedbackText = (value) => {
   return String(value).trim();
 };
 
-const resolveSpeakingTranscript = async (resp) => {
+const speakingPromptContext = (resp) => {
+  let content = resp.content;
+  if (typeof content === "string") {
+    try {
+      content = JSON.parse(content);
+    } catch {
+      content = {};
+    }
+  }
+  if (!content || typeof content !== "object") content = {};
+  return {
+    questionText: resp.question_text || "",
+    cueCard: content.cue_card || content.cueCard || "",
+  };
+};
+
+/** Pass audio URL + any client transcript; STT runs inside speaking.evaluator fallback. */
+const resolveSpeakingInput = (resp) => {
   const existing =
     resp.user_answer?.transcribed_text ||
     (typeof resp.user_answer === "string" ? resp.user_answer : "") ||
     "";
-  const trimmed = String(existing).trim();
-  const audioUrl = resp.audio_response_url || null;
-  if (trimmed) {
-    return {
-      transcribedText: trimmed,
-      durationSeconds: resp.time_spent_seconds || 0,
-    };
-  }
-  if (!audioUrl) {
-    return {
-      transcribedText: "",
-      durationSeconds: resp.time_spent_seconds || 0,
-    };
-  }
-  const stt = await processAudioToText(audioUrl);
   return {
-    transcribedText: stt.transcribedText || "",
-    durationSeconds: stt.durationSeconds ?? resp.time_spent_seconds ?? 0,
+    transcribedText: String(existing).trim(),
+    durationSeconds: resp.time_spent_seconds || 0,
+    audioUrl: resp.audio_response_url || null,
+    ...speakingPromptContext(resp),
   };
 };
 
@@ -150,11 +155,20 @@ syncQueue.process(async (job) => {
       if (isWritingAi) {
         try {
           const essayText = resp.user_answer?.text_essay || (typeof resp.user_answer === "string" ? resp.user_answer : "");
-          const fb = await writingEvaluation.evaluateWriting(userId, attemptId, examType, resp.question_text, essayText, { skipScoreUpdate: true });
-          // clean and optimized code — collect all task bands then average
+          const fb = await writingEvaluation.evaluateWriting(userId, attemptId, examType, resp.question_text, essayText, {
+            skipScoreUpdate: true,
+            minWords: resp.min_words || 0,
+          });
           const band = Number(fb.overall_band_score) || 0;
-          if (band > 0) writingScores.push(band);
-          const critique = formatFeedbackText(fb.improvement_suggestions || fb.detailed_analysis);
+          if (band > 0) {
+            writingScores.push({
+              band,
+              sub_question_type: resp.sub_question_type || "",
+            });
+          }
+          const critique = formatFeedbackText(
+            fb.improvement_suggestions || fb.detailed_analysis || fb.general_critique,
+          );
           cumulativeFeedback.push(`[Writing Feedback]: ${critique}`);
           await Progress.updateResponseAiFeedback(
             attemptId,
@@ -166,9 +180,9 @@ syncQueue.process(async (job) => {
         }
       } else if (isSpeakingAi) {
         try {
-          const sData = await resolveSpeakingTranscript(resp);
-          if (!sData.transcribedText) {
-            console.warn(`[AI RECOVERY]: Attempt ${attemptId} speaking q ${resp.question_id} had empty transcript`);
+          const sData = resolveSpeakingInput(resp);
+          if (!sData.transcribedText && !sData.audioUrl) {
+            console.warn(`[AI RECOVERY]: Attempt ${attemptId} speaking q ${resp.question_id} had no audio/transcript`);
           }
           const fb = await speakingEvaluation.evaluateSpeakingTask(userId, attemptId, sData, { skipScoreUpdate: true });
           const band = Number(fb.overall_band_score) || 0;
@@ -190,12 +204,23 @@ syncQueue.process(async (job) => {
       const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
       return isPte ? Math.round(mean) : Math.round(mean * 2) / 2;
     };
-    let calculatedWritingScore = avgOrZero(writingScores) || Number(testData.writing_score) || 0;
-    let calculatedSpeakingScore = avgOrZero(speakingScores) || Number(testData.speaking_score) || 0;
-    const rScore = Number(testMeta?.reading_score) || Number(testData.reading_score) || 0;
-    const lScore = Number(testMeta?.listening_score) || Number(testData.listening_score) || 0;
+    const calculatedWritingScore =
+      aggregateWritingBand(writingScores, examType) ||
+      Number(testData.writing_score) ||
+      0;
+    const calculatedSpeakingScore = avgOrZero(speakingScores) || Number(testData.speaking_score) || 0;
+    const readingEval = evaluateReadingSection(responses, examType);
+    const listeningEval = evaluateListeningSection(responses, examType);
+    const rScore = readingEval.total
+      ? readingEval.band
+      : Number(testMeta?.reading_score) || Number(testData.reading_score) || 0;
+    const lScore = listeningEval.total
+      ? listeningEval.band
+      : Number(testMeta?.listening_score) || Number(testData.listening_score) || 0;
     const wScore = calculatedWritingScore;
     const sScore = calculatedSpeakingScore;
+    if (readingEval.total) cumulativeFeedback.unshift(readingEval.feedback);
+    if (listeningEval.total) cumulativeFeedback.unshift(listeningEval.feedback);
     let computedBand;
     if (isSingular) {
       computedBand = sScore || wScore || rScore || lScore || 0;

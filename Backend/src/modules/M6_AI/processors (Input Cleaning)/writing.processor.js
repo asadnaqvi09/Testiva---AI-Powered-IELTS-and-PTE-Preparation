@@ -1,8 +1,12 @@
 export const processWritingResponse = (studentResponse) => {
-  if (!studentResponse || typeof studentResponse !== 'string') {
+  let raw = studentResponse;
+  if (raw && typeof raw === "object") {
+    raw = raw.text_essay || raw.text || raw.essay || "";
+  }
+  if (!raw || typeof raw !== "string") {
     throw new Error("Invalid response: Input must be a string.");
   }
-  let cleanResponse = studentResponse.trim().replace(/\s+/g, ' ');
+  let cleanResponse = raw.trim().replace(/\s+/g, " ");
   const injectionPatterns = [
     /ignore\s+(previous|system|grading|below|above|instructions|directives|rubrics)/gi,
     /override\s+(parameters|rules|score|grades)/gi,

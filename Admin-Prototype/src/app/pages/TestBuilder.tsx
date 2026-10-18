@@ -754,6 +754,21 @@ function SectionPanel({
   const [addingQ, setAddingQ] = useState(false);
   const [selectedQType, setSelectedQType] = useState('');
   const audioRef = useRef<HTMLInputElement>(null);
+  const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!section.audioFileData) {
+      setAudioBlobUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(section.audioFileData);
+    setAudioBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [section.audioFileData]);
+
+  const listeningPreviewSrc =
+    audioBlobUrl ||
+    (/^https?:\/\//i.test(section.audioFile || '') ? section.audioFile : null);
 
   const color  = MODULE_COLOR[section.moduleType] || '#007BFF';
   const isWriting = section.moduleType === 'Writing' || section.moduleType === 'Speaking & Writing';
@@ -860,13 +875,30 @@ function SectionPanel({
                     if (f) onUpdate(section.id, { audioFile: f.name, audioFileData: f });
                   }}
                 />
-                {section.audioFile ? (
+                {section.audioFile || section.audioFileData ? (
                   <>
                     <Volume2 size={20} style={{ color: '#28A745' }} />
-                    <span className="text-xs font-medium text-green-700">{section.audioFile}</span>
+                    <span className="text-xs font-medium text-green-700 break-all text-center">
+                      {section.audioFileData
+                        ? section.audioFileData.name
+                        : /^https?:\/\//i.test(section.audioFile || '')
+                          ? 'Audio uploaded'
+                          : section.audioFile}
+                    </span>
+                    {listeningPreviewSrc && (
+                      <audio
+                        controls
+                        src={listeningPreviewSrc}
+                        className="w-full mt-1"
+                        onClick={e => e.stopPropagation()}
+                      />
+                    )}
                     <button
                       className="text-xs text-gray-400 hover:text-red-500"
-                      onClick={e => { e.stopPropagation(); onUpdate(section.id, { audioFile: null }); }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        onUpdate(section.id, { audioFile: null, audioFileData: null });
+                      }}
                     >
                       Remove
                     </button>
@@ -1094,8 +1126,16 @@ export function TestBuilder() {
       const lbl = `Section ${i + 1} (${sec.moduleType})`;
       const isWriting = sec.moduleType === 'Writing' || sec.moduleType === 'Speaking & Writing';
 
-      if (sec.moduleType === 'Listening' && !sec.audioFile && !sec.audioFileData)
-        errors.push({ type: 'error', msg: `${lbl}: Audio file is required to publish.` });
+      if (sec.moduleType === 'Listening') {
+        const hasHttps = /^https?:\/\//i.test(sec.audioFile || '');
+        const hasPendingFile = Boolean(sec.audioFileData);
+        if (!hasHttps && !hasPendingFile) {
+          errors.push({
+            type: 'error',
+            msg: `${lbl}: Upload listening audio (MP3/WAV) before publish — a filename alone is not enough.`,
+          });
+        }
+      }
 
       if (isWriting) {
         // Task 1 Academic: chart required

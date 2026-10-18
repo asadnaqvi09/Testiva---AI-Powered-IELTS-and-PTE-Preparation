@@ -1,8 +1,10 @@
 import * as writingEvaluation from "../evaluators/writing.evaluator.js";
 import * as speakingEvaluation from "../evaluators/speaking.evaluator.js";
-import { processAudioToText } from "../processors (Input Cleaning)/speaking.processor.js";
+import { evaluateReadingSection } from "../evaluators/reading.evaluator.js";
+import { evaluateListeningSection } from "../evaluators/listening.evaluator.js";
 import pool from "../../../config/db.js";
 import * as progressModel from "../../M4_Progress/models/progress.model.js";
+import { aggregateWritingBand } from "../../../utils/bandScore.js";
 
 const formatFeedbackText = (value) => {
   if (value == null) return "";
@@ -17,29 +19,33 @@ const formatFeedbackText = (value) => {
   return String(value).trim();
 };
 
-const resolveSpeakingTranscript = async (resp) => {
+const speakingPromptContext = (resp) => {
+  let content = resp.content;
+  if (typeof content === "string") {
+    try {
+      content = JSON.parse(content);
+    } catch {
+      content = {};
+    }
+  }
+  if (!content || typeof content !== "object") content = {};
+  return {
+    questionText: resp.question_text || "",
+    cueCard: content.cue_card || content.cueCard || "",
+  };
+};
+
+/** Pass audio URL + any client transcript; STT runs inside speaking.evaluator fallback. */
+const resolveSpeakingInput = (resp) => {
   const existing =
     resp.user_answer?.transcribed_text ||
     (typeof resp.user_answer === "string" ? resp.user_answer : "") ||
     "";
-  const trimmed = String(existing).trim();
-  const audioUrl = resp.audio_response_url || null;
-  if (trimmed) {
-    return {
-      transcribedText: trimmed,
-      durationSeconds: resp.time_spent_seconds || 0,
-    };
-  }
-  if (!audioUrl) {
-    return {
-      transcribedText: "No speech detected",
-      durationSeconds: resp.time_spent_seconds || 0,
-    };
-  }
-  const stt = await processAudioToText(audioUrl);
   return {
-    transcribedText: stt.transcribedText || "No speech detected",
-    durationSeconds: stt.durationSeconds ?? resp.time_spent_seconds ?? 0,
+    transcribedText: String(existing).trim(),
+    durationSeconds: resp.time_spent_seconds || 0,
+    audioUrl: resp.audio_response_url || null,
+    ...speakingPromptContext(resp),
   };
 };
 
@@ -47,10 +53,20 @@ const resolveSpeakingTranscript = async (resp) => {
 export const processEvaluation = async (userId, attemptId, testType, moduleType, data) => {
   const mod = (moduleType || "writing").toLowerCase();
   if (mod === "writing") {
-    return await writingEvaluation.evaluateWriting(userId, attemptId, testType, data.question_text, data.student_response);
+    return await writingEvaluation.evaluateWriting(userId, attemptId, testType, data.question_text, data.student_response, {
+      minWords: data.minWords || data.min_words || 0,
+    });
   }
   if (mod === "speaking") {
     return await speakingEvaluation.evaluateSpeakingTask(userId, attemptId, data);
+  }
+  if (mod === "reading") {
+    const responses = await progressModel.getAttemptResponses(attemptId);
+    return evaluateReadingSection(responses, testType);
+  }
+  if (mod === "listening") {
+    const responses = await progressModel.getAttemptResponses(attemptId);
+    return evaluateListeningSection(responses, testType);
   }
   throw new Error(`Unsupported module type: ${moduleType}`);
 };
@@ -101,10 +117,15 @@ export const processFullTestAI = async (attemptId) => {
         attempt.test_type, 
         wr.question_text, 
         wr.user_answer?.text_essay || wr.user_answer,
-        { skipScoreUpdate: true }
+        { skipScoreUpdate: true, minWords: wr.min_words || 0 }
       );
       const band = Number(fb.overall_band_score) || 0;
-      if (band > 0) writingScores.push(band);
+      if (band > 0) {
+        writingScores.push({
+          band,
+          sub_question_type: wr.sub_question_type || "",
+        });
+      }
       const critique = formatFeedbackText(fb.improvement_suggestions || fb.detailed_analysis);
       feedbackTexts.push(`Writing Feedback: ${critique}`);
       await progressModel.updateResponseAiFeedback(
@@ -125,7 +146,7 @@ export const processFullTestAI = async (attemptId) => {
   for (const sr of speakingResponses) {
     try {
       console.log(`[AI Service] Evaluating Speaking Question ID: ${sr.question_id}`);
-      const transcriptionData = await resolveSpeakingTranscript(sr);
+      const transcriptionData = resolveSpeakingInput(sr);
       const fb = await speakingEvaluation.evaluateSpeakingTask(
         attempt.user_id, 
         attemptId, 
@@ -151,17 +172,24 @@ export const processFullTestAI = async (attemptId) => {
   const examType = (scoreMeta?.exam_type || attempt.test_type || "").toUpperCase();
   const isPte = examType === "PTE";
   const isSingular = (scoreMeta?.test_category || "") === "singular_module";
-
   const avgOrZero = (scores) => {
     if (!scores.length) return 0;
     const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
     return isPte ? Math.round(mean) : Math.round(mean * 2) / 2;
   };
-  
-  const rScore = Number(freshAttempt.reading_score) || 0;
-  const lScore = Number(freshAttempt.listening_score) || 0;
-  const wScore = avgOrZero(writingScores) || Number(freshAttempt.writing_score) || 0;
+
+  const readingEval = evaluateReadingSection(responses, examType);
+  const listeningEval = evaluateListeningSection(responses, examType);
+
+  const rScore = readingEval.total ? readingEval.band : (Number(freshAttempt.reading_score) || 0);
+  const lScore = listeningEval.total ? listeningEval.band : (Number(freshAttempt.listening_score) || 0);
+  const wScore =
+    aggregateWritingBand(writingScores, examType) ||
+    Number(freshAttempt.writing_score) ||
+    0;
   const sScore = avgOrZero(speakingScores) || Number(freshAttempt.speaking_score) || 0;
+  if (readingEval.total) feedbackTexts.unshift(readingEval.feedback);
+  if (listeningEval.total) feedbackTexts.unshift(listeningEval.feedback);
 
   let overallBand = isSingular
     ? (sScore || wScore || rScore || lScore || 0)

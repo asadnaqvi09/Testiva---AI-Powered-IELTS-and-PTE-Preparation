@@ -4,7 +4,9 @@ import * as progressModel from "../models/progress.model.js";
 import { addSyncJob } from "../../M5_Offline/sync.queue.js";
 import { submitFullTestSchema } from "../validator/progress.validator.js";
 import { cacheDelByPrefix } from "../../../utils/redisCache.js";
-import { computeAttemptBandScores, sumMarks } from "../../../utils/bandScore.js";
+import { computeAttemptBandScores, sumMarks, bandToCefr } from "../../../utils/bandScore.js";
+import { evaluateReadingSection } from "../../M6_AI/evaluators/reading.evaluator.js";
+import { evaluateListeningSection } from "../../M6_AI/evaluators/listening.evaluator.js";
 
 /** Authenticated student upload for speaking mock audio → Cloudinary URL. */
 export const uploadSpeakingAudio = async (req, res) => {
@@ -195,6 +197,12 @@ export const getTestResult = async (req, res) => {
     const total = responses.length;
     const correct = responses.filter((r) => r.is_correct).length;
     const { marks_obtained, total_marks } = sumMarks(responses);
+    const examType = attempt.test_type || "IELTS";
+    const readingEval = evaluateReadingSection(responses, examType);
+    const listeningEval = evaluateListeningSection(responses, examType);
+    const writingCount = responses.filter((r) => (r.section_type || "").toLowerCase() === "writing").length;
+    const speakingCount = responses.filter((r) => (r.section_type || "").toLowerCase() === "speaking").length;
+    const pending = attempt.status === "pending" || attempt.status === "in_progress";
     res.status(200).json({
       success: true,
       data: {
@@ -202,6 +210,7 @@ export const getTestResult = async (req, res) => {
           test_title: attempt.test_title,
           test_type: attempt.test_type,
           band_score: attempt.overall_band_score ?? 0,
+          cefr_level: bandToCefr(attempt.overall_band_score ?? 0, examType),
           status: attempt.status,
         },
         stats: {
@@ -217,17 +226,30 @@ export const getTestResult = async (req, res) => {
           writing: attempt.writing_score ?? 0,
           speaking: attempt.speaking_score ?? 0,
         },
-        // clean and optimized code — Flutter pending chips
         module_stats: {
+          reading: {
+            band: attempt.reading_score ?? 0,
+            cefr: bandToCefr(attempt.reading_score ?? 0, examType),
+            correct: readingEval.correct,
+            total: readingEval.total,
+          },
+          listening: {
+            band: attempt.listening_score ?? 0,
+            cefr: bandToCefr(attempt.listening_score ?? 0, examType),
+            correct: listeningEval.correct,
+            total: listeningEval.total,
+          },
           writing: {
-            pending:
-              attempt.status === "pending" &&
-              Number(attempt.writing_score || 0) <= 0,
+            band: attempt.writing_score ?? 0,
+            cefr: bandToCefr(attempt.writing_score ?? 0, examType),
+            count: writingCount,
+            pending: pending && writingCount > 0,
           },
           speaking: {
-            pending:
-              attempt.status === "pending" &&
-              Number(attempt.speaking_score || 0) <= 0,
+            band: attempt.speaking_score ?? 0,
+            cefr: bandToCefr(attempt.speaking_score ?? 0, examType),
+            count: speakingCount,
+            pending: pending && speakingCount > 0,
           },
         },
         ai_analysis: {
@@ -240,6 +262,7 @@ export const getTestResult = async (req, res) => {
           question: r.question_text,
           type: r.question_type,
           sub_type: r.sub_question_type,
+          section_type: r.section_type,
           your_answer: r.user_answer,
           correct_answer: r.correct_answer,
           is_correct: r.is_correct,

@@ -72,9 +72,26 @@ function sanitizeQuestionPayload(q) {
   return q;
 }
 
+/** Copy the first listening audio_url onto questions that are missing one. */
+function inheritListeningAudio(data) {
+  if (!data?.sections?.length) return data;
+  for (const section of data.sections) {
+    const type = (section.section_type || "").toLowerCase();
+    if (type !== "listening") continue;
+    const questions = section.questions || [];
+    const fallback = questions.find((q) => q.audio_url)?.audio_url || null;
+    if (!fallback) continue;
+    for (const q of questions) {
+      if (!q.audio_url) q.audio_url = fallback;
+    }
+  }
+  return data;
+}
+
 async function bustTestCache(id) {
   await cacheDelMany([
     `test:admin:${id}`, 
+    `test:runtime:${id}`,
     `test:runtime:${id}:free`, 
     `test:runtime:${id}:basic`, 
     `test:runtime:${id}:premium`,
@@ -215,22 +232,21 @@ export const getTestRuntime = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
     const { id } = req.params;
-    const subscription = access.subscription;
     const adminReview = access.role === "admin" && req.query.admin_review === "true";
-    const cacheKey = adminReview ? `test:admin:${id}` : `test:runtime:${id}:${subscription}`;
+    const cacheKey = adminReview ? `test:admin:${id}` : `test:runtime:${id}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
       if (!adminReview && !assertExamAccess(access, cached.exam_type)) {
         return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
       }
-      // clean and optimized code — premium-flagged mocks need basic/premium
+      // Premium-flagged mocks need basic/premium; always inherit listening audio URLs
       if (!adminReview && !assertPaidPlanForPremiumTest(access, cached.is_premium)) {
         return res.status(403).json({
           success: false,
           message: "This mock requires a Basic or Premium plan.",
         });
       }
-      return res.status(200).json({ success: true, data: cached });
+      return res.status(200).json({ success: true, data: inheritListeningAudio(cached) });
     }
     const data = await testModel.getStructuredTest(id, { includeCorrect: adminReview });
     if (!data) return res.status(404).json({ success: false, message: "Test not found" });
@@ -245,13 +261,10 @@ export const getTestRuntime = async (req, res) => {
           message: "This mock requires a Basic or Premium plan.",
         });
       }
-
-      if (subscription === "free") {
-        const allowed = ["reading", "writing"];
-        data.sections = data.sections.filter((s) => allowed.includes(s.section_type?.toLowerCase()));
-      }
+      // Free tier keeps all sections (listening/speaking included)
     }
 
+    inheritListeningAudio(data);
     await cacheSetJson(cacheKey, data, 60);
     res.status(200).json({ success: true, data });
   } catch (error) {
@@ -463,7 +476,7 @@ export const fetchAvailableTests = async (req, res) => {
     if (!access) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const { subscription, role, allowedExamTypes } = access;
+    const { role, allowedExamTypes } = access;
     if (role === "admin") {
       const tests = await testModel.getAllTests(100, 0);
       return res.status(200).json({ success: true, data: tests });
@@ -476,12 +489,7 @@ export const fetchAvailableTests = async (req, res) => {
       });
     }
 
-    let allowedSections = null;
-    if (subscription === "free") {
-      allowedSections = ["Reading", "Writing"];
-    }
-
-    const tests = await testModel.getTestsByFilters(allowedExamTypes, allowedSections);
+    const tests = await testModel.getTestsByFilters(allowedExamTypes, null);
     res.status(200).json({ success: true, data: tests });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching available tests" });
@@ -498,8 +506,7 @@ export const getTestById = async (req, res) => {
     if (!access) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    const subscription = access.subscription;
-    const cacheKey = access.role === "admin" ? `test:admin:${req.params.id}` : `test:runtime:${req.params.id}:${subscription}`;
+    const cacheKey = access.role === "admin" ? `test:admin:${req.params.id}` : `test:runtime:${req.params.id}`;
     const cached = await cacheGetJson(cacheKey);
     if (cached) {
       if (!assertExamAccess(access, cached.exam_type)) {
@@ -511,7 +518,7 @@ export const getTestById = async (req, res) => {
           message: "This mock requires a Basic or Premium plan.",
         });
       }
-      return res.status(200).json({ success: true, data: cached });
+      return res.status(200).json({ success: true, data: inheritListeningAudio(cached) });
     }
     const includeCorrect = access.role === "admin";
     let testDetails = await testModel.getStructuredTest(req.params.id, { includeCorrect });
@@ -527,11 +534,9 @@ export const getTestById = async (req, res) => {
           message: "This mock requires a Basic or Premium plan.",
         });
       }
-      if (subscription === "free") {
-        const allowedSections = ["reading", "writing"];
-        testDetails.sections = testDetails.sections.filter((s) => allowedSections.includes(s.section_type?.toLowerCase()));
-      }
+      // Free tier keeps all sections (listening/speaking included)
     }
+    inheritListeningAudio(testDetails);
     await cacheSetJson(cacheKey, testDetails, 60);
     res.status(200).json({ success: true, data: testDetails });
   } catch (error) {

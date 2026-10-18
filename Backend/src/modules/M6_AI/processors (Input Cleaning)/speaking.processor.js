@@ -39,6 +39,32 @@ Rules:
 - If no speech is detected, set transcribedText to an empty string and confidence to 0.
 - durationSeconds: estimate spoken duration in seconds when possible, else null.`;
 
+/** Download Cloudinary/remote audio into a Gemini inlineData part. */
+export const fetchAudioInlinePart = async (audioUrl) => {
+  if (!audioUrl || typeof audioUrl !== "string") {
+    throw new Error("audioUrl is required");
+  }
+  const response = await fetch(audioUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download audio (${response.status})`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  if (!buffer.length) {
+    throw new Error("Downloaded audio file is empty");
+  }
+  const headerMime = response.headers.get("content-type")?.split(";")[0]?.trim();
+  const mimeType =
+    (headerMime && headerMime.startsWith("audio/") ? headerMime : null) ||
+    guessMimeFromUrl(audioUrl);
+  return {
+    inlineData: {
+      mimeType,
+      data: buffer.toString("base64"),
+    },
+  };
+};
+
 /**
  * Gemini-only speech-to-text.
  * @param {string} audioUrl Absolute URL to the learner's spoken audio (e.g. Cloudinary).
@@ -50,29 +76,10 @@ export const processAudioToText = async (audioUrl) => {
   }
 
   try {
-    const response = await fetch(audioUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download audio (${response.status})`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    if (!buffer.length) {
-      throw new Error("Downloaded audio file is empty");
-    }
-
-    const headerMime = response.headers.get("content-type")?.split(";")[0]?.trim();
-    const mimeType =
-      (headerMime && headerMime.startsWith("audio/") ? headerMime : null) ||
-      guessMimeFromUrl(audioUrl);
+    const inlinePart = await fetchAudioInlinePart(audioUrl);
 
     const json = await generateJsonFromMultimodal([
-      {
-        inlineData: {
-          mimeType,
-          data: buffer.toString("base64"),
-        },
-      },
+      inlinePart,
       { text: buildTranscriptionPrompt() },
     ]);
 

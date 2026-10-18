@@ -345,6 +345,13 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text('$bandScore', style: const TextStyle(color: Colors.white, fontSize: 54, fontWeight: FontWeight.bold)),
+                  if ((mainInfo['cefr_level']?.toString() ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'CEFR ${mainInfo['cefr_level']}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     mainInfo['test_title']?.toString() ?? '',

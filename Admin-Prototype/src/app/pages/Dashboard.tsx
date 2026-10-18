@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Users, FileText, BookOpen, TrendingUp, ArrowRight, Plus, Activity, Loader2 } from 'lucide-react';
+import { Users, FileText, BookOpen, TrendingUp, ArrowRight, Plus, Activity, Loader2, Headphones, Mic, PenTool } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getDashboardStats, fetchAllTests, getPrepLessons } from '../services/api';
 
@@ -150,6 +150,23 @@ export function Dashboard() {
           color="#F59E0B"
           onClick={() => navigate('/preparation')}
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          { icon: <BookOpen size={18} />, title: 'Reading', body: 'Auto-marked vs answer key. Band from Academic Reading table.', color: '#7C3AED' },
+          { icon: <Headphones size={18} />, title: 'Listening', body: 'Upload HTTPS audio in Test Builder. Auto-marked + Listening band table.', color: '#16A34A' },
+          { icon: <PenTool size={18} />, title: 'Writing', body: 'Gemini Flash scores 4 criteria. Under-length essays are capped.', color: '#EA580C' },
+          { icon: <Mic size={18} />, title: 'Speaking', body: 'Student records in-app. Gemini STT then band vs question + cue.', color: '#DB2777' },
+        ].map((mod) => (
+          <div key={mod.title} className="bg-white rounded-xl p-4 border shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: `${mod.color}18`, color: mod.color }}>
+              {mod.icon}
+            </div>
+            <p className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>{mod.title}</p>
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{mod.body}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

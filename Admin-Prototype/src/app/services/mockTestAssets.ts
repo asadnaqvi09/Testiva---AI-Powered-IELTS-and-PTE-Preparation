@@ -13,17 +13,26 @@ export async function uploadSectionAssets(sections: BuilderSection[]): Promise<B
     let next = { ...sec };
     const module = sec.moduleType.toLowerCase();
 
-    if (sec.audioFileData) {
+    if (module.includes('listening')) {
+      if (sec.audioFileData) {
+        const res = await uploadTestAsset(sec.audioFileData);
+        next = {
+          ...next,
+          audioFile: res.data.url,
+          audioFileData: null,
+        };
+      } else if (!isHttpUrl(sec.audioFile)) {
+        throw new Error(
+          `Listening section "${sec.moduleType}" needs an audio upload (HTTPS URL, not a filename).`,
+        );
+      }
+    } else if (sec.audioFileData) {
       const res = await uploadTestAsset(sec.audioFileData);
       next = {
         ...next,
         audioFile: res.data.url,
         audioFileData: null,
       };
-    } else if (module.includes('listening') && sec.audioFile && !isHttpUrl(sec.audioFile)) {
-      throw new Error(
-        `Listening section "${sec.moduleType}" needs an audio upload (not just a filename).`,
-      );
     }
 
     if (sec.chartImageData) {

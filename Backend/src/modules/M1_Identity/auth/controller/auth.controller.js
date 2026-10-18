@@ -29,6 +29,25 @@ import { redisClient } from "../../../../config/redis.js";
 import bcrypt from "bcrypt";
 
 const hashOtpValue = async (otp) => hashOTP(String(otp));
+
+/** Student-facing copy only — EMAIL_* / App Password is operator .env config, never shown to mobile clients. */
+const STUDENT_OTP_SEND_FAILED = "Could not send OTP. Please try again.";
+
+const otpSentBody = (message, sendResult, extra = {}) => {
+  const body = { success: true, message, emailSent: true, ...extra };
+  if (sendResult?.devOtp) {
+    // Optional FYP escape hatch (ALLOW_DEV_OTP): include code for Postman/logs only.
+    // Mobile apps must treat emailSent:false as failure and never display body.devOtp.
+    body.devOtp = sendResult.devOtp;
+    body.emailSent = false;
+    body.message = STUDENT_OTP_SEND_FAILED;
+  } else if (sendResult?.sent === false) {
+    body.emailSent = false;
+    body.message = STUDENT_OTP_SEND_FAILED;
+  }
+  return body;
+};
+
 const buildToken = (user) => ({
   id: user.id,
   role: user.role,
@@ -82,13 +101,18 @@ export const registerUser = async (req, res) => {
        DO UPDATE SET full_name=$2, password_hash=$3, otp_code=$4, expires_at=NOW() + INTERVAL '15 minutes', attempts=0, is_verified=false`,
       [email, full_name, password_hash, otp_hash],
     );
-    await sendOtpEmail({ email, otp, type: "register" });
-    return res.json({ success: true, message: "OTP sent", email });
+    const sendResult = await sendOtpEmail({ email, otp, type: "register" });
+    return res
+      .status(200)
+      .json(otpSentBody("OTP sent", sendResult, { email }));
   } catch (error) {
     console.log("Error In Register Controller : ", error.message);
-    return res
-      .status(500)
-      .json({ success: false, message: error.message || "Registration failed" });
+    const msg = String(error.message || "");
+    const isEmailFail = /Could not send OTP|SMTP|email/i.test(msg);
+    return res.status(500).json({
+      success: false,
+      message: isEmailFail ? STUDENT_OTP_SEND_FAILED : "Registration failed",
+    });
   }
 };
 
@@ -435,7 +459,7 @@ export const forgotPassword = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
-    const { email } = value;
+    const email = String(value.email).trim().toLowerCase();
     const user = await findUserByEmail(email);
     if (!user)
       return res
@@ -443,18 +467,26 @@ export const forgotPassword = async (req, res) => {
         .json({ success: false, message: "User not found" });
     const otp = generateOTP();
     const otp_hash = await hashOtpValue(otp);
+    // temp_users has UNIQUE(email) in addition to UNIQUE(email, type).
+    // A leftover register row makes INSERT type='reset' fail and skips email.
+    await pool.query(`DELETE FROM temp_users WHERE LOWER(TRIM(email)) = $1`, [
+      email,
+    ]);
     await pool.query(
-      `INSERT INTO temp_users (email, otp_code, expires_at, type, attempts, is_verified)
-       VALUES ($1,$2,NOW() + INTERVAL '15 minutes','reset',0,false)
-       ON CONFLICT (email, type)
-       DO UPDATE SET otp_code=$2, expires_at=NOW() + INTERVAL '15 minutes', attempts=0, is_verified=false`,
-      [email, otp_hash],
+      `INSERT INTO temp_users (email, full_name, otp_code, expires_at, type, attempts, is_verified)
+       VALUES ($1,$2,$3,NOW() + INTERVAL '15 minutes','reset',0,false)`,
+      [email, user.full_name || "Student", otp_hash],
     );
-    await sendOtpEmail({ email, otp, type: "reset" });
-    return res.json({ success: true, message: "OTP sent" });
+    const sendResult = await sendOtpEmail({ email, otp, type: "reset" });
+    return res.status(200).json(otpSentBody("OTP sent", sendResult));
   } catch (error) {
     console.log("Error In Forgot Password Controller : ", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Request failed" });
+    const msg = String(error.message || "");
+    const isEmailFail = /Could not send OTP|SMTP|email/i.test(msg);
+    return res.status(500).json({
+      success: false,
+      message: isEmailFail ? STUDENT_OTP_SEND_FAILED : "Request failed",
+    });
   }
 };
 
@@ -519,7 +551,8 @@ export const resendOTP = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
-    const { email, type } = value;
+    const email = String(value.email).trim().toLowerCase();
+    const { type } = value;
     const { rows } = await pool.query(
       `SELECT * FROM temp_users WHERE email=$1 AND type=$2`,
       [email, type],
@@ -532,11 +565,13 @@ export const resendOTP = async (req, res) => {
       `UPDATE temp_users SET otp_code=$1, expires_at=NOW() + INTERVAL '15 minutes', attempts=0 WHERE email=$2 AND type=$3`,
       [otp_hash, email, type],
     );
-    await sendOtpEmail({ email, otp, type });
-    return res.json({ success: true, message: "OTP resent" });
+    const sendResult = await sendOtpEmail({ email, otp, type });
+    return res.status(200).json(otpSentBody("OTP resent", sendResult));
   } catch (error) {
     console.log("Error In Resend OTP Controller : ", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Failed" });
+    return res
+      .status(500)
+      .json({ success: false, message: STUDENT_OTP_SEND_FAILED });
   }
 };
 

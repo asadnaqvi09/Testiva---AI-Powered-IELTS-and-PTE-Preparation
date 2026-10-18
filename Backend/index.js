@@ -21,21 +21,34 @@ import { initSocketIO } from './src/modules/M9_Notification/socketIO/index.js';
 import { setSocketServer } from './src/config/socket.js';
 import './src/modules/M5_Offline/sync.worker.js';
 import { errorHandler } from './src/middleware/error.middleware.js';
+import { advertiseTestivaMdns } from './src/utils/mdnsAdvertise.js';
 
 const app = express();
 const server = http.createServer(app);
+const isDev = (process.env.NODE_ENV || "development") !== "production";
+// Dev: reflect any Origin so the Flutter phone + Admin (localhost:5173) both work.
+const corsOrigin = isDev ? true : (process.env.CLIENT_URL || "http://localhost:5173");
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: corsOrigin,
     credentials: true,
     methods: ["GET", "POST"]
   },
   pingTimeout: 60000,
 });
 
-app.use(helmet());
+app.use(
+  helmet(
+    isDev
+      ? {
+          crossOriginResourcePolicy: { policy: "cross-origin" },
+          contentSecurityPolicy: false,
+        }
+      : undefined,
+  ),
+);
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173' || "ws://127.0.0.1:55729/IxZyxYHFzDM=/ws",
+  origin: corsOrigin,
   credentials: true
 }));
 app.use(morgan("dev"));
@@ -61,6 +74,12 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "Testiva Backend Running" });
 });
 const API_V1 = "/api/v1";
+app.get(`${API_V1}/health`, (_req, res) => {
+  res.status(200).json({
+    success: true,
+    data: { status: "ok", service: "testiva" },
+  });
+});
 app.use(`${API_V1}/auth`, authRoutes);
 app.use(`${API_V1}/user`, userRoutes);
 app.use(`${API_V1}/feedback`, feedbackRoutes);
@@ -79,6 +98,8 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`
   🚀 Testiva Engine Online
   📡 Port: ${PORT}
+  🔗 Bind: 0.0.0.0:${PORT} (LAN + localhost)
   🔗 Mode: ${process.env.NODE_ENV || 'development'}
   `);
+  advertiseTestivaMdns(PORT);
 });

@@ -58,9 +58,15 @@ export function Login() {
     }
     setForgotLoading(true);
     try {
-      await forgotPasswordAPI(forgotEmail.trim().toLowerCase());
+      const data: any = await forgotPasswordAPI(forgotEmail.trim().toLowerCase());
       setForgotStep('otp');
-      toast.success('OTP sent to your email');
+      if (data?.devOtp) {
+        toast.warning(
+          `DEV OTP (email not sent): ${data.devOtp}. Fix EMAIL_PASS (Gmail App Password) or unset ALLOW_DEV_OTP.`,
+        );
+      } else {
+        toast.success('OTP sent to your email');
+      }
     } catch (err: any) {
       setForgotError(err?.message || 'Failed to send OTP');
       toast.error(err?.message || 'Failed to send OTP');
@@ -115,8 +121,14 @@ export function Login() {
   const handleResendOtp = async () => {
     setForgotLoading(true);
     try {
-      await resendOtpAPI(forgotEmail.trim().toLowerCase(), 'reset');
-      toast.success('OTP resent');
+      const data: any = await resendOtpAPI(forgotEmail.trim().toLowerCase(), 'reset');
+      if (data?.devOtp) {
+        toast.warning(
+          `DEV OTP (email not sent): ${data.devOtp}. Fix EMAIL_PASS (Gmail App Password) or unset ALLOW_DEV_OTP.`,
+        );
+      } else {
+        toast.success('OTP resent');
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Resend failed');
     } finally {
