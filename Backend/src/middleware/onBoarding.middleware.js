@@ -1,3 +1,5 @@
+// This is a comment: UNUSED — preference gated in controllers; do not delete.
+/*
 export const onboardingMiddleware = (req, res, next) => {
   try {
     const user = req.user;
@@ -21,3 +23,7 @@ export const onboardingMiddleware = (req, res, next) => {
     });
   }
 };
+*/
+
+// This is a comment: stub so accidental imports do not crash
+export const onboardingMiddleware = (_req, _res, next) => next();

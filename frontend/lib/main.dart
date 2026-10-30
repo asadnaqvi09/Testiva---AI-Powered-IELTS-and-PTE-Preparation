@@ -111,7 +111,8 @@ class TestivaApp extends StatelessWidget {
             '/home': (context) => const DashboardScreen(),
             '/dashboard': (context) => const DashboardScreen(),
             '/prep': (context) => const PrepScreen(),
-            '/mocks': (context) => MocksScreen(onStartTestRequested: () {}),
+            // This is a comment: named /mocks opens Dashboard mocks tab flow
+            '/mocks': (context) => const DashboardScreen(initialIndex: 1),
             '/profile': (context) => const ProfileScreen(),
             '/all-tests': (context) {
               final attemptId =

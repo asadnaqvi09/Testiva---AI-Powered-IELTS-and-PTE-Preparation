@@ -13,6 +13,8 @@ export const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// This is a comment (L10): unused — forgot/reset routes use authLimiter in auth.routes.js
+// Wire here if you want a stricter 3/15min cap on password reset only.
 export const passwordResetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 3,

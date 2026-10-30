@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../widgets/stats_card.dart';
 
 class StatsRow extends StatefulWidget {
@@ -13,10 +14,11 @@ class StatsRow extends StatefulWidget {
 class _StatsRowState extends State<StatsRow> {
   bool _isLoading = true;
 
+  static const _cacheKey = 'cached_my_stats_row';
 
-  String _dayStreak = '3';
-  String _estBand = '6.5';
-  String _testsDone = '5';
+  String _dayStreak = '0';
+  String _estBand = '0.0';
+  String _testsDone = '0';
 
   @override
   void initState() {
@@ -24,26 +26,44 @@ class _StatsRowState extends State<StatsRow> {
     _fetchLiveDashboardStats();
   }
 
+  void _apply(Map stats) {
+    setState(() {
+      _dayStreak = (stats['dayStreak'] ?? stats['streak_days'] ?? '0').toString();
+      _estBand = (stats['average_band_score'] ?? '0.0').toString();
+      _testsDone = (stats['total_tests_taken'] ?? '0').toString();
+      _isLoading = false;
+    });
+  }
+
   Future<void> _fetchLiveDashboardStats() async {
+    // This is a comment: last-known stats cache for offline home
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final map = jsonDecode(cached);
+        if (map is Map) _apply(Map<String, dynamic>.from(map));
+      }
+    } catch (_) {}
+
     try {
       final response = await ApiService.get('/progress/my-stats');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          final stats = data['data'];
-          setState(() {
-            _dayStreak = (stats['dayStreak'] ?? stats['streak_days'] ?? '3').toString();
-            _estBand = (stats['average_band_score'] ?? '0.0').toString();
-            _testsDone = (stats['total_tests_taken'] ?? '0').toString();
-            _isLoading = false;
-          });
+          final stats = data['data'] as Map;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_cacheKey, jsonEncode(stats));
+          } catch (_) {}
+          if (mounted) _apply(Map<String, dynamic>.from(stats));
           return;
         }
       }
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       debugPrint(e.toString());
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

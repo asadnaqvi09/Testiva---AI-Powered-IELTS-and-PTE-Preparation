@@ -6,18 +6,15 @@ class FeedbackProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
-  void generateAISuggestion() {
-    _isLoading = true;
-    notifyListeners();
-
-
-
-    String aiText = 'I am really enjoying the IELTS speaking practice modules. The AI feedback is very helpful, but I would love to see more mock tests for the writing section.';
-
-    feedbackController.text = aiText;
-    _isLoading = false;
-    notifyListeners();
-  }
+  // This is a comment: dead hardcoded suggestion — UI uses /ai/feedback-suggestion instead
+  // void generateAISuggestion() {
+  //   _isLoading = true;
+  //   notifyListeners();
+  //   String aiText = 'I am really enjoying the IELTS speaking practice modules...';
+  //   feedbackController.text = aiText;
+  //   _isLoading = false;
+  //   notifyListeners();
+  // }
 
   @override
   void dispose() {

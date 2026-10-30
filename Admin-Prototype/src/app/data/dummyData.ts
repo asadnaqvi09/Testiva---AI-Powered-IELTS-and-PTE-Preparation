@@ -1,14 +1,17 @@
+﻿// This is a comment (L2): ENTIRE FILE UNUSED — no imports from Admin pages.
+// Kept commented-in for prototype reference; do not wire back (IELTS + PTE only).
+// See also: components/ui/README.md (unused shadcn kit).
 // ─── Users ────────────────────────────────────────────────────────────────────
 export const dummyUsers = [
   { id: 'USR101', name: 'Ahmed Raza', email: 'ahmed.raza@example.com', role: 'registered', subscription: 'premium', lastActive: '2026-03-05', status: 'active', score: 87, assignedTest: 'IELTS', institute: 'INS1' },
-  { id: 'USR102', name: 'Fatima Noor', email: 'fatima.noor@example.com', role: 'registered', subscription: 'free', lastActive: '2026-03-04', status: 'active', score: 72, assignedTest: 'TOEFL', institute: 'INS1' },
+  { id: 'USR102', name: 'Fatima Noor', email: 'fatima.noor@example.com', role: 'registered', subscription: 'free', lastActive: '2026-03-04', status: 'active', score: 72, assignedTest: 'PTE', institute: 'INS1' },
   { id: 'USR103', name: 'Bilal Siddiqui', email: 'bilal.s@example.com', role: 'registered', subscription: 'premium', lastActive: '2026-03-03', status: 'active', score: 91, assignedTest: 'IELTS', institute: 'INS2' },
   { id: 'USR104', name: 'Ayesha Tariq', email: 'ayesha.t@example.com', role: 'registered', subscription: 'free', lastActive: '2026-02-28', status: 'inactive', score: 65, assignedTest: 'PTE', institute: 'INS1' },
   { id: 'USR105', name: 'Usman Malik', email: 'usman.m@example.com', role: 'registered', subscription: 'basic', lastActive: '2026-03-01', status: 'active', score: 78, assignedTest: 'IELTS', institute: 'INS2' },
-  { id: 'USR106', name: 'Sana Sheikh', email: 'sana.s@example.com', role: 'registered', subscription: 'free', lastActive: '2026-02-27', status: 'active', score: 69, assignedTest: 'TOEFL', institute: 'INS3' },
+  { id: 'USR106', name: 'Sana Sheikh', email: 'sana.s@example.com', role: 'registered', subscription: 'free', lastActive: '2026-02-27', status: 'active', score: 69, assignedTest: 'PTE', institute: 'INS3' },
   { id: 'USR107', name: 'Kamran Ali', email: 'kamran.ali@example.com', role: 'registered', subscription: 'premium', lastActive: '2026-03-05', status: 'active', score: 95, assignedTest: 'IELTS', institute: 'INS1' },
   { id: 'USR108', name: 'Hira Baig', email: 'hira.b@example.com', role: 'registered', subscription: 'basic', lastActive: '2026-03-02', status: 'active', score: 82, assignedTest: 'PTE', institute: 'INS2' },
-  { id: 'USR109', name: 'Zaid Hussain', email: 'zaid.h@example.com', role: 'registered', subscription: 'free', lastActive: '2026-02-25', status: 'inactive', score: 58, assignedTest: 'TOEFL', institute: 'INS3' },
+  { id: 'USR109', name: 'Zaid Hussain', email: 'zaid.h@example.com', role: 'registered', subscription: 'free', lastActive: '2026-02-25', status: 'inactive', score: 58, assignedTest: 'IELTS', institute: 'INS3' },
   { id: 'USR110', name: 'Maryam Iqbal', email: 'maryam.i@example.com', role: 'registered', subscription: 'premium', lastActive: '2026-03-04', status: 'active', score: 88, assignedTest: 'IELTS', institute: 'INS1' },
 ];
 
@@ -23,7 +26,7 @@ export const dummyMocks = [
     ]
   },
   {
-    id: 'MCK002', title: 'TOEFL Reading Mock #1', testType: 'TOEFL', sections: ['Reading', 'Listening', 'Speaking', 'Writing'],
+    id: 'MCK002', title: 'PTE Reading Mock #1', testType: 'PTE', sections: ['Reading', 'Listening', 'Speaking', 'Writing'],
     questionsCount: 36, duration: 54, difficulty: 'Hard', createdDate: '2026-02-15', status: 'published',
     questions: []
   },
@@ -38,7 +41,7 @@ export const dummyMocks = [
     questions: []
   },
   {
-    id: 'MCK005', title: 'TOEFL Listening Mock #2', testType: 'TOEFL', sections: ['Listening', 'Speaking'],
+    id: 'MCK005', title: 'PTE Listening Mock #2', testType: 'PTE', sections: ['Listening', 'Speaking'],
     questionsCount: 22, duration: 40, difficulty: 'Medium', createdDate: '2026-03-03', status: 'draft',
     questions: []
   },
@@ -73,11 +76,11 @@ export const dummyPrep = [
     instituteOnly: false,
   },
   {
-    id: 'PREP003', title: 'TOEFL Listening: Note-Taking Strategies', testType: 'TOEFL', section: 'Listening',
-    summary: 'Effective note-taking methods for TOEFL Listening section.', date: '2026-02-18', status: 'published',
+    id: 'PREP003', title: 'PTE Listening: Note-Taking Strategies', testType: 'PTE', section: 'Listening',
+    summary: 'Effective note-taking methods for PTE Listening section.', date: '2026-02-18', status: 'published',
     parts: 4,
     partsDetail: [
-      { title: 'Why Note-Taking Matters', content: 'TOEFL Listening questions often test details mentioned only once. Notes help retain information...' },
+      { title: 'Why Note-Taking Matters', content: 'PTE Listening questions often test details mentioned only once. Notes help retain information...' },
       { title: 'Abbreviation Systems', content: 'Use shorthand symbols and abbreviations to write faster. Common symbols: → (leads to), ↑ (increase)...' },
       { title: 'Lecture vs Conversation Notes', content: 'Lectures require structured notes with main topic and subtopics. Conversations need dialogue tracking...' },
       { title: 'Practice Audio Sets', content: 'Listen to 3 academic lectures and practice your note-taking with the included answer keys...' },
@@ -112,7 +115,7 @@ export const dummyPrep = [
     instituteOnly: false,
   },
   {
-    id: 'PREP006', title: 'TOEFL Speaking: Independent Task Guide', testType: 'TOEFL', section: 'Speaking',
+    id: 'PREP006', title: 'PTE Speaking: Independent Task Guide', testType: 'PTE', section: 'Speaking',
     summary: 'How to organize your thoughts and speak fluently in 45 seconds.', date: '2026-03-03', status: 'published',
     parts: 3,
     partsDetail: [
@@ -131,8 +134,8 @@ export const dummyCommunityPosts = [
   { id: 'POST002', user: 'fatima.noor@example.com', content: 'Just scored 7.5 on IELTS! The mock tests really helped.', likes: 34, replies: 12, date: '2026-03-04', flagged: false },
   { id: 'POST003', user: 'zaid.h@example.com', content: 'This platform is useless! No one responds to queries. Absolute trash!', likes: 1, replies: 0, date: '2026-03-04', flagged: true },
   { id: 'POST004', user: 'hira.b@example.com', content: 'Looking for a study partner for PTE preparation.', likes: 8, replies: 3, date: '2026-03-03', flagged: false },
-  { id: 'POST005', user: 'kamran.ali@example.com', content: 'The TOEFL listening section improved my comprehension skills significantly.', likes: 21, replies: 7, date: '2026-03-03', flagged: false },
-  { id: 'POST006', user: 'sana.s@example.com', content: 'Can we get more practice materials for TOEFL writing?', likes: 6, replies: 2, date: '2026-03-02', flagged: false },
+  { id: 'POST005', user: 'kamran.ali@example.com', content: 'The PTE listening section improved my comprehension skills significantly.', likes: 21, replies: 7, date: '2026-03-03', flagged: false },
+  { id: 'POST006', user: 'sana.s@example.com', content: 'Can we get more practice materials for PTE writing?', likes: 6, replies: 2, date: '2026-03-02', flagged: false },
   { id: 'POST007', user: 'bilal.s@example.com', content: 'SPAM SPAM visit our site for free IELTS materials...', likes: 0, replies: 0, date: '2026-03-02', flagged: true },
   { id: 'POST008', user: 'maryam.i@example.com', content: 'The vocabulary builder is amazing! Highly recommended.', likes: 15, replies: 4, date: '2026-03-01', flagged: false },
   { id: 'POST009', user: 'usman.m@example.com', content: 'How many mock tests should I do per week to prepare for IELTS?', likes: 9, replies: 6, date: '2026-02-28', flagged: false },
@@ -162,7 +165,7 @@ export const weeklyUserData = [
 ];
 
 export const avgScoreData = [
-  { test: 'IELTS', avgScore: 7.1 }, { test: 'TOEFL', avgScore: 88 }, { test: 'PTE', avgScore: 71 },
+  { test: 'IELTS', avgScore: 7.1 }, { test: 'PTE', avgScore: 88 }, { test: 'PTE', avgScore: 71 },
 ];
 
 export const subscriptionPieData = [

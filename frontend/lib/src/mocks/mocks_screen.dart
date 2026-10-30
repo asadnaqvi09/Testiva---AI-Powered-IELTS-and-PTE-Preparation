@@ -131,14 +131,13 @@ class _MocksScreenState extends State<MocksScreen> {
             final body = jsonDecode(response.body);
             if (body['success'] == true) {
               final List list = body['data'] as List;
+              // This is a comment: IELTS + PTE only (TOEFL not supported)
               final allowed = list.where((item) {
                 final map = item as Map<String, dynamic>;
                 final type =
                     (map['exam_type'] ?? map['examType'] ?? '').toString().toUpperCase();
-                if (type.contains('TOEFL')) return false;
-                return type.isEmpty || type == 'IELTS' || type == 'PTE'
-                    ? _canAccessExam(type.isEmpty ? 'IELTS' : type)
-                    : false;
+                if (type != 'IELTS' && type != 'PTE') return false;
+                return _canAccessExam(type);
               }).toList();
               await LocalDb.instance.cacheMockDashboard(
                 examType: examType,

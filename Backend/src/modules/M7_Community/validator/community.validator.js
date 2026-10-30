@@ -46,6 +46,8 @@ export const validateCreatePost = (data) =>
       }),
       title: title.required(),
       content: content.required(),
+      // L5 — optional Cloudinary URL from /community/upload-image
+      image_url: Joi.string().uri().allow(null, "").optional(),
     }),
     data,
   );

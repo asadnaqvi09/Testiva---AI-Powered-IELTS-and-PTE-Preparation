@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/widgets/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'premium_modal.dart';
 
 class ProgressCard extends StatefulWidget {
@@ -46,29 +47,52 @@ class _ProgressCardState extends State<ProgressCard> {
     return pref != track;
   }
 
+  static const _cacheKey = 'cached_my_stats_progress';
+
+  Future<void> _applyStats(Map stats) async {
+    final totalTaken = (stats['total_tests_taken'] ?? 0).toDouble();
+    final bandScore =
+        double.tryParse((stats['average_band_score'] ?? 0.0).toString()) ?? 0.0;
+    if (!mounted) return;
+    setState(() {
+      _overallProgress =
+          totalTaken > 0 ? (bandScore / 9.0).clamp(0.0, 1.0) : 0.0;
+      _activeTrack = (UserNotifier.notifier.value['preference'] ?? 'IELTS')
+          .toString()
+          .toUpperCase();
+      _isLoading = false;
+    });
+  }
+
   Future<void> _fetchLiveProgress() async {
+    // This is a comment: show last-known stats when offline
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final map = jsonDecode(cached);
+        if (map is Map) await _applyStats(Map<String, dynamic>.from(map));
+      }
+    } catch (_) {}
+
     try {
       final response = await ApiService.get('/progress/my-stats');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          final stats = data['data'];
-          setState(() {
-            double totalTaken = (stats['total_tests_taken'] ?? 0).toDouble();
-            double bandScore = double.tryParse((stats['average_band_score'] ?? 0.0).toString()) ?? 0.0;
-            _overallProgress = totalTaken > 0 ? (bandScore / 9.0).clamp(0.0, 1.0) : 0.0;
-            _activeTrack = (UserNotifier.notifier.value['preference'] ?? 'IELTS')
-                .toString()
-                .toUpperCase();
-            _isLoading = false;
-          });
+          final stats = data['data'] as Map;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_cacheKey, jsonEncode(stats));
+          } catch (_) {}
+          await _applyStats(Map<String, dynamic>.from(stats));
           return;
         }
       }
-      _setEmptyProgress();
+      if (_isLoading) _setEmptyProgress();
     } catch (e) {
       debugPrint(e.toString());
-      _setEmptyProgress();
+      if (_isLoading) _setEmptyProgress();
     }
   }
 

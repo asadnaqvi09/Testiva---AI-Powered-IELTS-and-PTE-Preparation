@@ -61,11 +61,16 @@ export const submitTest = async (req, res) => {
     const { error, value } = submitFullTestSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
     if (value.is_offline) {
-      await addSyncJob({ userId, testData: value });
+      const job = await addSyncJob({ userId, testData: value });
       return res.status(202).json({
         success: true,
         message: "Offline data queued for sync",
-        data: { status: "pending" },
+        data: {
+          status: "queued",
+          attempt_id: null,
+          job_id: job?.id != null ? String(job.id) : null,
+          next_poll_after_ms: 4000,
+        },
       });
     }
 
@@ -157,13 +162,23 @@ export const submitTest = async (req, res) => {
         return res.status(202).json({
           success: true,
           message: "Test content captured. Writing/Speaking evaluation has been delegated to background AI pipelines.",
-          data: { attemptId, status: "pending" }
+          data: {
+            attempt_id: attemptId,
+            attemptId,
+            status: "pending",
+            next_poll_after_ms: 4000,
+            poll_url: `/api/v1/progress/result/${attemptId}`,
+          },
         });
       }
       return res.status(201).json({
         success: true,
         message: "Test submitted successfully.",
-        data: { attemptId, status: "completed" },
+        data: {
+          attempt_id: attemptId,
+          attemptId,
+          status: "completed",
+        },
       });
 
     } catch (error) {
@@ -180,7 +195,18 @@ export const submitTest = async (req, res) => {
 export const getMyStats = async (req, res) => {
   try {
     const stats = await progressModel.getUserStats(req.user.id);
-    res.status(200).json({ success: true, data: stats || { message: "No tests taken yet" } });
+    // This is a comment: always expose named skill keys for client caches
+    const base = stats && typeof stats === "object" ? stats : {};
+    const data = {
+      ...base,
+      listening: base.listening_avg ?? base.listening ?? null,
+      reading: base.reading_avg ?? base.reading ?? null,
+      writing: base.writing_avg ?? base.writing ?? null,
+      speaking: base.speaking_avg ?? base.speaking ?? null,
+      total_tests_taken: base.total_tests_taken ?? 0,
+      average_band_score: base.average_band_score ?? 0,
+    };
+    res.status(200).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching stats" });
   }
@@ -192,7 +218,10 @@ export const getTestResult = async (req, res) => {
   try {
     const attempt = await progressModel.getFullAttemptDetail(attempt_id);
     if (!attempt) return res.status(404).json({ success: false, message: "Result not found" });
-    if (attempt.user_id !== userId) return res.status(403).json({ success: false, message: "Unauthorized" });
+    // This is a comment: admin may inspect any attempt (Attempt Inspector)
+    if (attempt.user_id !== userId && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
     const responses = await progressModel.getAttemptResponses(attempt_id);
     const total = responses.length;
     const correct = responses.filter((r) => r.is_correct).length;
@@ -206,6 +235,8 @@ export const getTestResult = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        schema_version: 1,
+        next_poll_after_ms: pending ? 4000 : null,
         main_info: {
           test_title: attempt.test_title,
           test_type: attempt.test_type,

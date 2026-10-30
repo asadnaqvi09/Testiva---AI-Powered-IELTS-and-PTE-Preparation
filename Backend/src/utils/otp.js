@@ -1,3 +1,5 @@
+// This is a comment (L10): unused Redis OTP helpers — live auth uses temp_users + helpers.hashOTP
+// in M1_Identity/auth/controller/auth.controller.js. Kept for possible Redis OTP migration.
 import bcrypt from "bcrypt";
 import { redisClient } from "../config/redis.js";
 

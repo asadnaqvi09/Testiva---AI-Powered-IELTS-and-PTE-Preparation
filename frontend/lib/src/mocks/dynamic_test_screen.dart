@@ -578,31 +578,26 @@ class _DynamicTestScreenState extends State<DynamicTestScreen> {
         final url = resp['audio_response_url']?.toString() ?? '';
         return url.isEmpty;
       }).length;
+      // This is a comment: block submit until speaking audio is recorded/uploaded
       if (missingSpeaking > 0 && mounted) {
-        final proceed = await showDialog<bool>(
+        await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Speaking audio missing'),
+            title: const Text('Speaking audio required'),
             content: Text(
               '$missingSpeaking speaking answer(s) have no uploaded audio. '
-              'Those items will not be AI-scored. Continue anyway?',
+              'Record and upload each speaking response before submitting.',
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Go back'),
-              ),
               ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Submit anyway'),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Go back'),
               ),
             ],
           ),
         );
-        if (proceed != true) {
-          if (mounted) setState(() => _isLoading = false);
-          return;
-        }
+        if (mounted) setState(() => _isLoading = false);
+        return;
       }
 
       final body = {

@@ -562,6 +562,18 @@ class _CommunityPostCardState extends State<CommunityPostCard> {
               color: AppTheme.primaryText(context),
             ),
           ),
+          if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                widget.post.imageUrl!,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           GestureDetector(
             onTap: isLong ? () => setState(() => _expanded = !_expanded) : null,

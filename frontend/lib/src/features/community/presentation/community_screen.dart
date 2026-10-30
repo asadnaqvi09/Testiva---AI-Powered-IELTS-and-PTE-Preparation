@@ -1,11 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../providers/notification_provider.dart';
 import '../../../../widgets/custom_drawer.dart';
 import '../../../../widgets/app_header.dart';
 import '../../../../widgets/app_theme.dart';
+import 'package:uuid/uuid.dart';
+import '../../../../core/database/local_db.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/socket_service.dart';
 import '../../../../data/models/community_post_model.dart';
@@ -205,6 +209,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
     String selectedTag = 'General';
+    String? pickedImagePath;
 
     showModalBottomSheet(
       context: context,
@@ -279,6 +284,50 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    // L5 — optional image attach
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () async {
+                            final picker = ImagePicker();
+                            final file = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              maxWidth: 1600,
+                              imageQuality: 85,
+                            );
+                            if (file != null) {
+                              setSheetState(() => pickedImagePath = file.path);
+                            }
+                          },
+                          icon: const Icon(Icons.image_outlined, size: 20),
+                          label: Text(
+                            pickedImagePath == null ? 'Add image' : 'Change image',
+                          ),
+                        ),
+                        if (pickedImagePath != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Remove image',
+                            onPressed: () =>
+                                setSheetState(() => pickedImagePath = null),
+                            icon: const Icon(Icons.close, size: 18),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (pickedImagePath != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(
+                          File(pickedImagePath!),
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -329,6 +378,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             titleController.text.trim(),
                             contentController.text.trim(),
                             selectedTag,
+                            imagePath: pickedImagePath,
                           );
                         },
                         child: const Text(
@@ -347,14 +397,41 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Future<void> _createPost(String title, String content, String tag) async {
+  Future<void> _createPost(
+    String title,
+    String content,
+    String tag, {
+    String? imagePath,
+  }) async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiService.post('/community/create-post', {
+      String? imageUrl;
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final up = await ApiService.uploadCommunityImage(imagePath);
+        if (up.statusCode == 200) {
+          final upBody = jsonDecode(up.body);
+          imageUrl = upBody['data']?['image_url']?.toString();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image upload failed — posting without image'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+      // This is a comment: offline draft queue when network fails
+      final payload = <String, dynamic>{
         'title': title,
         'content': content,
         'topic_tag': tag,
-      });
+      };
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        payload['image_url'] = imageUrl;
+      }
+      final response = await ApiService.post('/community/create-post', payload);
       if (response.statusCode == 201) {
         final body = jsonDecode(response.body);
         if (body['success'] == true) {
@@ -399,10 +476,34 @@ class _CommunityScreenState extends State<CommunityScreen> {
       }
     } catch (e) {
       debugPrint('Error creating post: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connection error: Failed to reach server'), backgroundColor: Colors.red),
+      // This is a comment: queue draft for later sync when offline
+      try {
+        final localId = const Uuid().v4();
+        await LocalDb.instance.saveCommunityDraft(
+          localId: localId,
+          payload: {
+            'title': title,
+            'content': content,
+            'topic_tag': tag,
+          },
         );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Offline: post saved as draft and will sync later.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Connection error: Failed to reach server'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) {

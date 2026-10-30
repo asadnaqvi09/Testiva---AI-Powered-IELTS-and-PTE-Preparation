@@ -11,14 +11,23 @@ export const fetchNotifications = async (req, res) => {
     const userId = req.user.id;
     const limit = Number(req.query.limit) || 20;
     const offset = Number(req.query.offset) || 0;
-    const notifications = await getUserNotifications(
+    const items = await getUserNotifications(
       userId,
       limit,
       offset
     );
+    const unread_count = await getUnreadNotificationCount(userId);
+    // This is a comment: unified shape { success, data: { items, unread_count, meta } }
     return res.status(200).json({
       success: true,
-      notifications
+      data: {
+        items,
+        unread_count,
+        meta: { limit, offset },
+      },
+      // Legacy keys kept for older clients during FYP demo
+      notifications: items,
+      unreadCount: unread_count,
     });
   } catch {
     return res.status(500).json({
@@ -34,7 +43,8 @@ export const fetchUnreadCount = async (req, res) => {
     const count = await getUnreadNotificationCount(userId);
     return res.status(200).json({
       success: true,
-      unreadCount: count
+      data: { unread_count: count },
+      unreadCount: count,
     });
   } catch {
     return res.status(500).json({
@@ -61,8 +71,9 @@ export const readNotification = async (req, res) => {
     const unreadCount = await getUnreadNotificationCount(userId);
     return res.status(200).json({
       success: true,
+      data: { item: notification, unread_count: unreadCount },
       notification,
-      unreadCount
+      unreadCount,
     });
   } catch {
     return res.status(500).json({
@@ -79,7 +90,8 @@ export const readAllNotifications = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "All notifications marked as read",
-      unreadCount: 0
+      data: { unread_count: 0 },
+      unreadCount: 0,
     });
   } catch {
     return res.status(500).json({
@@ -107,7 +119,8 @@ export const removeNotification = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Notification deleted",
-      unreadCount
+      data: { unread_count: unreadCount },
+      unreadCount,
     });
   } catch {
     return res.status(500).json({

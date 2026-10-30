@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "smoke": "node scripts/e2e-smoke.js"
   },
   "keywords": [],
   "author": "",

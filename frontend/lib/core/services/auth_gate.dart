@@ -1,13 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/services/api_service.dart';
+import 'package:frontend/core/services/auth_navigation_helper.dart';
+import 'package:frontend/src/auth/signup/preference_selection_screen.dart';
+import 'package:frontend/src/dashboard/dashboard_screen.dart';
 import 'package:frontend/src/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Launch gate: always show the Figma-style welcome/onboarding on cold start.
-/// Get Started opens AuthScreen; successful sign-in enters the app.
-/// Tokens alone never skip into Home / Dashboard.
-///
-/// We intentionally do **not** persist a "has seen onboarding" flag — that made
-/// the welcome screen disappear forever after one tap during FYP demos.
+/// Cold start gate:
+/// 1) Valid JWT → refresh → Dashboard / Preference screen
+/// 2) No / invalid token → Onboarding → Auth
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -33,16 +35,66 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _bootstrap() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Clear legacy permanent-skip flags so stale prefs cannot hide welcome.
+      // This is a comment: clear legacy permanent-skip flags
       for (final key in AuthGate._legacySeenKeys) {
         if (prefs.containsKey(key)) {
           await prefs.remove(key);
         }
       }
+
+      final token = await ApiService.getToken();
+      if (token == null || token.isEmpty) {
+        _go(const OnboardingScreen());
+        return;
+      }
+
+      // This is a comment: try refresh then load profile for session restore
+      await ApiService.tryRefreshPublic();
+      final profileRes = await ApiService.get('/user/profile');
+      if (profileRes.statusCode != 200) {
+        await ApiService.clearAuthSession();
+        _go(const OnboardingScreen());
+        return;
+      }
+
+      final body = jsonDecode(profileRes.body);
+      if (body is! Map || body['success'] != true) {
+        await ApiService.clearAuthSession();
+        _go(const OnboardingScreen());
+        return;
+      }
+
+      final userRaw = body['user'] ?? body['data'];
+      final user = userRaw is Map
+          ? Map<String, dynamic>.from(userRaw)
+          : <String, dynamic>{};
+      if (user.isEmpty) {
+        await ApiService.clearAuthSession();
+        _go(const OnboardingScreen());
+        return;
+      }
+
+      AuthNavigationHelper.syncUserNotifier(user);
+      // Entitlements refresh is fire-and-forget
+      // ignore: unawaited_futures
+      AuthNavigationHelper.refreshEntitlements();
+
+      final preference = user['preference'];
+      final hasPreference =
+          preference != null && preference.toString().trim().isNotEmpty;
+      final userName = user['full_name'] ?? user['name'] ?? 'User';
+
+      _go(
+        hasPreference
+            ? const DashboardScreen()
+            : PreferenceSelectionScreen(userName: userName.toString()),
+      );
     } catch (_) {
-      // Ignore prefs errors — still show onboarding.
+      try {
+        await ApiService.clearAuthSession();
+      } catch (_) {}
+      _go(const OnboardingScreen());
     }
-    _go(const OnboardingScreen());
   }
 
   void _go(Widget page) {

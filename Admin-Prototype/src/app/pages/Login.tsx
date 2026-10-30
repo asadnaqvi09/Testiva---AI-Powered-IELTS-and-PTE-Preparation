@@ -136,8 +136,17 @@ export function Login() {
     }
   };
 
+  // This is a comment: hardcoded quick-fill disabled outside DEV (security)
   const fillCredential = (type: 'admin') => {
-    if (type === 'admin') { setEmail('ragesr56@gmail.com'); setPassword('TestFlow12345@sk'); }
+    // if (type === 'admin') { setEmail('ragesr56@gmail.com'); setPassword('TestFlow12345@sk'); }
+    if (!import.meta.env.DEV) {
+      setError('Quick fill is disabled outside development.');
+      return;
+    }
+    if (type === 'admin') {
+      setEmail(import.meta.env.VITE_DEV_ADMIN_EMAIL || '');
+      setPassword(import.meta.env.VITE_DEV_ADMIN_PASSWORD || '');
+    }
     setError('');
   };
 
@@ -186,13 +195,16 @@ export function Login() {
             <h1 className="font-bold mb-1" style={{ color: '#1A1A1A', fontSize: '24px' }}>Welcome back</h1>
             <p className="text-sm text-gray-500 mb-6">Sign in to your admin account</p>
 
-            <div className="mb-5">
-              <p className="text-xs text-gray-400 mb-2 font-medium">QUICK FILL</p>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => fillCredential('admin')} className="text-xs px-2.5 py-1.5 rounded-lg border transition-colors hover:border-blue-400 hover:text-blue-600" style={{ borderColor: '#E5E7EB', color: '#6B7280' }}>Admin Account</button>
+            {/* This is a comment: quick-fill only shown in Vite DEV */}
+            {import.meta.env.DEV && (
+              <div className="mb-5">
+                <p className="text-xs text-gray-400 mb-2 font-medium">QUICK FILL (DEV)</p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => fillCredential('admin')} className="text-xs px-2.5 py-1.5 rounded-lg border transition-colors hover:border-blue-400 hover:text-blue-600" style={{ borderColor: '#E5E7EB', color: '#6B7280' }}>Admin Account</button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">Set VITE_DEV_ADMIN_EMAIL / VITE_DEV_ADMIN_PASSWORD in .env</p>
               </div>
-              <p className="text-xs text-gray-400 mt-1.5">⚡ Credentials are sent to the real backend API</p>
-            </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-sm" style={{ background: '#DC354515', color: '#DC3545', border: '1px solid #DC354530' }}>

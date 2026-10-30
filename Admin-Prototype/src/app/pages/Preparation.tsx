@@ -13,9 +13,9 @@ const SECTIONS: Record<string, string[]> = {
   PTE: ['Speaking', 'Writing', 'Reading', 'Listening'],
 };
 
+// This is a comment: IELTS + PTE only (TOEFL removed from product)
 const TYPE_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   IELTS: { bg: '#EFF6FF', color: '#007BFF', border: '#BFDBFE' },
-  TOEFL: { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
   PTE:   { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
 };
 
@@ -330,13 +330,21 @@ export function Preparation() {
 
     for (const { file, id } of entries) {
       try {
+        // This is a comment: API returns { success, data: { file_url, file_name, file_size } }
         const res = await uploadPrepPdf(file);
-        if (!res.success || !res.url) throw new Error('Upload failed');
+        const fileUrl = res.data?.file_url;
+        if (!res.success || !fileUrl) throw new Error('Upload failed');
         setter(p => ({
           ...p,
           mediaFiles: p.mediaFiles.map(m =>
             m.id === id
-              ? { ...m, url: res.data.res.url, name: res.file_name || m.name, bytes: res.file_size || m.bytes, uploading: false }
+              ? {
+                  ...m,
+                  url: fileUrl,
+                  name: res.data.file_name || m.name,
+                  bytes: res.data.file_size || m.bytes,
+                  uploading: false,
+                }
               : m
           ),
         }));
@@ -631,7 +639,7 @@ export function Preparation() {
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: '#E5E7EB' }}>
               <div>
                 <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>Create Preparation Content</h3>
-                <p className="text-xs text-gray-400 mt-0.5">POST /preparation/create</p>
+                <p className="text-xs text-gray-400 mt-0.5">POST /api/v1/content/preparations/create-lesson</p>
               </div>
               <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
                 <X size={18} />
@@ -676,7 +684,7 @@ export function Preparation() {
                   </div>
                   <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>Edit Preparation Content</h3>
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">PATCH /preparation/{showEdit}</p>
+                <p className="text-xs text-gray-400 mt-0.5">PUT /api/v1/content/preparations/lesson/{showEdit}</p>
               </div>
               <button onClick={() => setShowEdit(null)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
                 <X size={18} />

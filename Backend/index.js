@@ -22,6 +22,7 @@ import { setSocketServer } from './src/config/socket.js';
 import './src/modules/M5_Offline/sync.worker.js';
 import { errorHandler } from './src/middleware/error.middleware.js';
 import { advertiseTestivaMdns } from './src/utils/mdnsAdvertise.js';
+import { openApiStub } from './src/docs/openapi.stub.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -80,6 +81,25 @@ app.get(`${API_V1}/health`, (_req, res) => {
     data: { status: "ok", service: "testiva" },
   });
 });
+
+// L1 — OpenAPI stub + lightweight Swagger UI (CDN; no extra npm dep)
+app.get(`${API_V1}/openapi.json`, (_req, res) => {
+  res.status(200).json(openApiStub);
+});
+app.get("/api/docs", (_req, res) => {
+  res.type("html").send(`<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><title>Testiva API Docs</title>
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"/>
+</head><body>
+<div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+SwaggerUIBundle({ url: '/api/v1/openapi.json', dom_id: '#swagger-ui' });
+</script>
+</body></html>`);
+});
+
 app.use(`${API_V1}/auth`, authRoutes);
 app.use(`${API_V1}/user`, userRoutes);
 app.use(`${API_V1}/feedback`, feedbackRoutes);

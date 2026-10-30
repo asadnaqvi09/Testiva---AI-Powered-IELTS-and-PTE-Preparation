@@ -320,7 +320,7 @@ class _TestResultsScreenState extends State<TestResultsScreen> {
                       child: Text(
                         _pollTimedOut
                             ? 'Still evaluating… Tap refresh or open All Tests when the notification arrives.'
-                            : 'AI is evaluating your writing and speaking responses. Scores will update automatically…',
+                            : 'AI is evaluating your writing and speaking… usually finishes in about 2–6 minutes. Scores update automatically.',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF9A3412),

@@ -8,6 +8,12 @@ const DEFAULT_NOTIF_PREFS = {
   subChange: true,
   newPost: true,
   preferenceChange: true,
+  // L7 quiet hours / digest (push gated in notification.service)
+  quietHoursEnabled: false,
+  quietStart: "22:00",
+  quietEnd: "07:00",
+  timezone: "Asia/Karachi",
+  digestEnabled: false,
 };
 
 export const normalizeNotifPrefs = (prefs) => ({

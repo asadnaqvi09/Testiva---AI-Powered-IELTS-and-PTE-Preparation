@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math'; 
 import 'package:flutter/material.dart';
+import 'package:frontend/core/database/local_db.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/user_notifier.dart';
 import 'package:frontend/core/constants/app_colors.dart';
@@ -106,48 +107,67 @@ class _PrepScreenState extends State<PrepScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          final List dynamicList = data['data'];
-          if (mounted) {
-            setState(() {
-              _liveModules = dynamicList.map((json) {
-                String sectionStr = (json['section'] ?? json['title'] ?? '').toString();
-                String titleLower = sectionStr.toLowerCase();
-                IconData moduleIcon = Icons.book_outlined;
-                if (titleLower.contains('read')) moduleIcon = Icons.book_outlined;
-                if (titleLower.contains('writ')) moduleIcon = Icons.edit_note;
-                if (titleLower.contains('listen')) moduleIcon = Icons.headphones_outlined;
-                if (titleLower.contains('speak')) moduleIcon = Icons.record_voice_over_outlined;
-
-                Color moduleColor = Colors.blue;
-                if (titleLower.contains('read')) moduleColor = Colors.blue;
-                if (titleLower.contains('writ')) moduleColor = Colors.orange;
-                if (titleLower.contains('listen')) moduleColor = Colors.amber;
-                if (titleLower.contains('speak')) moduleColor = Colors.purple;
-
-                int defaultPdfs = 0;
-                if (titleLower.contains('read')) defaultPdfs = 3;
-                if (titleLower.contains('writ')) defaultPdfs = 2;
-                if (titleLower.contains('listen')) defaultPdfs = 1;
-
-                return PrepModule(
-                  title: sectionStr,
-                  lessonsCount: json['lessonsCount'] ?? json['lessons_count'] ?? (titleLower.contains('read') ? 12 : 8),
-                  pdfCount: json['pdfCount'] ?? json['pdf_count'] ?? defaultPdfs,
-                  icon: moduleIcon,
-                  color: moduleColor,
-                  isCompleted: json['isCompleted'] ?? json['is_completed'] ?? false,
-                );
-              }).toList();
-              _isLoading = false;
-            });
-          }
+          final List dynamicList = data['data'] as List;
+          await LocalDb.instance.cachePrepLessons(
+            cacheKey: 'prep:$selectedType',
+            items: dynamicList,
+          );
+          if (mounted) _applyPrepList(dynamicList);
           return;
         }
       }
-      _loadOriginalFallbackModules();
+      await _loadFromCacheOrEmpty();
     } catch (e) {
-      _loadOriginalFallbackModules();
+      await _loadFromCacheOrEmpty();
     }
+  }
+
+  // This is a comment: prefer SQLite cache; hardcoded demo fallback commented out
+  Future<void> _loadFromCacheOrEmpty() async {
+    try {
+      final cached = await LocalDb.instance.getCachedPrepLessons(
+        'prep:$selectedType',
+      );
+      if (cached != null && cached.isNotEmpty && mounted) {
+        _applyPrepList(cached);
+        return;
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _liveModules = [];
+        _isLoading = false;
+      });
+    }
+    // _loadOriginalFallbackModules();
+  }
+
+  void _applyPrepList(List dynamicList) {
+    setState(() {
+      _liveModules = dynamicList.map((json) {
+        final map = Map<String, dynamic>.from(json as Map);
+        String sectionStr = (map['section'] ?? map['title'] ?? '').toString();
+        String titleLower = sectionStr.toLowerCase();
+        IconData moduleIcon = Icons.book_outlined;
+        if (titleLower.contains('read')) moduleIcon = Icons.book_outlined;
+        if (titleLower.contains('writ')) moduleIcon = Icons.edit_note;
+        if (titleLower.contains('listen')) moduleIcon = Icons.headphones_outlined;
+        if (titleLower.contains('speak')) moduleIcon = Icons.record_voice_over_outlined;
+        Color moduleColor = Colors.blue;
+        if (titleLower.contains('writ')) moduleColor = Colors.orange;
+        if (titleLower.contains('listen')) moduleColor = Colors.amber;
+        if (titleLower.contains('speak')) moduleColor = Colors.purple;
+        return PrepModule(
+          title: sectionStr,
+          lessonsCount: map['lessonsCount'] ?? map['lessons_count'] ?? 8,
+          pdfCount: map['pdfCount'] ?? map['pdf_count'] ?? 0,
+          icon: moduleIcon,
+          color: moduleColor,
+          isCompleted: map['isCompleted'] ?? map['is_completed'] ?? false,
+        );
+      }).toList();
+      _isLoading = false;
+    });
   }
 
   void _loadOriginalFallbackModules() {

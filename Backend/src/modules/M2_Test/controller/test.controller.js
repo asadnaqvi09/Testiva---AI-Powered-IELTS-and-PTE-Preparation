@@ -38,8 +38,20 @@ function assertExamAccess(access, examType) {
   );
 }
 
-function pteSingleGuard(exam_type, test_category) {
-  return exam_type === "PTE" && test_category === "singular_module";
+// This is a comment: PTE singular_module is ALLOWED for section practice
+// (reading | listening | writing | speaking). Full mock remains exam simulation.
+const PTE_SINGULAR_SECTIONS = new Set(["reading", "listening", "writing", "speaking"]);
+
+function validatePteSingularSections(exam_type, test_category, sections) {
+  if (exam_type !== "PTE" || test_category !== "singular_module") return null;
+  if (!sections || sections.length !== 1) {
+    return "PTE singular_module requires exactly one section";
+  }
+  const st = String(sections[0].section_type || "").toLowerCase();
+  if (!PTE_SINGULAR_SECTIONS.has(st)) {
+    return `PTE singular_module section_type must be one of: ${[...PTE_SINGULAR_SECTIONS].join(", ")}`;
+  }
+  return null;
 }
 
 function extractCloudinaryPublicId(url) {
@@ -135,6 +147,7 @@ export const fetchMobileMocksDashboard = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: "Please select your learning preference to continue",
+          error: { code: "PREFERENCE_MISMATCH" },
         });
       }
       if (filter === "IELTS" || filter === "PTE") {
@@ -142,6 +155,7 @@ export const fetchMobileMocksDashboard = async (req, res) => {
           return res.status(403).json({
             success: false,
             message: `Access denied. Your unlocked track does not include ${filter}.`,
+            error: { code: "EXAM_LOCKED" },
           });
         }
         examTypes = [filter];
@@ -154,10 +168,18 @@ export const fetchMobileMocksDashboard = async (req, res) => {
 
     const cacheKey = `test:mobile:${access.id}:${filter || "ALL"}:${subscription}:${access.unlocked_exam || "none"}`;
     const cached = await cacheGetJson(cacheKey);
-    if (cached) return res.status(200).json({ success: true, cached: true, data: cached });
-    
+    if (cached) {
+      const tests = Array.isArray(cached) ? cached : cached.tests || [];
+      return res.status(200).json({
+        success: true,
+        cached: true,
+        data: tests,
+        meta: { total: tests.length, page: 1, filters: { exam_type: filter || "ALL" } },
+      });
+    }
+
     const rows = await testModel.listMobilePublished(access.id, examTypes);
-    const data = rows.map((r) => ({
+    const tests = rows.map((r) => ({
       id: r.id,
       display_id: r.display_id,
       title: r.title,
@@ -178,8 +200,13 @@ export const fetchMobileMocksDashboard = async (req, res) => {
         : null,
       cta: r.last_attempt_id ? "retake" : "start",
     }));
-    await cacheSetJson(cacheKey, data, 30);
-    res.status(200).json({ success: true, cached: false, data });
+    const payload = {
+      tests,
+      meta: { total: tests.length, page: 1, filters: { exam_type: filter || "ALL" } },
+    };
+    await cacheSetJson(cacheKey, tests, 30);
+    // This is a comment: data = tests array (mobile compat) + meta
+    res.status(200).json({ success: true, cached: false, data: tests, meta: payload.meta });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message || "Error fetching mobile mocks" });
   }
@@ -244,27 +271,44 @@ export const getTestRuntime = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: "This mock requires a Basic or Premium plan.",
+          error: { code: "EXAM_LOCKED" },
         });
       }
-      return res.status(200).json({ success: true, data: inheritListeningAudio(cached) });
+      const cachedOut = inheritListeningAudio(cached);
+      return res.status(200).json({
+        success: true,
+        data: { ...cachedOut, client_schema_version: cachedOut.client_schema_version || 1 },
+      });
     }
     const data = await testModel.getStructuredTest(id, { includeCorrect: adminReview });
     if (!data) return res.status(404).json({ success: false, message: "Test not found" });
     if (access.role !== "admin") {
-      if (!data.is_published) return res.status(403).json({ success: false, message: "Not available" });
+      if (!data.is_published) {
+        return res.status(403).json({
+          success: false,
+          message: "Not available",
+          error: { code: "TEST_NOT_PUBLISHED" },
+        });
+      }
       if (!assertExamAccess(access, data.exam_type)) {
-        return res.status(403).json({ success: false, message: "Access denied. Track is locked to your unlocked exam." });
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Track is locked to your unlocked exam.",
+          error: { code: "EXAM_LOCKED" },
+        });
       }
       if (!assertPaidPlanForPremiumTest(access, data.is_premium)) {
         return res.status(403).json({
           success: false,
           message: "This mock requires a Basic or Premium plan.",
+          error: { code: "EXAM_LOCKED" },
         });
       }
       // Free tier keeps all sections (listening/speaking included)
     }
 
     inheritListeningAudio(data);
+    data.client_schema_version = 1;
     await cacheSetJson(cacheKey, data, 60);
     res.status(200).json({ success: true, data });
   } catch (error) {
@@ -302,11 +346,16 @@ export const createFullTest = async (req, res) => {
     const { error, value } = createTestSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
     
-    if (pteSingleGuard(value.exam_type, value.test_category)) {
-      return res.status(400).json({ success: false, message: "PTE must use full_mock" });
-    }
     if (value.test_category === "singular_module" && value.sections.length === 0) {
       return res.status(400).json({ success: false, message: "singular_module requires exactly one section" });
+    }
+    const pteSingularErr = validatePteSingularSections(
+      value.exam_type,
+      value.test_category,
+      value.sections,
+    );
+    if (pteSingularErr) {
+      return res.status(400).json({ success: false, message: pteSingularErr });
     }
     if (value.test_category === "full_mock") {
       const err = await testModel.validateFullMockSections(value.sections);
@@ -382,11 +431,16 @@ export const upsertTestNested = async (req, res) => {
     if (!head.rows[0]) return res.status(404).json({ success: false, message: "Test not found" });
     const mergedExam = value.test?.exam_type || head.rows[0].exam_type;
     const mergedCat = value.test?.test_category || head.rows[0].test_category;
-    if (pteSingleGuard(mergedExam, mergedCat)) {
-      return res.status(400).json({ success: false, message: "PTE must use full_mock" });
-    }
     if (mergedCat === "singular_module" && value.sections.length === 0) {
       return res.status(400).json({ success: false, message: "singular_module requires exactly one section" });
+    }
+    const pteSingularUpsertErr = validatePteSingularSections(
+      mergedExam,
+      mergedCat,
+      value.sections,
+    );
+    if (pteSingularUpsertErr) {
+      return res.status(400).json({ success: false, message: pteSingularUpsertErr });
     }
     if (mergedCat === "full_mock") {
       const err = await testModel.validateFullMockSections(value.sections);
@@ -496,9 +550,10 @@ export const fetchAvailableTests = async (req, res) => {
   }
 };
 
-export const fetchTests = async (req, res) => {
-  return fetchAdminMocksDashboard(req, res);
-};
+// This is a comment: dead export — not registered in routes; use fetchAdminMocksDashboard
+// export const fetchTests = async (req, res) => {
+//   return fetchAdminMocksDashboard(req, res);
+// };
 
 export const getTestById = async (req, res) => {
   try {
@@ -553,9 +608,7 @@ export const updateTestHeaderByID = async (req, res) => {
     if (!current.rows[0]) return res.status(404).json({ success: false, message: "Test not found" });
     const mergedExam = value.exam_type || current.rows[0].exam_type;
     const mergedCat = value.test_category || current.rows[0].test_category;
-    if (pteSingleGuard(mergedExam, mergedCat)) {
-      return res.status(400).json({ success: false, message: "PTE must use full_mock" });
-    }
+    // This is a comment: header-only update — section validation runs on nested upsert
     if (mergedCat === "singular_module" && (value.exam_type || value.test_category)) {
       const sectionsCheck = await pool.query(`SELECT section_type FROM test_sections WHERE test_id = $1::uuid`, [testId]);
       if (sectionsCheck.rows.length > 0) {

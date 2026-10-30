@@ -134,10 +134,35 @@ export const getAiRecommendation = async (req, res) => {
   try {
     const examType = (req.query.exam_type || "IELTS").toUpperCase();
     const recommendation = await getModuleFocusRecommendation(req.user.id, examType);
-    return res.status(200).json({ success: true, ...recommendation });
+    // This is a comment: unified data shape (tip / focus_module / source)
+    const tip =
+      recommendation?.tip ||
+      recommendation?.recommendation ||
+      recommendation?.message ||
+      "";
+    return res.status(200).json({
+      success: true,
+      data: {
+        tip,
+        focus_module: recommendation?.focus_module || recommendation?.module || null,
+        confidence: recommendation?.confidence ?? null,
+        source: recommendation?.source || "gemini",
+        ...recommendation,
+      },
+      // legacy top-level for older clients
+      ...recommendation,
+      tip,
+    });
   } catch (error) {
     console.error("AI recommendation error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: {
+        tip: "Keep a steady practice routine across all four skills this week.",
+        source: "fallback",
+      },
+    });
   }
 };
 

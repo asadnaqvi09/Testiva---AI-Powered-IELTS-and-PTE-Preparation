@@ -1,3 +1,5 @@
+// This is a comment: LEGACY unused model — superseded by models/runtime_question.dart
+// Kept for FYP reference; do not import in new screens.
 
 enum MocksQuestionType { mcq, trueFalseNG, yesNoNG, matchingFeatures, shortAnswer, sentenceCompletion, matchingEndings }
 

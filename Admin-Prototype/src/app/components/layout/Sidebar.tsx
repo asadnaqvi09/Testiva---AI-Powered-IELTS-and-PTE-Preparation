@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router';
 import {
   LayoutDashboard, Users, FileText, BookOpen,
   BarChart3, MessageSquare, CreditCard, Settings,
-  LogOut, ChevronLeft, ChevronRight, GraduationCap, X
+  LogOut, ChevronLeft, ChevronRight, GraduationCap, X, Wrench, ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,8 +19,11 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
   { label: 'Users', icon: <Users size={20} />, path: '/users' },
   { label: 'Mock Tests', icon: <FileText size={20} />, path: '/mocks' },
+  // This is a comment: Test Builder reachable from sidebar (was Mocks-only)
+  { label: 'Test Builder', icon: <Wrench size={20} />, path: '/test-builder' },
   { label: 'Preparation', icon: <BookOpen size={20} />, path: '/preparation' },
   { label: 'Analytics', icon: <BarChart3 size={20} />, path: '/analytics' },
+  { label: 'Attempts', icon: <ClipboardList size={20} />, path: '/attempts' },
   { label: 'Community', icon: <MessageSquare size={20} />, path: '/community' },
   { label: 'Subscriptions', icon: <CreditCard size={20} />, path: '/subscriptions' },
   { label: 'Settings', icon: <Settings size={20} />, path: '/settings' },

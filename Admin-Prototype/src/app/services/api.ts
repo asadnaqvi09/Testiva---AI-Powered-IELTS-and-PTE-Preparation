@@ -18,7 +18,7 @@ const BASE = '/api/v1';
     localStorage.removeItem('refreshToken');
   }
 
-  async function apiFetch<T = any>(
+  export async function apiFetch<T = any>(
     endpoint: string,
     options: RequestInit = {},
   ): Promise<T> {
@@ -94,6 +94,9 @@ const BASE = '/api/v1';
     }
   }
 
+  // This is a comment (L2): several auth helpers below are unused by Admin UI pages
+  // (register / google / refresh export / logout-all / FCM / preference-request).
+  // Kept for shared-client parity; Login uses loginAPI only.
   export async function registerAPI(body: any) {
     return apiFetch('/auth/register', {
       method: 'POST',
@@ -202,10 +205,10 @@ const BASE = '/api/v1';
     });
   }
 
-  // Theme + notification filter prefs (server-backed)
+  // Theme + notification filter prefs (server-backed; L7 quiet hours may include strings)
   export async function updateUserSettingsAPI(body: {
     theme?: string;
-    notif_prefs?: Record<string, boolean>;
+    notif_prefs?: Record<string, boolean | string>;
   }) {
     return apiFetch<{
       success: boolean;
@@ -236,6 +239,11 @@ const BASE = '/api/v1';
     }>(`/admin/search?q=${encodeURIComponent(q)}`);
   }
 
+  // This is a comment: admin attempt inspector
+  export async function getProgressResultAPI(attemptId: string) {
+    return apiFetch<{ success: boolean; data: any }>(`/progress/result/${attemptId}`);
+  }
+
   export async function getPaymentPlansAPI() {
     return apiFetch<{
       success: boolean;
@@ -251,6 +259,51 @@ const BASE = '/api/v1';
       }>;
       stripe_configured?: boolean;
     }>('/payments/plans');
+  }
+
+  /** L6 — Admin payment_events ledger */
+  export async function getPaymentEventsAPI(params?: {
+    page?: number;
+    limit?: number;
+    user_id?: string;
+    plan?: string;
+  }) {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.user_id) q.set('user_id', params.user_id);
+    if (params?.plan) q.set('plan', params.plan);
+    const qs = q.toString();
+    return apiFetch<{
+      success: boolean;
+      data: {
+        items: Array<{
+          id: string;
+          user_id: string | null;
+          full_name?: string;
+          email?: string;
+          plan: string;
+          amount_total: number | null;
+          currency: string | null;
+          status: string;
+          stripe_session_id: string;
+          created_at: string;
+        }>;
+        meta: { page: number; limit: number; total: number; total_pages: number };
+      };
+    }>(`/admin/payment-events${qs ? `?${qs}` : ''}`);
+  }
+
+  /** L4 — Bull sync-tests queue depth */
+  export async function getSyncQueueStatsAPI() {
+    return apiFetch<{
+      success: boolean;
+      data: {
+        queue: string;
+        counts: Record<string, number>;
+        failed: Array<{ id: string; failedReason?: string }>;
+      };
+    }>('/admin/queues/sync-tests');
   }
 
   export async function changeUserPasswordAPI(body: any) {
@@ -343,6 +396,57 @@ const BASE = '/api/v1';
       method: 'PUT',
       body: JSON.stringify(body),
     });
+  }
+
+  // This is a comment: admin create student
+  export async function createAdminUserAPI(body: {
+    full_name: string;
+    email: string;
+    password: string;
+    preference?: string;
+    subscription?: string;
+  }) {
+    return apiFetch<{ success: boolean; message: string; data: any }>('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  // This is a comment: admin delete student
+  export async function deleteAdminUserAPI(userId: string) {
+    return apiFetch<{ success: boolean; message: string; data: { id: string } }>(
+      `/admin/users/${userId}`,
+      { method: 'DELETE' },
+    );
+  }
+
+  export async function getPreferenceRequestsAPI() {
+    return apiFetch<{
+      success: boolean;
+      data: {
+        items: Array<{
+          request_id: string;
+          user_id: string;
+          full_name?: string;
+          email?: string;
+          current_preference?: string;
+          target_preference?: string | null;
+          message?: string;
+          created_at?: string;
+        }>;
+      };
+    }>('/admin/preference-requests');
+  }
+
+  export async function approvePreferenceRequestAPI(body: {
+    request_id: string;
+    user_id: string;
+    target_preference: 'IELTS' | 'PTE';
+  }) {
+    return apiFetch<{ success: boolean; message: string; data: any }>(
+      '/admin/preference-requests/approve',
+      { method: 'POST', body: JSON.stringify(body) },
+    );
   }
 
   export async function fetchAllTests(page = 1, limit = 20, exam_type?: string) {
@@ -571,34 +675,59 @@ const BASE = '/api/v1';
   }
 
   export async function fetchNotificationsAPI(limit = 20, offset = 0) {
-    return apiFetch<{ success: boolean; notifications: AdminNotification[] }>(
-      `/notifications?limit=${limit}&offset=${offset}`,
-    );
+    const res = await apiFetch<{
+      success: boolean;
+      data?: { items?: AdminNotification[]; unread_count?: number };
+      notifications?: AdminNotification[];
+      unreadCount?: number;
+    }>(`/notifications?limit=${limit}&offset=${offset}`);
+    // This is a comment: prefer data.items, fall back to legacy notifications
+    const items = res.data?.items ?? res.notifications ?? [];
+    return { ...res, notifications: items, unreadCount: res.data?.unread_count ?? res.unreadCount ?? 0 };
   }
 
   export async function fetchUnreadCountAPI() {
-    return apiFetch<{ success: boolean; unreadCount: number }>(
-      '/notifications/unread-count',
-    );
+    const res = await apiFetch<{
+      success: boolean;
+      data?: { unread_count?: number };
+      unreadCount?: number;
+    }>('/notifications/unread-count');
+    return {
+      ...res,
+      unreadCount: res.data?.unread_count ?? res.unreadCount ?? 0,
+    };
   }
 
   export async function markNotificationReadAPI(id: string) {
-    return apiFetch<{ success: boolean; notification: AdminNotification; unreadCount: number }>(
-      `/notifications/${id}/read`,
-      { method: 'PATCH' },
-    );
+    const res = await apiFetch<{
+      success: boolean;
+      data?: { item?: AdminNotification; unread_count?: number };
+      notification?: AdminNotification;
+      unreadCount?: number;
+    }>(`/notifications/${id}/read`, { method: 'PATCH' });
+    return {
+      ...res,
+      notification: res.data?.item ?? res.notification,
+      unreadCount: res.data?.unread_count ?? res.unreadCount ?? 0,
+    };
   }
 
   export async function markAllNotificationsReadAPI() {
-    return apiFetch<{ success: boolean; message: string; unreadCount: number }>(
-      '/notifications/read-all',
-      { method: 'PATCH' },
-    );
+    const res = await apiFetch<{
+      success: boolean;
+      message: string;
+      data?: { unread_count?: number };
+      unreadCount?: number;
+    }>('/notifications/read-all', { method: 'PATCH' });
+    return { ...res, unreadCount: res.data?.unread_count ?? res.unreadCount ?? 0 };
   }
 
   export async function deleteNotificationAPI(id: string) {
-    return apiFetch<{ success: boolean; message: string; unreadCount: number }>(
-      `/notifications/${id}`,
-      { method: 'DELETE' },
-    );
+    const res = await apiFetch<{
+      success: boolean;
+      message: string;
+      data?: { unread_count?: number };
+      unreadCount?: number;
+    }>(`/notifications/${id}`, { method: 'DELETE' });
+    return { ...res, unreadCount: res.data?.unread_count ?? res.unreadCount ?? 0 };
   }

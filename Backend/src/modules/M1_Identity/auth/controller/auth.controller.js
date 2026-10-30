@@ -147,7 +147,11 @@ export const loginUser = async (req, res) => {
     if (!match)
       return res
         .status(400)
-        .json({ success: false, message: "Invalid credentials" });
+        .json({
+          success: false,
+          message: "Invalid credentials",
+          error: { code: "INVALID_CREDENTIALS" },
+        });
     const accessToken = generateAccessToken(buildToken(user));
     const refreshToken = generateRefreshToken(user.id, user.token_version);
     await Promise.all([
@@ -158,12 +162,20 @@ export const loginUser = async (req, res) => {
         [user.id, refreshToken],
       ),
     ]);
+    // This is a comment: unified data wrapper + legacy top-level tokens for mobile
+    const userPublic = publicUser(user);
     return res.json({
       success: true,
+      data: {
+        user: userPublic,
+        accessToken,
+        refreshToken,
+        expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+      },
       accessToken,
       refreshToken,
       expiresIn: process.env.JWT_EXPIRES_IN || "15m",
-      user: publicUser(user),
+      user: userPublic,
     });
   } catch (error) {
     console.log("Error In Login Controller : ", error.message);
@@ -294,7 +306,11 @@ export const verifyOTP = async (req, res) => {
 
       await client.query("COMMIT");
 
-      return res.status(400).json({ success: false, message: "OTP expired" });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+        error: { code: "OTP_EXPIRED" },
+      });
     }
 
     if (type === "register") {

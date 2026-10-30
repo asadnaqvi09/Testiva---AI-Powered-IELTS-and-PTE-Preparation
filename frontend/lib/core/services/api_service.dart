@@ -63,29 +63,32 @@ class ApiService {
     return normalized.isNotEmpty && !_blockedPrefillEmails.contains(normalized);
   }
 
+  // This is a comment: password persistence DISABLED for production safety (demo code kept)
   static Future<void> saveStudentCredentials({
     required String email,
     required String password,
     String? role,
   }) async {
-    final normalized = email.trim().toLowerCase();
-    if (!isStudentPrefillEmail(normalized)) return;
-    if (role != null && role.toLowerCase() == 'admin') return;
-    if (password.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_savedEmailKey, normalized);
-    await prefs.setString(_savedPasswordKey, password);
+    // final normalized = email.trim().toLowerCase();
+    // if (!isStudentPrefillEmail(normalized)) return;
+    // if (role != null && role.toLowerCase() == 'admin') return;
+    // if (password.isEmpty) return;
+    // final prefs = await SharedPreferences.getInstance();
+    // await prefs.setString(_savedEmailKey, normalized);
+    // await prefs.setString(_savedPasswordKey, password);
+    return;
   }
 
   static Future<({String email, String password})>
       loadStudentCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final email = (prefs.getString(_savedEmailKey) ?? '').trim().toLowerCase();
-    final password = prefs.getString(_savedPasswordKey) ?? '';
-    if (!isStudentPrefillEmail(email)) {
-      return (email: '', password: '');
-    }
-    return (email: email, password: password);
+    // final prefs = await SharedPreferences.getInstance();
+    // final email = (prefs.getString(_savedEmailKey) ?? '').trim().toLowerCase();
+    // final password = prefs.getString(_savedPasswordKey) ?? '';
+    // if (!isStudentPrefillEmail(email)) {
+    //   return (email: '', password: '');
+    // }
+    // return (email: email, password: password);
+    return (email: '', password: '');
   }
 
   static Future<void> persistAuthResponse(Map<String, dynamic> resData) async {
@@ -300,6 +303,23 @@ class ApiService {
       '/user/avatar',
       filePath,
       fieldName: 'avatar',
+      contentType: mime,
+    );
+  }
+
+  /// L5 — community post image (`field`: image) → `{ data: { image_url } }`
+  static Future<http.Response> uploadCommunityImage(String filePath) async {
+    final lower = filePath.toLowerCase();
+    MediaType mime = MediaType('image', 'jpeg');
+    if (lower.endsWith('.png')) {
+      mime = MediaType('image', 'png');
+    } else if (lower.endsWith('.webp')) {
+      mime = MediaType('image', 'webp');
+    }
+    return uploadFile(
+      '/community/upload-image',
+      filePath,
+      fieldName: 'image',
       contentType: mime,
     );
   }

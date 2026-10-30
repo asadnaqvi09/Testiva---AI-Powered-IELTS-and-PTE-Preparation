@@ -5,15 +5,16 @@ export const createPost = async ({
   topicTag,
   title,
   content,
+  imageUrl = null,
   isFlagged = false,
   flaggedBy = null,
   flagReason = null,
 }) => {
   const result = await pool.query(
-    `INSERT INTO posts (user_id, topic_tag, title, content, is_flagged, flagged_by, flag_reason)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING id, user_id, topic_tag, title, content, is_flagged, flagged_by, flag_reason, created_at`,
-    [userId, topicTag, title, content, Boolean(isFlagged), flaggedBy, flagReason]
+    `INSERT INTO posts (user_id, topic_tag, title, content, image_url, is_flagged, flagged_by, flag_reason)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, user_id, topic_tag, title, content, image_url, is_flagged, flagged_by, flag_reason, created_at`,
+    [userId, topicTag, title, content, imageUrl || null, Boolean(isFlagged), flaggedBy, flagReason]
   );
   return result.rows[0];
 };
@@ -26,6 +27,7 @@ export const getPostById = async (postId) => {
         p.topic_tag,
         p.title,
         p.content,
+        p.image_url,
         p.is_flagged,
         p.flagged_by,
         p.flag_reason,
@@ -98,7 +100,7 @@ export const getPostsPaginated = async ({ topicTag, filter, search, limit, offse
   const countParams = [...params];
   const [rows, countRow] = await Promise.all([
     pool.query(
-      `SELECT p.id, p.user_id, p.topic_tag, p.title, p.content,
+      `SELECT p.id, p.user_id, p.topic_tag, p.title, p.content, p.image_url,
               p.is_flagged, p.flagged_by, p.flag_reason,
               p.created_at, p.updated_at,
               u.full_name, u.avatar_url, u.email,

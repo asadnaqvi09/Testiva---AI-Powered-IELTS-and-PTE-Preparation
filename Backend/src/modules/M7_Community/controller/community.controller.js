@@ -14,6 +14,7 @@ import { DEFAULT_MODERATION_REASON } from '../../../utils/email.moderation.js';
 import { emitPostCreated, emitPostLiked, emitCommentCreated, emitCommentLiked, emitPostFlagged, emitPostRemovedFromFeed } from '../../M9_Notification/socketIO/event.engine.js';
 import { handlePostCreatedNotification, handleLikeNotification, handleCommentNotification, handleReplyNotification, handleModerationNotification, handleAdminNewPostNotification } from '../../M9_Notification/engine/notification.engine.js';
 import { sendError, buildPagination } from '../../../utils/helpers.js';
+import { processAndUploadPostImage } from '../../M1_Identity/user/services/image.service.js';
 
 const USER_PAGE_LIMIT = 10;
 const ADMIN_PAGE_LIMIT = 8;
@@ -43,6 +44,7 @@ export const createPost = async (req, res) => {
       topicTag: body.topic_tag,
       title: body.title,
       content: body.content,
+      imageUrl: body.image_url || null,
       isFlagged: moderation.isFlagged,
       flaggedBy: moderation.isFlagged ? 'ai' : null,
       flagReason: buildFlagReason(moderation),
@@ -58,7 +60,8 @@ export const createPost = async (req, res) => {
       handleAdminNewPostNotification(req.io, fullPost).catch(console.error);
       return res.status(201).json({
         success: true,
-        data: fullPost,
+        data: { ...fullPost, status: 'under_review' },
+        status: 'under_review',
         moderation: {
           is_flagged: true,
           status: 'under_review',
@@ -70,8 +73,29 @@ export const createPost = async (req, res) => {
     emitPostCreated(req.io, fullPost);
     handlePostCreatedNotification(req.io, fullPost).catch(console.error);
     handleAdminNewPostNotification(req.io, fullPost).catch(console.error);
-    return res.status(201).json({ success: true, data: fullPost });
+    return res.status(201).json({
+      success: true,
+      data: { ...fullPost, status: 'published' },
+      status: 'published',
+    });
   } catch (err) { return sendError(res, err); }
+};
+
+// L5 — Cloudinary upload for community post images
+export const uploadPostImage = async (req, res) => {
+  try {
+    if (!req.file?.buffer) {
+      return res.status(400).json({ success: false, message: "Image file is required" });
+    }
+    const image_url = await processAndUploadPostImage(req.file.buffer);
+    return res.status(200).json({ success: true, data: { image_url } });
+  } catch (err) {
+    console.error("uploadPostImage:", err);
+    return res.status(400).json({
+      success: false,
+      message: err.message || "Image upload failed",
+    });
+  }
 };
 
 export const getPosts = async (req, res) => {

@@ -3,6 +3,23 @@ import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/data/models/notification_model.dart';
 
 class NotificationService {
+  // This is a comment: support both data.items and legacy notifications keys
+  static List<dynamic> _extractItems(Map<String, dynamic> body) {
+    final data = body['data'];
+    if (data is Map && data['items'] is List) {
+      return data['items'] as List<dynamic>;
+    }
+    return body['notifications'] as List<dynamic>? ?? [];
+  }
+
+  static int _extractUnread(Map<String, dynamic> body) {
+    final data = body['data'];
+    if (data is Map && data['unread_count'] is int) {
+      return data['unread_count'] as int;
+    }
+    return body['unreadCount'] as int? ?? 0;
+  }
+
   static Future<List<NotificationModel>> fetchNotifications({
     int limit = 30,
     int offset = 0,
@@ -17,7 +34,7 @@ class NotificationService {
     if (body['success'] != true) {
       throw Exception(body['message']?.toString() ?? 'Failed to load notifications');
     }
-    final list = body['notifications'] as List<dynamic>? ?? [];
+    final list = _extractItems(body);
     return list
         .map((item) => NotificationModel.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -28,7 +45,7 @@ class NotificationService {
     if (response.statusCode != 200) return 0;
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     if (body['success'] != true) return 0;
-    return body['unreadCount'] as int? ?? 0;
+    return _extractUnread(body);
   }
 
   static Future<int> markAsRead(String id) async {
@@ -37,7 +54,7 @@ class NotificationService {
       throw Exception('Failed to mark notification as read');
     }
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return body['unreadCount'] as int? ?? 0;
+    return _extractUnread(body);
   }
 
   static Future<int> markAllAsRead() async {
@@ -46,7 +63,7 @@ class NotificationService {
       throw Exception('Failed to mark all notifications as read');
     }
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return body['unreadCount'] as int? ?? 0;
+    return _extractUnread(body);
   }
 
   static Future<int> deleteNotification(String id) async {
@@ -55,6 +72,6 @@ class NotificationService {
       throw Exception('Failed to delete notification');
     }
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return body['unreadCount'] as int? ?? 0;
+    return _extractUnread(body);
   }
 }

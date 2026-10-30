@@ -83,7 +83,11 @@ class NotificationProvider extends ChangeNotifier {
         _seenIds.add(notification.id);
         _notifications.insert(0, notification);
 
-        if (data['unreadCount'] is int) {
+        // This is a comment: support data.unread_count and legacy unreadCount
+        final nested = data['data'];
+        if (nested is Map && nested['unread_count'] is int) {
+          _unreadCount = nested['unread_count'] as int;
+        } else if (data['unreadCount'] is int) {
           _unreadCount = data['unreadCount'] as int;
         } else if (!notification.isRead) {
           _unreadCount += 1;

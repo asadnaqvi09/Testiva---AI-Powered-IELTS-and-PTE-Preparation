@@ -40,3 +40,49 @@ export const insertPaymentEvent = async ({
   );
   return rows[0] || null;
 };
+
+/** L6 — paginated ledger (admin + student invoices) */
+export const listPaymentEventsPaginated = async ({
+  limit = 20,
+  offset = 0,
+  userId = null,
+  plan = null,
+}) => {
+  const conditions = [];
+  const params = [];
+  let i = 1;
+  if (userId) {
+    conditions.push(`pe.user_id = $${i++}::uuid`);
+    params.push(userId);
+  }
+  if (plan) {
+    conditions.push(`pe.plan = $${i++}`);
+    params.push(plan);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limitIdx = i;
+  const offsetIdx = i + 1;
+  const dataParams = [...params, limit, offset];
+  const [rows, countRow] = await Promise.all([
+    pool.query(
+      `SELECT pe.id, pe.user_id, pe.stripe_session_id, pe.stripe_payment_intent,
+              pe.plan, pe.unlocked_exam, pe.subscription, pe.amount_total,
+              pe.currency, pe.status, pe.created_at,
+              u.full_name, u.email
+       FROM payment_events pe
+       LEFT JOIN users u ON u.id = pe.user_id
+       ${where}
+       ORDER BY pe.created_at DESC
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      dataParams,
+    ),
+    pool.query(
+      `SELECT COUNT(*)::INT AS total FROM payment_events pe ${where}`,
+      params,
+    ),
+  ]);
+  return { items: rows.rows, total: countRow.rows[0]?.total || 0 };
+};
+
+export const listPaymentEventsForUser = async (userId, { limit = 20, offset = 0 } = {}) =>
+  listPaymentEventsPaginated({ limit, offset, userId });

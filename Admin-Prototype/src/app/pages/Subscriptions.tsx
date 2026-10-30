@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, TrendingUp, Users, Unlock, Loader2 } from 'lucide-react';
-import { getDashboardStats, getPaymentPlansAPI } from '../services/api';
+import {
+  getDashboardStats,
+  getPaymentPlansAPI,
+  getPaymentEventsAPI,
+} from '../services/api';
 import { toast } from 'sonner';
 
 function StatCard({ icon, label, value, sub, color }: {
@@ -38,10 +42,31 @@ type PlanCard = {
   desc?: string;
 };
 
+type PaymentEventRow = {
+  id: string;
+  user_id: string | null;
+  full_name?: string;
+  email?: string;
+  plan: string;
+  amount_total: number | null;
+  currency: string | null;
+  status: string;
+  stripe_session_id: string;
+  created_at: string;
+};
+
+function formatAmount(amount: number | null, currency: string | null) {
+  if (amount == null) return '—';
+  const major = amount / 100;
+  return `${currency || 'PKR'} ${major.toLocaleString()}`;
+}
+
 export function Subscriptions() {
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<PlanCard[]>([]);
   const [stripeOk, setStripeOk] = useState(false);
+  const [events, setEvents] = useState<PaymentEventRow[]>([]);
+  const [eventsMeta, setEventsMeta] = useState({ page: 1, total: 0, total_pages: 1 });
   const [dbMetrics, setDbMetrics] = useState({
     totalUsers: 0,
     freeUsers: 0,
@@ -51,6 +76,22 @@ export function Subscriptions() {
     unlockedPte: 0,
     unlockedBoth: 0,
   });
+
+  async function loadEvents(page = 1) {
+    try {
+      const eventsRes = await getPaymentEventsAPI({ page, limit: 15 });
+      if (eventsRes?.success && eventsRes.data) {
+        setEvents(eventsRes.data.items || []);
+        setEventsMeta({
+          page: eventsRes.data.meta?.page || page,
+          total: eventsRes.data.meta?.total || 0,
+          total_pages: eventsRes.data.meta?.total_pages || 1,
+        });
+      }
+    } catch {
+      toast.error('Could not load payment events.');
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -81,6 +122,8 @@ export function Subscriptions() {
         } else {
           toast.error('Could not load payment plans.');
         }
+
+        await loadEvents(1);
       } catch {
         toast.error('Could not load subscription data.');
       } finally {
@@ -106,7 +149,7 @@ export function Subscriptions() {
       <div>
         <h1 style={{ color: '#1A1A1A' }}>Subscriptions</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Live tier counts and plans from the payments API (manage individuals on Users)
+          Live tier counts, plans, and Stripe payment event ledger
         </p>
       </div>
 
@@ -146,6 +189,79 @@ export function Subscriptions() {
             </div>
           );
         })}
+      </div>
+
+      <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold" style={{ color: '#1A1A1A' }}>Payment event log</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{eventsMeta.total} events · Stripe Checkout ledger</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={eventsMeta.page <= 1}
+              onClick={() => loadEvents(eventsMeta.page - 1)}
+              className="text-sm px-3 py-1.5 rounded-lg border disabled:opacity-40"
+            >
+              Prev
+            </button>
+            <span className="text-xs text-gray-500">
+              Page {eventsMeta.page} / {eventsMeta.total_pages}
+            </span>
+            <button
+              type="button"
+              disabled={eventsMeta.page >= eventsMeta.total_pages}
+              onClick={() => loadEvents(eventsMeta.page + 1)}
+              className="text-sm px-3 py-1.5 rounded-lg border disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="text-xs uppercase text-gray-400 border-b" style={{ borderColor: '#E5E7EB' }}>
+                <th className="py-2 pr-3 font-semibold">User</th>
+                <th className="py-2 pr-3 font-semibold">Plan</th>
+                <th className="py-2 pr-3 font-semibold">Amount</th>
+                <th className="py-2 pr-3 font-semibold">Status</th>
+                <th className="py-2 pr-3 font-semibold">Session</th>
+                <th className="py-2 font-semibold">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400">
+                    No payment events yet
+                  </td>
+                </tr>
+              ) : (
+                events.map((ev) => (
+                  <tr key={ev.id} className="border-b last:border-0" style={{ borderColor: '#F3F4F6' }}>
+                    <td className="py-2.5 pr-3">
+                      <div className="font-medium text-gray-800 truncate max-w-[160px]">
+                        {ev.full_name || '—'}
+                      </div>
+                      <div className="text-xs text-gray-400 truncate max-w-[160px]">{ev.email || ''}</div>
+                    </td>
+                    <td className="py-2.5 pr-3">{ev.plan}</td>
+                    <td className="py-2.5 pr-3">{formatAmount(ev.amount_total, ev.currency)}</td>
+                    <td className="py-2.5 pr-3">{ev.status}</td>
+                    <td className="py-2.5 pr-3 font-mono text-xs text-gray-500">
+                      {(ev.stripe_session_id || '').slice(0, 14)}…
+                    </td>
+                    <td className="py-2.5 text-xs text-gray-500 whitespace-nowrap">
+                      {ev.created_at ? new Date(ev.created_at).toLocaleString() : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border p-5 shadow-sm" style={{ borderColor: '#E5E7EB' }}>

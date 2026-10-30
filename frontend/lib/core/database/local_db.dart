@@ -17,11 +17,13 @@ class LocalDb {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       join(dbPath, 'testiva_offline.db'),
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await _createV1Tables(db);
         await _createAudioCacheTable(db);
         await _createInProgressDraftsTable(db);
+        await _createPrepCacheTables(db);
+        await _createCommunityDraftsTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -30,7 +32,137 @@ class LocalDb {
         if (oldVersion < 3) {
           await _createInProgressDraftsTable(db);
         }
+        if (oldVersion < 4) {
+          await _createPrepCacheTables(db);
+        }
+        if (oldVersion < 5) {
+          await _createCommunityDraftsTable(db);
+        }
       },
+    );
+  }
+
+  // This is a comment: offline prep lesson cache
+  Future<void> _createPrepCacheTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cached_prep_lessons (
+        cache_key TEXT PRIMARY KEY,
+        payload_json TEXT NOT NULL,
+        cached_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cached_prep_details (
+        prep_id TEXT PRIMARY KEY,
+        payload_json TEXT NOT NULL,
+        cached_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createCommunityDraftsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS community_draft_posts (
+        local_id TEXT PRIMARY KEY,
+        payload_json TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> cachePrepLessons({
+    required String cacheKey,
+    required List items,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'cached_prep_lessons',
+      {
+        'cache_key': cacheKey,
+        'payload_json': jsonEncode(items),
+        'cached_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List?> getCachedPrepLessons(String cacheKey) async {
+    final db = await database;
+    final rows = await db.query(
+      'cached_prep_lessons',
+      where: 'cache_key = ?',
+      whereArgs: [cacheKey],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final decoded = jsonDecode(rows.first['payload_json'] as String);
+    return decoded is List ? decoded : null;
+  }
+
+  Future<void> cachePrepDetail({
+    required String prepId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'cached_prep_details',
+      {
+        'prep_id': prepId,
+        'payload_json': jsonEncode(payload),
+        'cached_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getCachedPrepDetail(String prepId) async {
+    final db = await database;
+    final rows = await db.query(
+      'cached_prep_details',
+      where: 'prep_id = ?',
+      whereArgs: [prepId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final decoded = jsonDecode(rows.first['payload_json'] as String);
+    return decoded is Map
+        ? Map<String, dynamic>.from(decoded)
+        : null;
+  }
+
+  Future<void> saveCommunityDraft({
+    required String localId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'community_draft_posts',
+      {
+        'local_id': localId,
+        'payload_json': jsonEncode(payload),
+        'sync_status': 'pending',
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingCommunityDrafts() async {
+    final db = await database;
+    return db.query(
+      'community_draft_posts',
+      where: "sync_status = 'pending'",
+      orderBy: 'created_at ASC',
+    );
+  }
+
+  Future<void> markCommunityDraftSynced(String localId) async {
+    final db = await database;
+    await db.delete(
+      'community_draft_posts',
+      where: 'local_id = ?',
+      whereArgs: [localId],
     );
   }
 

@@ -4,7 +4,8 @@ import { adminGetPosts, adminFlagPost, adminUnflagPost, adminDeletePost } from '
 import { toast } from 'sonner';
 
 // Human moderation only (flag / unflag / delete).
-// AI moderation preview exists at POST /api/v1/ai/moderate/preview but is intentionally not called here.
+// This is a comment: AI moderate/preview intentionally UNUSED — Gemini free quota cost.
+// POST /api/v1/ai/moderate/preview exists on backend but must not be wired in Admin UI.
 const TOPIC_TAGS = ['All', 'IELTS', 'PTE', 'General'];
 
 export function Community() {
@@ -88,16 +89,34 @@ export function Community() {
     finally { setActionLoading(false); }
   };
 
+  // This is a comment: bulk delete with partial failure report
   const handleBulkDelete = async () => {
     setActionLoading(true);
+    const ids = [...selected];
+    let ok = 0;
+    const failed: string[] = [];
     try {
-      for (const id of selected) { await adminDeletePost(id); }
-      toast.success(`${selected.length} posts deleted.`);
+      for (const id of ids) {
+        try {
+          await adminDeletePost(id);
+          ok += 1;
+        } catch {
+          failed.push(id.slice(0, 8));
+        }
+      }
+      if (failed.length === 0) {
+        toast.success(`${ok} posts deleted.`);
+      } else {
+        toast.warning(`Deleted ${ok}/${ids.length}. Failed: ${failed.join(', ')}`);
+      }
       setSelected([]);
       setShowBulkDelete(false);
       loadPosts();
-    } catch (err: any) { toast.error(err.message); }
-    finally { setActionLoading(false); }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const toggleSelect = (id: string) => {

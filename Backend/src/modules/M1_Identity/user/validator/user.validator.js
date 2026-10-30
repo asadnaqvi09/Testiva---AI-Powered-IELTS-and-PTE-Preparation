@@ -19,6 +19,12 @@ export const updateUiSettingsSchema = Joi.object({
     subChange: Joi.boolean().optional(),
     newPost: Joi.boolean().optional(),
     preferenceChange: Joi.boolean().optional(),
+    // L7
+    quietHoursEnabled: Joi.boolean().optional(),
+    quietStart: Joi.string().pattern(/^([01]?\d|2[0-3]):([0-5]\d)$/).optional(),
+    quietEnd: Joi.string().pattern(/^([01]?\d|2[0-3]):([0-5]\d)$/).optional(),
+    timezone: Joi.string().trim().max(64).optional(),
+    digestEnabled: Joi.boolean().optional(),
   }).optional(),
 }).or("theme", "notif_prefs");
 

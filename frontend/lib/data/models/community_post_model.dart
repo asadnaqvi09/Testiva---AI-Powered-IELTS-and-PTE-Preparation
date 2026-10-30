@@ -6,6 +6,7 @@ class CommunityPostModel {
   final String tag;
   final String title;
   final String content;
+  final String? imageUrl;
   final int likes;
   final int comments;
   final bool likedByMe;
@@ -19,6 +20,7 @@ class CommunityPostModel {
     required this.tag,
     required this.title,
     required this.content,
+    this.imageUrl,
     required this.likes,
     required this.comments,
     required this.likedByMe,
@@ -33,6 +35,7 @@ class CommunityPostModel {
       createdAt = DateTime.now();
     }
 
+    final rawImage = json['image_url']?.toString();
     return CommunityPostModel(
       id: json['id']?.toString() ?? '',
       userId: json['user_id']?.toString() ?? '',
@@ -41,6 +44,7 @@ class CommunityPostModel {
       tag: json['topic_tag']?.toString() ?? 'General',
       title: json['title']?.toString() ?? '',
       content: json['content']?.toString() ?? '',
+      imageUrl: (rawImage != null && rawImage.isNotEmpty) ? rawImage : null,
       likes: json['like_count'] as int? ?? 0,
       comments: json['comment_count'] as int? ?? 0,
       likedByMe: json['liked_by_me'] as bool? ?? false,
@@ -51,6 +55,7 @@ class CommunityPostModel {
   CommunityPostModel copyWith({
     String? title,
     String? content,
+    String? imageUrl,
     int? likes,
     int? comments,
     bool? likedByMe,
@@ -63,6 +68,7 @@ class CommunityPostModel {
       tag: tag,
       title: title ?? this.title,
       content: content ?? this.content,
+      imageUrl: imageUrl ?? this.imageUrl,
       likes: likes ?? this.likes,
       comments: comments ?? this.comments,
       likedByMe: likedByMe ?? this.likedByMe,

@@ -1,13 +1,19 @@
 import pool from '../../../../config/db.js'
+import bcrypt from 'bcrypt'
 import {
   fetchAllUsers,
   findUserById,
+  findUserByEmail,
+  createUser,
   getAdminStats,
   getAdminDeepAnalytics,
   adminGlobalSearch,
   updateUserSubscriptionStatus,
+  updateUserPreference,
 } from '../../user.model.js'
-import { v4 as uuidv4, validate as validateUUID } from "uuid";
+import { validate as validateUUID } from "uuid";
+import { syncQueue } from '../../../M5_Offline/sync.queue.js';
+import { listPaymentEventsPaginated } from '../../../M8_Payment/models/payment.model.js';
 
 export const getDashboardStats = async (req, res) => {
     try {
@@ -177,4 +183,236 @@ export const updateUserSubscription = async (req, res) => {
             message: "Internal Server Error"
         })
     }
+};
+
+// This is a comment: admin creates a student account (skips OTP for FYP ops)
+export const createAdminUser = async (req, res) => {
+  try {
+    const { full_name, email, password, preference, subscription } = req.body || {};
+    if (!full_name || !String(full_name).trim()) {
+      return res.status(400).json({ success: false, message: "full_name is required" });
+    }
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, message: "email is required" });
+    }
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ success: false, message: "password must be at least 6 characters" });
+    }
+    const pref = preference ? String(preference).toUpperCase() : null;
+    if (pref && !["IELTS", "PTE"].includes(pref)) {
+      return res.status(400).json({ success: false, message: "preference must be IELTS or PTE" });
+    }
+    const sub = (subscription || "free").toLowerCase();
+    if (!["free", "basic", "premium"].includes(sub)) {
+      return res.status(400).json({ success: false, message: "Invalid subscription" });
+    }
+    const existing = await findUserByEmail(email);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already registered",
+        error: { code: "EMAIL_EXISTS" },
+      });
+    }
+    const password_hash = await bcrypt.hash(String(password), 10);
+    const user = await createUser({
+      full_name: String(full_name).trim(),
+      email: String(email).trim().toLowerCase(),
+      password_hash,
+      auth_provider: "email",
+      is_email_verified: true,
+      subscription: sub,
+      preference: pref,
+    });
+    await pool.query(
+      `INSERT INTO admin_logs (admin_id, action, target_user_id, details, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [req.user.id, "Create User", user.id, JSON.stringify({ email: user.email })],
+    );
+    return res.status(201).json({
+      success: true,
+      message: "Student created successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("createAdminUser:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// This is a comment: hard-delete student (not admin); cascades via FKs
+export const deleteAdminUser = async (req, res) => {
+  try {
+    const targetID = req.params.id;
+    if (!validateUUID(targetID)) {
+      return res.status(400).json({ success: false, message: "Invalid user id" });
+    }
+    const target = await findUserById(targetID);
+    if (!target) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    if (target.role === "admin") {
+      return res.status(403).json({ success: false, message: "Cannot delete admin accounts" });
+    }
+    if (targetID === req.user.id) {
+      return res.status(403).json({ success: false, message: "Cannot delete your own account" });
+    }
+    await pool.query(
+      `INSERT INTO admin_logs (admin_id, action, target_user_id, details, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [req.user.id, "Delete User", targetID, JSON.stringify({ email: target.email })],
+    );
+    await pool.query(`DELETE FROM users WHERE id = $1::uuid`, [targetID]);
+    return res.status(200).json({
+      success: true,
+      message: "User deleted successfully",
+      data: { id: targetID },
+    });
+  } catch (error) {
+    console.error("deleteAdminUser:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// This is a comment: pending preference-change requests from notifications queue
+export const getPreferenceChangeRequests = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT n.id AS request_id,
+              n.message,
+              n.is_read,
+              n.created_at,
+              n.actor_id AS user_id,
+              u.full_name,
+              u.email,
+              u.preference AS current_preference
+       FROM notifications n
+       LEFT JOIN users u ON u.id = n.actor_id
+       WHERE n.user_id = $1::uuid
+         AND n.type = 'preference_change_request'
+         AND n.is_read = false
+       ORDER BY n.created_at DESC
+       LIMIT 50`,
+      [req.user.id],
+    );
+    const items = result.rows.map((row) => {
+      const match = String(row.message || "").match(/→\s*(IELTS|PTE)/i);
+      return {
+        ...row,
+        target_preference: match ? match[1].toUpperCase() : null,
+      };
+    });
+    return res.status(200).json({ success: true, data: { items } });
+  } catch (error) {
+    console.error("getPreferenceChangeRequests:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// This is a comment: admin manually applies preference + marks request read
+export const approvePreferenceChangeRequest = async (req, res) => {
+  try {
+    const { request_id, user_id, target_preference } = req.body || {};
+    if (!request_id || !user_id || !target_preference) {
+      return res.status(400).json({
+        success: false,
+        message: "request_id, user_id and target_preference are required",
+      });
+    }
+    if (!["IELTS", "PTE"].includes(String(target_preference).toUpperCase())) {
+      return res.status(400).json({ success: false, message: "target_preference must be IELTS or PTE" });
+    }
+    const target = await findUserById(user_id);
+    if (!target || target.role === "admin") {
+      return res.status(404).json({ success: false, message: "Target student not found" });
+    }
+    const updated = await updateUserPreference(user_id, String(target_preference).toUpperCase());
+    await pool.query(
+      `UPDATE notifications SET is_read = true
+       WHERE id = $1::uuid AND user_id = $2::uuid`,
+      [request_id, req.user.id],
+    );
+    await pool.query(
+      `INSERT INTO admin_logs (admin_id, action, target_user_id, details, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [
+        req.user.id,
+        "Approve Preference Change",
+        user_id,
+        JSON.stringify({ target_preference, request_id }),
+      ],
+    );
+    return res.status(200).json({
+      success: true,
+      message: `Preference updated to ${target_preference}`,
+      data: updated,
+    });
+  } catch (error) {
+    console.error("approvePreferenceChangeRequest:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// L4 — Bull sync-tests depth + recent failed jobs
+export const getSyncQueueStats = async (req, res) => {
+  try {
+    const counts = await syncQueue.getJobCounts();
+    const failedJobs = await syncQueue.getFailed(0, 19);
+    const failed = failedJobs.map((job) => ({
+      id: job.id,
+      attemptsMade: job.attemptsMade,
+      failedReason: job.failedReason,
+      timestamp: job.timestamp,
+      data: {
+        attempt_id: job.data?.attempt_id || job.data?.attemptId || null,
+        user_id: job.data?.user_id || job.data?.userId || null,
+      },
+    }));
+    return res.status(200).json({
+      success: true,
+      data: {
+        queue: "sync-tests",
+        counts,
+        failed,
+      },
+    });
+  } catch (error) {
+    console.error("getSyncQueueStats:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to read queue stats (is Redis up?)",
+    });
+  }
+};
+
+// L6 — Admin payment event ledger
+export const getPaymentEvents = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const userId = req.query.user_id || null;
+    const plan = req.query.plan || null;
+    const { items, total } = await listPaymentEventsPaginated({
+      limit,
+      offset,
+      userId,
+      plan,
+    });
+    return res.status(200).json({
+      success: true,
+      data: {
+        items,
+        meta: {
+          page,
+          limit,
+          total,
+          total_pages: Math.ceil(total / limit) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getPaymentEvents:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
 };

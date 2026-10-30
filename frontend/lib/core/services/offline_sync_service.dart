@@ -29,6 +29,8 @@ class OfflineSyncService {
     if (_syncing) return 0;
     if (!ConnectivityService.instance.isOnline) return 0;
 
+    await _syncCommunityDrafts();
+
     final pending = await LocalDb.instance.getPendingAttempts();
     if (pending.isEmpty) return 0;
 
@@ -53,8 +55,11 @@ class OfflineSyncService {
             if (resData['success'] == true) {
               await LocalDb.instance.markAttemptUploaded(localId);
               uploaded++;
-              final attemptId =
-                  (resData['data'] as Map?)?['attemptId']?.toString();
+              final dataMap = resData['data'] is Map
+                  ? Map<String, dynamic>.from(resData['data'] as Map)
+                  : <String, dynamic>{};
+              final attemptId = (dataMap['attempt_id'] ?? dataMap['attemptId'])
+                  ?.toString();
               if (attemptId != null && attemptId.isNotEmpty) {
                 await LocalDb.instance.markAttemptSynced(
                   localId: localId,
@@ -68,13 +73,22 @@ class OfflineSyncService {
                 ));
               }
             } else {
+              // This is a comment: structured sync failure
+              debugPrint(
+                '[OfflineSync] code=${resData['error']?['code'] ?? 'SYNC_REJECTED'} retryable=true',
+              );
               await LocalDb.instance.markAttemptFailed(localId);
             }
           } else {
+            debugPrint(
+              '[OfflineSync] code=HTTP_${response.statusCode} retryable=true',
+            );
             await LocalDb.instance.markAttemptFailed(localId);
           }
         } catch (e) {
-          debugPrint('[OfflineSync] Upload failed for $localId: $e');
+          debugPrint(
+            '[OfflineSync] code=NETWORK_ERROR retryable=true msg=$e',
+          );
           await LocalDb.instance.markAttemptFailed(localId);
         }
       }
@@ -167,6 +181,29 @@ class OfflineSyncService {
       } catch (e) {
         debugPrint('[OfflineSync] Resolve attempt id failed: $e');
       }
+    }
+  }
+
+  // This is a comment: flush offline community drafts
+  Future<void> _syncCommunityDrafts() async {
+    try {
+      final drafts = await LocalDb.instance.getPendingCommunityDrafts();
+      for (final row in drafts) {
+        final localId = row['local_id'] as String;
+        final payload =
+            jsonDecode(row['payload_json'] as String) as Map<String, dynamic>;
+        try {
+          final response =
+              await ApiService.post('/community/create-post', payload);
+          if (response.statusCode == 201) {
+            await LocalDb.instance.markCommunityDraftSynced(localId);
+          }
+        } catch (e) {
+          debugPrint('[OfflineSync] community draft $localId failed: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[OfflineSync] community drafts: $e');
     }
   }
 

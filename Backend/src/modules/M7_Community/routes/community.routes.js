@@ -2,12 +2,14 @@ import express from 'express';
 import * as controller from '../controller/community.controller.js';
 import { authenticate } from '../../../middleware/auth.middleware.js';
 import { authorizeRoles } from '../../../middleware/role.middleware.js';
+import { upload } from '../../../middleware/upload.middleware.js';
 
 const router = express.Router();
 
 router.use(authenticate);
 
 router.get('/meta/online-users', controller.getOnlineUsers);
+router.post('/upload-image', upload.single('image'), controller.uploadPostImage);
 router.post('/create-post', controller.createPost);
 router.get('/get-posts', controller.getPosts);
 

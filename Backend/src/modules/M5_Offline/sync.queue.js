@@ -1,10 +1,16 @@
 import Queue from 'bull';
+import { getRedisConnectionOptions } from '../../config/redis.js';
+
+// This is a comment: Bull uses same REDIS_URL / host as ioredis
+const redisOpts = getRedisConnectionOptions();
 
 export const syncQueue = new Queue('sync-tests', {
     redis: {
-        host: process.env.REDIS_HOST || '127.0.0.1',
-        port: process.env.REDIS_PORT || 6379
-    }
+        host: redisOpts.host,
+        port: redisOpts.port,
+        ...(redisOpts.password ? { password: redisOpts.password } : {}),
+        ...(redisOpts.db ? { db: redisOpts.db } : {}),
+    },
 });
 
 syncQueue.on('error', (error) => {
@@ -16,7 +22,7 @@ export const addSyncJob = async (syncData) => {
         attempts: 3,
         backoff: {
             type: 'exponential',
-            delay: 5000 
+            delay: 5000
         },
         removeOnComplete: true,
         removeOnFail: false

@@ -11,6 +11,7 @@ import { Community } from './pages/Community';
 import { Subscriptions } from './pages/Subscriptions';
 import { Settings } from './pages/Settings';
 import { TestBuilder } from './pages/TestBuilder';
+import { AttemptInspector } from './pages/AttemptInspector';
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: 'mocks', Component: Mocks },
       { path: 'preparation', Component: Preparation },
       { path: 'analytics', Component: Analytics },
+      { path: 'attempts', Component: AttemptInspector },
       { path: 'community', Component: Community },
       { path: 'subscriptions', Component: Subscriptions },
       { path: 'test-builder', Component: TestBuilder },

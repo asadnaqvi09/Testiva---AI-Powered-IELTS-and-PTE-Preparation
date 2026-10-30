@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../widgets/app_theme.dart';
+import 'pdf_viewer_screen.dart';
 
 class MediaTabContent extends StatelessWidget {
   final List<dynamic> mediaItems;
 
   const MediaTabContent({super.key, required this.mediaItems});
 
-  void _openFile(BuildContext context, String url) async {
-    try {
-      final uri = Uri.parse(url);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
+  // This is a comment: open PDF inside the app (not external browser)
+  void _openFile(BuildContext context, String url, String fileName) {
+    if (url.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open file: $e'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('File URL missing'),
+          backgroundColor: Colors.red,
+        ),
       );
+      return;
     }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PdfViewerScreen(url: url, title: fileName),
+      ),
+    );
   }
 
   @override
@@ -162,7 +169,7 @@ class MediaTabContent extends StatelessWidget {
                   ),
                   Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
                   TextButton.icon(
-                    onPressed: () => _openFile(context, fileUrl),
+                    onPressed: () => _openFile(context, fileUrl, fileName),
                     icon: const Icon(Icons.remove_red_eye_outlined, size: 18, color: Colors.blue),
                     label: const Text('Preview', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
                     style: TextButton.styleFrom(

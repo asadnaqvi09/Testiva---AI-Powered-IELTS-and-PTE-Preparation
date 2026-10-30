@@ -11,42 +11,66 @@ import '../prep/prep_screen.dart';
 import '../features/community/presentation/community_screen.dart';
 import 'package:frontend/core/services/api_service.dart';
 import 'package:frontend/core/services/auth_navigation_helper.dart';
+import 'package:frontend/core/database/local_db.dart';
 import 'package:frontend/core/services/offline_sync_service.dart';
 import 'package:frontend/providers/notification_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // This is a comment: optional tab index for named routes (e.g. /mocks → 1)
+  final int initialIndex;
+
+  const DashboardScreen({super.key, this.initialIndex = 0});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   NotificationProvider? _notificationProvider;
 
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex.clamp(0, 4);
     _fetchUserProfileAndCheckPreference();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<NotificationProvider>().initialize();
-        OfflineSyncService.instance.onSyncComplete = () {
-          if (mounted) {
-            context.read<NotificationProvider>().refresh();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Offline test uploaded. You will be notified when evaluation completes.',
-                ),
-                backgroundColor: Colors.green,
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      context.read<NotificationProvider>().initialize();
+      OfflineSyncService.instance.onSyncComplete = () {
+        if (mounted) {
+          context.read<NotificationProvider>().refresh();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Offline test uploaded. You will be notified when evaluation completes.',
               ),
-            );
-          }
-        };
-      }
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      };
+      // This is a comment: pending offline sync count indicator
+      try {
+        final counts = await LocalDb.instance.getSyncStatusCounts();
+        final pending = (counts['pending'] ?? 0) + (counts['failed'] ?? 0);
+        if (pending > 0 && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '$pending offline attempt(s) waiting to sync. Will retry when online.',
+              ),
+              action: SnackBarAction(
+                label: 'Retry',
+                onPressed: () {
+                  OfflineSyncService.instance.syncPendingAttempts();
+                },
+              ),
+            ),
+          );
+        }
+      } catch (_) {}
     });
   }
 

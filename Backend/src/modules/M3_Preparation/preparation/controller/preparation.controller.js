@@ -160,10 +160,16 @@ export const getPrepLessons = async (req, res) => {
             value.section,
             value.search
         );
+        // This is a comment: lessons + meta for clients; data stays array for compat
         return res.status(200).json({
             success: true,
             count: preparations.length,
-            data: preparations
+            data: preparations,
+            meta: {
+                total: preparations.length,
+                test_type: activeTestType || null,
+                section: value.section || null,
+            },
         });
     } catch (error) {
         return handleServerError(res, error);
@@ -194,9 +200,24 @@ export const getPrepDetails = async (req, res) => {
                 });
             }
         }
+        const parts = Array.isArray(fullPrep.parts) ? fullPrep.parts : [];
+        const media = (Array.isArray(fullPrep.media) ? fullPrep.media : []).map((m) => ({
+            id: m.id,
+            file_url: m.file_url,
+            file_name: m.file_name,
+            file_size: m.file_size,
+            file_type: m.file_type || 'application/pdf',
+        }));
         return res.status(200).json({
             success: true,
-            data: fullPrep
+            data: {
+                ...fullPrep,
+                parts,
+                media,
+                has_pdf: media.some((m) =>
+                    String(m.file_type || m.file_name || '').toLowerCase().includes('pdf'),
+                ),
+            },
         });
     } catch (error) {
         return handleServerError(res, error);

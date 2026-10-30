@@ -4,12 +4,13 @@ import {
   isStripeConfigured,
   getPlan,
 } from "../services/stripe.service.js";
-import {
-  findPaymentBySessionId,
-  insertPaymentEvent,
-} from "../models/payment.model.js";
-import { updateUserPaymentUnlock, findUserById } from "../../M1_Identity/user.model.js";
+import { findUserById } from "../../M1_Identity/user.model.js";
 import { resolveUnlockedExam, resolveSubscription } from "../../../utils/helpers.js";
+import {
+  createStripeCheckoutSession,
+  applyCheckoutEntitlement,
+} from "../services/payment.service.js";
+import { listPaymentEventsForUser } from "../models/payment.model.js";
 
 const appBaseUrl = () =>
   process.env.APP_PUBLIC_URL ||
@@ -77,8 +78,7 @@ export const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ success: false, message: error.details[0].message });
     }
 
-    const plan = getPlan(value.plan);
-    if (!plan) {
+    if (!getPlan(value.plan)) {
       return res.status(400).json({ success: false, message: "Invalid plan" });
     }
 
@@ -93,39 +93,20 @@ export const createCheckoutSession = async (req, res) => {
     const cancelUrl =
       value.cancel_url || `${flutterReturnBase()}-cancel`;
 
-    const priceId = process.env[plan.envPriceKey];
-    const lineItems = priceId
-      ? [{ price: priceId, quantity: 1 }]
-      : [
-          {
-            price_data: {
-              currency: plan.currency,
-              product_data: { name: `Testiva ${plan.label}` },
-              unit_amount: plan.fallbackUnitAmount,
-            },
-            quantity: 1,
-          },
-        ];
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: user.email,
-      client_reference_id: user.id,
-      line_items: lineItems,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        user_id: user.id,
-        plan: value.plan,
-        unlocked_exam: plan.unlocked_exam,
-        subscription: plan.subscription,
-      },
+    // This is a comment: checkout creation via payment.service
+    const session = await createStripeCheckoutSession({
+      user,
+      planKey: value.plan,
+      successUrl,
+      cancelUrl,
     });
 
     return res.status(200).json({
       success: true,
       data: {
+        session_id: session.id,
         sessionId: session.id,
+        checkout_url: session.url,
         url: session.url,
         plan: value.plan,
       },
@@ -143,49 +124,8 @@ export const createCheckoutSession = async (req, res) => {
   }
 };
 
-export const applyCheckoutSessionEntitlement = async (session) => {
-  const sessionId = session.id;
-  const existing = await findPaymentBySessionId(sessionId);
-  if (existing) {
-    const user = await findUserById(existing.user_id);
-    return { alreadyProcessed: true, user };
-  }
-
-  const userId =
-    session.metadata?.user_id || session.client_reference_id || null;
-  const planKey = session.metadata?.plan;
-  const plan = getPlan(planKey);
-  const subscription =
-    session.metadata?.subscription || plan?.subscription || "basic";
-  const unlockedExam =
-    session.metadata?.unlocked_exam || plan?.unlocked_exam || null;
-
-  if (!userId || !unlockedExam) {
-    throw new Error("Checkout session missing user_id or unlocked_exam metadata");
-  }
-
-  const updated = await updateUserPaymentUnlock(userId, {
-    subscription,
-    unlocked_exam: unlockedExam,
-  });
-
-  await insertPaymentEvent({
-    userId,
-    stripeSessionId: sessionId,
-    stripePaymentIntent:
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id,
-    plan: planKey || "unknown",
-    unlockedExam,
-    subscription,
-    amountTotal: session.amount_total,
-    currency: session.currency,
-    rawPayload: session,
-  });
-
-  return { alreadyProcessed: false, user: updated };
-};
+export const applyCheckoutSessionEntitlement = (session) =>
+  applyCheckoutEntitlement(session);
 
 export const stripeWebhook = async (req, res) => {
   try {
@@ -281,16 +221,60 @@ export const getMyEntitlements = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
+    const subscription = resolveSubscription(user);
+    const unlocked = resolveUnlockedExam(user);
     return res.json({
       success: true,
       data: {
-        subscription: resolveSubscription(user),
+        plan: subscription,
+        subscription,
         preference: user.preference,
-        unlocked_exam: resolveUnlockedExam(user),
+        unlocked_exam: unlocked,
+        status: subscription === "free" ? "inactive" : "active",
+        renews_at: null,
         app_base: appBaseUrl(),
       },
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed" });
+  }
+};
+
+// L6 — student invoice / payment history from payment_events
+export const listMyInvoices = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const { items, total } = await listPaymentEventsForUser(req.user.id, {
+      limit,
+      offset,
+    });
+    const invoices = items.map((row) => ({
+      id: row.id,
+      plan: row.plan,
+      subscription: row.subscription,
+      unlocked_exam: row.unlocked_exam,
+      amount_total: row.amount_total,
+      currency: row.currency,
+      status: row.status,
+      stripe_session_id: row.stripe_session_id,
+      created_at: row.created_at,
+    }));
+    return res.json({
+      success: true,
+      data: {
+        items: invoices,
+        meta: {
+          page,
+          limit,
+          total,
+          total_pages: Math.ceil(total / limit) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("listMyInvoices:", error);
+    return res.status(500).json({ success: false, message: "Failed to load invoices" });
   }
 };
