@@ -9,6 +9,8 @@ export async function allocDisplayId(client = pool) {
   return `mck${String(n).padStart(3, "0")}`;
 }
 
+// This is a comment: previously enforced one singular_module per exam_type+section_type.
+// Multiples are now allowed (Reading #1, Reading #2, …). Kept for optional tooling / rollback.
 export async function findSingleModuleConflict(examType, sectionType, excludeTestId, client = pool) {
   const params = [examType, sectionType];
   let sql = `

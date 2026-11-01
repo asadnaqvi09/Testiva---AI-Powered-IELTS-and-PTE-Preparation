@@ -362,17 +362,19 @@ export const createFullTest = async (req, res) => {
       if (err) return res.status(400).json({ success: false, message: err });
     }
     await client.query("BEGIN");
-    if (value.test_category === "singular_module") {
-      const st = value.sections[0].section_type;
-      const conflict = await testModel.findSingleModuleConflict(value.exam_type, st, null, client);
-      if (conflict) {
-        await client.query("ROLLBACK");
-        return res.status(409).json({
-          success: false,
-          message: `singular_module already exists for ${value.exam_type} ${st}`,
-        });
-      }
-    }
+    // This is a comment: multiple singular_module tests per exam+section are ALLOWED
+    // (e.g. two IELTS Reading practice mocks). Old one-per-type lock kept below for reference.
+    // if (value.test_category === "singular_module") {
+    //   const st = value.sections[0].section_type;
+    //   const conflict = await testModel.findSingleModuleConflict(value.exam_type, st, null, client);
+    //   if (conflict) {
+    //     await client.query("ROLLBACK");
+    //     return res.status(409).json({
+    //       success: false,
+    //       message: `singular_module already exists for ${value.exam_type} ${st}`,
+    //     });
+    //   }
+    // }
     const display_id = await testModel.allocDisplayId(client);
     const newTest = await testModel.createTest(
       {
@@ -447,17 +449,18 @@ export const upsertTestNested = async (req, res) => {
       if (err) return res.status(400).json({ success: false, message: err });
     }
     await client.query("BEGIN");
-    if (mergedCat === "singular_module") {
-      const st = value.sections[0].section_type;
-      const conflict = await testModel.findSingleModuleConflict(mergedExam, st, testId, client);
-      if (conflict) {
-        await client.query("ROLLBACK");
-        return res.status(409).json({
-          success: false,
-          message: `singular_module already exists for ${mergedExam} ${st}`,
-        });
-      }
-    }
+    // This is a comment: allow multiple singular mocks of the same section type on upsert
+    // if (mergedCat === "singular_module") {
+    //   const st = value.sections[0].section_type;
+    //   const conflict = await testModel.findSingleModuleConflict(mergedExam, st, testId, client);
+    //   if (conflict) {
+    //     await client.query("ROLLBACK");
+    //     return res.status(409).json({
+    //       success: false,
+    //       message: `singular_module already exists for ${mergedExam} ${st}`,
+    //     });
+    //   }
+    // }
     if (value.test && Object.keys(value.test).length) {
       await testModel.updateTestHeader(testId, value.test, client);
     }
@@ -606,22 +609,23 @@ export const updateTestHeaderByID = async (req, res) => {
     const testId = req.params.id;
     const current = await pool.query(`SELECT exam_type, test_category FROM tests WHERE id = $1::uuid`, [testId]);
     if (!current.rows[0]) return res.status(404).json({ success: false, message: "Test not found" });
-    const mergedExam = value.exam_type || current.rows[0].exam_type;
-    const mergedCat = value.test_category || current.rows[0].test_category;
     // This is a comment: header-only update — section validation runs on nested upsert
-    if (mergedCat === "singular_module" && (value.exam_type || value.test_category)) {
-      const sectionsCheck = await pool.query(`SELECT section_type FROM test_sections WHERE test_id = $1::uuid`, [testId]);
-      if (sectionsCheck.rows.length > 0) {
-        const st = sectionsCheck.rows[0].section_type;
-        const conflict = await testModel.findSingleModuleConflict(mergedExam, st, testId);
-        if (conflict) {
-          return res.status(409).json({
-            success: false,
-            message: `Conflict detected: singular_module configuration already exists for ${mergedExam} ${st}`,
-          });
-        }
-      }
-    }
+    // Multiple singular_module tests per exam+section type are allowed (no conflict check).
+    // const mergedExam = value.exam_type || current.rows[0].exam_type;
+    // const mergedCat = value.test_category || current.rows[0].test_category;
+    // if (mergedCat === "singular_module" && (value.exam_type || value.test_category)) {
+    //   const sectionsCheck = await pool.query(`SELECT section_type FROM test_sections WHERE test_id = $1::uuid`, [testId]);
+    //   if (sectionsCheck.rows.length > 0) {
+    //     const st = sectionsCheck.rows[0].section_type;
+    //     const conflict = await testModel.findSingleModuleConflict(mergedExam, st, testId);
+    //     if (conflict) {
+    //       return res.status(409).json({
+    //         success: false,
+    //         message: `Conflict detected: singular_module configuration already exists for ${mergedExam} ${st}`,
+    //       });
+    //     }
+    //   }
+    // }
     const updatedTest = await testModel.updateTestHeader(testId, value);
     await bustTestCache(testId);
     res.status(200).json({ success: true, data: updatedTest });

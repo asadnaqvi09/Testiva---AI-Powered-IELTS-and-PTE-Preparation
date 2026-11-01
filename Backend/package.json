@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "smoke": "node scripts/e2e-smoke.js"
+    "smoke": "node scripts/e2e-smoke.js",
+    "seed:mock-content": "node scripts/seed_mock_content.js"
   },
   "keywords": [],
   "author": "",
